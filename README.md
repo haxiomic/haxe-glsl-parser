@@ -6,5 +6,6 @@ GLSL ES 1.0 Tokenizer and Parser
 	- LINE_COMMENT
 	- PREPROCESSOR
 	- WHITESPACE
+	- RESERVED_KEYWORD
 
 ####Parser in development
