@@ -21,11 +21,11 @@ class Tokenizer{
 	static var tokens:Array<Token>;
 
 	static var i:Int;             // scan position
+	static var last_i:Int;
 	static var line:Int;
 	static var col:Int;
 	static var start:Int;         // token start position
 	static var mode:ScanMode;
-	static var lastMode:ScanMode;
 	static var buf:String;        // current string buffer
 
 	static var userDefinedTypes:Array<String>;
@@ -45,9 +45,9 @@ class Tokenizer{
 
 		mode = UNDETERMINED;
 
-		var last_i:Int = i;
+		var lastMode:ScanMode;
 		while(i < source.length || mode != UNDETERMINED){
-			last_i = i; lastMode = mode;
+			lastMode = mode;
 
 			//handle mode
 			switch (mode) {
@@ -74,15 +74,6 @@ class Tokenizer{
 				error('unclosed mode $mode');
 				break;
 			}
-
-			//number of new lines between last_i and i
-			var n = ~/\n/gm.split(source.substring(last_i, i)).length - 1;
-			if(n > 0){
-				line += n;
-				col = 1;
-			}else{
-				col+= i - last_i;
-			}
 		}
 
 		return tokens;
@@ -103,9 +94,21 @@ class Tokenizer{
 	}
 
 	static inline function advance(n:Int = 1){
+		last_i = i;
+
 		while(n-- > 0 && i < source.length){
 			buf += c(i);
 			i++;
+		}
+
+		//track new lines between last_i and i
+		var splitByLines = ~/\n/gm.split(source.substring(last_i, i));
+		var nl = splitByLines.length - 1;
+		if(nl > 0){
+			line += nl;
+			col = splitByLines[nl].length + 1;
+		}else{
+			col+= i - last_i;
 		}
 	}
 
@@ -129,7 +132,7 @@ class Tokenizer{
 		if(tryMode(DECIMAL_CONSTANT)) return;
 
 
-		warn('unrecognized character '+c(i));
+		warn('unrecognized token '+c(i));
 		mode = UNDETERMINED;
 		advance();
 		return;
@@ -288,21 +291,21 @@ class Tokenizer{
 		return source.charAt(j);
 	}
 
-	static function previousToken(n:Int = 0, ignoreWhitespace:Bool = false){
-		if(!ignoreWhitespace) return tokens[-n + tokens.length - 1];
+	static function previousToken(n:Int = 0, ignoreWhitespaceAndComments:Bool = false){
+		if(!ignoreWhitespaceAndComments) return tokens[-n + tokens.length - 1];
 		else{
 			var t:Token = null, i = 0;
 			while(n >= 0 && i < tokens.length){
 				t = tokens[-i + tokens.length - 1];
-				if(t.type != WHITESPACE) n--;
+				if(t.type != WHITESPACE && t.type != BLOCK_COMMENT && t.type != LINE_COMMENT) n--;
 				i++;
 			}
 			return t;
 		}
 	}
 
-	static function previousTokenType(n:Int = 0, ?ignoreWhitespace:Bool):TokenType{
-		var pt = previousToken(n, ignoreWhitespace);
+	static function previousTokenType(n:Int = 0, ?ignoreWhitespaceAndComments:Bool):TokenType{
+		var pt = previousToken(n, ignoreWhitespaceAndComments);
 		return pt != null ? pt.type : null;
 	}
 
@@ -320,31 +323,31 @@ class Tokenizer{
 
 /*  -------- Tokenizer Data -------- */
 /*
---- Modes ---
+--- Mode Conditions ---
 format: MODE_NAME open_conditions, ...		close_conditions, ...
 the order of modes is important
 -----------------------
 
-UNDETERMINED all
-	BLOCK_COMMENT; /*	*\/
-	LINE_COMMENT;  //	[^\\]\n,
+BLOCK_COMMENT; /*   *\/
+LINE_COMMENT;  //   [^\\]\n,
 
-	PREPROCESSOR;  #	[^\\]\n
-	WHITESPACE;	   \s	^\s
+PREPROCESSOR;  #    [^\\]\n
+WHITESPACE;    \s   ^\s
 
-	OPERATOR;      operatorRegex && anyOperator search
-	LITERAL;	   \w				^[\w\d]
-	
-	INTEGER_CONSTANT: OCTAL_CONSTANT | DECIMAL_CONSTANT | HEX_CONSTANT
-		OCTAL_CONSTANT;		0octalRegex     ^octalRegex
-		DECIMAL_CONSTANT;	[0-9]			^\d
-		HEX_CONSTANT;		0[xX]hexRegex	^hexRegex	
-		
-	FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
-		FRACTIONAL_CONSTANT; \d+\.				^\d	
-							 \.\d				^\d
-		EXPONENT_PART;	     [eE][+-]?\d		^\d
+OPERATOR;      operatorRegex && anyOperator search
+LITERAL;       \w               ^[\w\d]
+
+INTEGER_CONSTANT: OCTAL_CONSTANT | DECIMAL_CONSTANT | HEX_CONSTANT
+    OCTAL_CONSTANT;     0octalRegex     ^octalRegex
+    DECIMAL_CONSTANT;   [0-9]           ^\d
+    HEX_CONSTANT;       0[xX]hexRegex   ^hexRegex   
+    
+FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
+    FRACTIONAL_CONSTANT; \d+\.              ^\d 
+                         \.\d               ^\d
+    EXPONENT_PART;       [eE][+-]?\d        ^\d
 */
+
 	//single character patterns
 	static var operatorRegex = ~/[&<=>|*?!+%(){}.~:,;\/\-\^\[\]]/;
 
@@ -386,7 +389,7 @@ UNDETERMINED all
 	];
 	static var endConditionsMap:Map<ScanMode, Void->Bool> = [
 		BLOCK_COMMENT    => function() return source.substring(i-2,i) == "*/",
-		LINE_COMMENT     => function() return (c(i) == "\n" && c(i-1) != "\\") || c(i) == "",
+		LINE_COMMENT     => function() return c(i) == "\n" || c(i) == "",
 		PREPROCESSOR     => function() return (c(i) == "\n" && c(i-1) != "\\") || c(i) == "",
 		WHITESPACE       => function() return !~/\s/.match(c(i)),
 		OPERATOR         => function() return !operatorMap.exists(buf+c(i)) || c(i) == "",
@@ -568,5 +571,5 @@ enum TokenType{
 	BLOCK_COMMENT; //(non-spec)
 	LINE_COMMENT;  //(non-spec)
 	PREPROCESSOR;  //(non-spec)
-	WHITESPACE;	   //(non-spec)
+	WHITESPACE;    //(non-spec)
 }

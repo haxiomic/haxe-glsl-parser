@@ -4,7 +4,6 @@ class Main{
 
 	static function main(){
 		var input = "";
-		//input = sys.io.File.getContent('test.glsl');
 
 		//fuzz
 		var chars = ['e', 'E', '+', '-', '.', '_', '=', '^', '/' ,' ', ' ', ' ', '0x', '00', '\\', ' asm', ' if ', ' while ', ' struct ', '{', '}', '\n'];
@@ -15,6 +14,7 @@ class Main{
 			input += chars[i];
 		}
 
+		trace('"$input"');
 		var tokens = Tokenizer.tokenize(input);
 	}
 
