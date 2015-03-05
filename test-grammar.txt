@@ -1,6 +1,7 @@
 root:
 	rule
 	NEWLINE
+	*empty*
 
 rule:
 	RULE_DECL NEWLINE rule_sequence_list

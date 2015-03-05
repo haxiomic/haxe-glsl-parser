@@ -1,9 +1,11 @@
 class Main{
 	static var projectRoot = getProjectRoot();
-	static var grammarFile = haxe.io.Path.join([projectRoot, "test-grammar.txt"]);
+	static var grammarFile = haxe.io.Path.join([projectRoot, "glsl-grammar.txt"]);
 
 	static function main() {
 		var grammar = sys.io.File.getContent(grammarFile);
+
+
 		var tokens = GrammarTokenizer.tokenize(grammar);
 
 		//print tokens
@@ -11,7 +13,8 @@ class Main{
 
 		var ast = GrammarParser.parseTokens(tokens);
 
-		trace(ast);
+		var parserCode = ParserGenerator.generate(ast);
+		trace(parserCode);
 	}
 
 	static function getProjectRoot(){

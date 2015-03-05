@@ -84,7 +84,6 @@ enum Element{
 
 typedef RuleResult = Dynamic;
 typedef Node = {
-	var type:NodeType;
 };
 
 
@@ -137,7 +136,7 @@ class GrammarParser
 		return null;
 	}
 
-	static function trySequence(sequence:Array<Element>):RawResults{ //sequence is an array of either Void->RuleResult or tokenType
+	static function trySequence(sequence:Array<Element>):RawResults{ //sequence is an array of either Void->RuleResult or TokenType
 		var i_before = i;
 		var results:Dynamic = [];
 		for (j in 0...sequence.length) {
@@ -172,7 +171,7 @@ class GrammarParser
 
 /* ######### Language Specifics ######### */
 
-// --------- Rule functions --------- */
+/* --------- Rule functions --------- */
 	static function root():NodeRuleDeclaration{
 		var r;
 		if(r = trySequence([Rule(rule)])) return cast r[0];
@@ -221,7 +220,7 @@ class GrammarParser
 		return null;
 	}
 
-// --------- Build node functions --------- */
+/* --------- Build node functions --------- */
 	//for each rule there is a build result function
 	//buildResult_* converts raw trySequence result into formatted result for use in AST
 
@@ -267,19 +266,21 @@ class GrammarParser
 
 }
 
-enum NodeType{
+
+typedef NodeRuleDeclaration = {
+	> Node,
+	var name:String;
+	var rules:Array<Array<NodeRuleElement>>;
+}
+
+enum NodeRuleElementTypes{
 	Rule;
 	Token;
 	Empty;
-	RuleDeclaration;
-}
-
-typedef NodeRuleDeclaration = {
-	var name:String;
-	var rules:Array<Array<Element>>;
 }
 
 typedef NodeRuleElement = {
 	> Node,
+	var type:NodeRuleElementTypes;
 	var name:String;
 }
