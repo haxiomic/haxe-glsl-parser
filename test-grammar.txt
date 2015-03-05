@@ -1,1 +1,22 @@
-/* comment */ /* second */  /* third */
+root:
+	rule
+	NEWLINE
+
+rule:
+	RULE_DECL NEWLINE rule_sequence_list
+
+rule_sequence_list:
+	rule_sequence
+	rule_sequence rule_sequence_list
+
+rule_sequence:
+	EMPTY NEWLINE
+	rule_element_list NEWLINE
+
+rule_element_list:
+	rule_element
+	rule_element rule_element_list
+
+rule_element:
+	RULE
+	TOKEN

@@ -35,6 +35,10 @@ class GrammarTokenizer{
 
 		while(i < source.length) root();
 
+		//append newline to end if not already (simplifies the grammar so we don't have to introduce an EOF token)
+		if(tokens[tokens.length - 1].type != NEWLINE)
+			buildToken(NEWLINE, '\n');
+
 		return tokens;
 	}
 

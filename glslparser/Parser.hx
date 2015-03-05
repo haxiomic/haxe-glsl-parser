@@ -36,13 +36,12 @@ class Parser{
 
 	//Error Reporting
 	static function warn(msg){
-		trace('Tokenizer Warning: $msg, line $line, column $col');
+		trace('Parser Warning: $msg');
 	}
 
 	static function error(msg){
-		throw 'Tokenizer Error: $msg, line $line, column $col';
+		throw 'Parser Error: $msg';
 	}
-
 }
 
 typedef Node = {

@@ -1,14 +1,17 @@
 class Main{
 	static var projectRoot = getProjectRoot();
-	static var grammarFile = haxe.io.Path.join([projectRoot, "glsl-grammar.txt"]);
+	static var grammarFile = haxe.io.Path.join([projectRoot, "test-grammar.txt"]);
 
 	static function main() {
 		var grammar = sys.io.File.getContent(grammarFile);
 		var tokens = GrammarTokenizer.tokenize(grammar);
-		for(t in tokens){
-			trace(t.type);
-		}
+
+		//print tokens
+		// for(t in tokens) trace(t.type);
+
 		var ast = GrammarParser.parseTokens(tokens);
+
+		trace(ast);
 	}
 
 	static function getProjectRoot(){

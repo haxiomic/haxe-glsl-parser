@@ -1,3 +1,4 @@
+//GLSL ES 1.0 Grammar
 //Taken from https://www.khronos.org/files/opengles_shading_language.pdf
 
 variable_identifier:
