@@ -8,5 +8,4 @@ GLSL ES 1.0 Tokenizer and Parser
 	- WHITESPACE
 	- RESERVED_KEYWORD
 
-####Parser in development
-####Preprocessor in development
+####Parser & Preprocessor in development

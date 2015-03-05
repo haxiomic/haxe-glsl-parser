@@ -15,6 +15,47 @@ typedef Token = {
 	@:optional var column:Int;
 }
 
+enum TokenType{
+	//keywords
+	ATTRIBUTE; CONST; BOOL; FLOAT; INT;
+	BREAK; CONTINUE; DO; ELSE; FOR; IF; DISCARD; RETURN;
+	BVEC2; BVEC3; BVEC4; IVEC2; IVEC3; IVEC4; VEC2; VEC3; VEC4;
+	MAT2; MAT3; MAT4; IN; OUT; INOUT; UNIFORM; VARYING; SAMPLER2D; SAMPLERCUBE;
+	STRUCT; VOID; WHILE;
+
+	INVARIANT;
+	HIGH_PRECISION; MEDIUM_PRECISION; LOW_PRECISION; PRECISION;
+
+	BOOLCONSTANT;
+
+	RESERVED_KEYWORD; //(non-spec)
+
+	//operators
+	LEFT_OP; RIGHT_OP; INC_OP; DEC_OP; 
+	LE_OP; GE_OP; EQ_OP; NE_OP; AND_OP; OR_OP; XOR_OP; 
+	MUL_ASSIGN; DIV_ASSIGN; ADD_ASSIGN; MOD_ASSIGN; SUB_ASSIGN; 
+	LEFT_ASSIGN; RIGHT_ASSIGN; AND_ASSIGN; XOR_ASSIGN; OR_ASSIGN; 
+	LEFT_PAREN; RIGHT_PAREN; LEFT_BRACKET; RIGHT_BRACKET; LEFT_BRACE; RIGHT_BRACE; 
+	DOT; COMMA; COLON; EQUAL; SEMICOLON; BANG; DASH; TILDE; PLUS; STAR; SLASH; PERCENT; 
+	LEFT_ANGLE; RIGHT_ANGLE; VERTICAL_BAR; CARET; AMPERSAND; QUESTION;
+
+	//identifier
+	IDENTIFIER; TYPE_NAME; FIELD_SELECTION;
+
+	//integer-constant
+	INTCONSTANT;
+	
+	//floating-constant
+	FLOATCONSTANT; 
+
+	//other
+	BLOCK_COMMENT; //(non-spec)
+	LINE_COMMENT;  //(non-spec)
+	PREPROCESSOR;  //(non-spec)
+	WHITESPACE;    //(non-spec)
+}
+
+
 class Tokenizer{
 
 	//state machine data
@@ -24,7 +65,6 @@ class Tokenizer{
 	static var last_i:Int;
 	static var line:Int;
 	static var col:Int;
-	static var start:Int;         // token start position
 	static var mode:ScanMode;
 	static var buf:String;        // current string buffer
 
@@ -33,15 +73,14 @@ class Tokenizer{
 	static var source:String;
 
 
-	static public function tokenize(glsl:String):Array<Token>{
+	static public function tokenize(source:String):Array<Token>{
+		Tokenizer.source = source;
 		//init
 		tokens = [];
 		i = 0;
 		line = 1;
 		col = 1;
-		start = 0;
 		userDefinedTypes = [];
-		source = glsl;
 
 		mode = UNDETERMINED;
 
@@ -93,7 +132,7 @@ class Tokenizer{
 		return false;
 	}
 
-	static inline function advance(n:Int = 1){
+	static function advance(n:Int = 1){
 		last_i = i;
 
 		while(n-- > 0 && i < source.length){
@@ -308,8 +347,6 @@ class Tokenizer{
 		var pt = previousToken(n, ignoreWhitespaceAndComments);
 		return pt != null ? pt.type : null;
 	}
-
-	static inline function remaining():Int return source.length - i;
 
 	//Error Reporting
 	static function warn(msg){
@@ -532,44 +569,4 @@ enum ScanMode{
 	FLOATING_CONSTANT;
 		FRACTIONAL_CONSTANT;
 		EXPONENT_PART;
-}
-
-enum TokenType{
-	//keywords
-	ATTRIBUTE; CONST; BOOL; FLOAT; INT;
-	BREAK; CONTINUE; DO; ELSE; FOR; IF; DISCARD; RETURN;
-	BVEC2; BVEC3; BVEC4; IVEC2; IVEC3; IVEC4; VEC2; VEC3; VEC4;
-	MAT2; MAT3; MAT4; IN; OUT; INOUT; UNIFORM; VARYING; SAMPLER2D; SAMPLERCUBE;
-	STRUCT; VOID; WHILE;
-
-	INVARIANT;
-	HIGH_PRECISION; MEDIUM_PRECISION; LOW_PRECISION; PRECISION;
-
-	BOOLCONSTANT;
-
-	RESERVED_KEYWORD; //(non-spec)
-
-	//operators
-	LEFT_OP; RIGHT_OP; INC_OP; DEC_OP; 
-	LE_OP; GE_OP; EQ_OP; NE_OP; AND_OP; OR_OP; XOR_OP; 
-	MUL_ASSIGN; DIV_ASSIGN; ADD_ASSIGN; MOD_ASSIGN; SUB_ASSIGN; 
-	LEFT_ASSIGN; RIGHT_ASSIGN; AND_ASSIGN; XOR_ASSIGN; OR_ASSIGN; 
-	LEFT_PAREN; RIGHT_PAREN; LEFT_BRACKET; RIGHT_BRACKET; LEFT_BRACE; RIGHT_BRACE; 
-	DOT; COMMA; COLON; EQUAL; SEMICOLON; BANG; DASH; TILDE; PLUS; STAR; SLASH; PERCENT; 
-	LEFT_ANGLE; RIGHT_ANGLE; VERTICAL_BAR; CARET; AMPERSAND; QUESTION;
-
-	//identifier
-	IDENTIFIER; TYPE_NAME; FIELD_SELECTION;
-
-	//integer-constant
-	INTCONSTANT;
-	
-	//floating-constant
-	FLOATCONSTANT; 
-
-	//other
-	BLOCK_COMMENT; //(non-spec)
-	LINE_COMMENT;  //(non-spec)
-	PREPROCESSOR;  //(non-spec)
-	WHITESPACE;    //(non-spec)
 }
