@@ -1,6 +1,10 @@
+import haxe.io.Path;
+
 class Main{
 	static var projectRoot = getProjectRoot();
-	static var grammarFile = haxe.io.Path.join([projectRoot, "glsl-grammar.txt"]);
+	static var grammarFile = Path.join([projectRoot, "glsl-grammar.txt"]);
+
+	static var generatedParserPath = Path.join([projectRoot, 'glslparser', 'Parser.hx']);
 
 	static function main() {
 		var grammar = sys.io.File.getContent(grammarFile);
@@ -13,8 +17,12 @@ class Main{
 
 		var ast = GrammarParser.parseTokens(tokens);
 
-		var parserCode = ParserGenerator.generate(ast);
-		trace(parserCode);
+		var parserCode = ParserGenerator.generate(ast, 'glslparser', 'translation_unit');
+
+		//save parser
+		sys.io.File.saveContent(generatedParserPath, parserCode);
+
+		trace('Parser generated as $generatedParserPath');
 	}
 
 	static function getProjectRoot(){

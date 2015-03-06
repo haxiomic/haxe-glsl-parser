@@ -71,20 +71,18 @@ import GrammarTokenizer.TokenType;
 
 //Convenience abstract to allow treating Arrays as Bools for cases where it's helpful to do: if(array) ...
 @:forward
-abstract RawResults(Array<Dynamic>) from Array<Dynamic>{
+abstract SequenceResults(Array<Dynamic>) from Array<Dynamic>{
 	public inline function new() this = [];
 	@:to function toBool():Bool return this != null;
 	@:arrayAccess public inline function get(i:Int) return this[i];
 }
 
 enum Element{
-	Rule(ruleFunction:Void->RuleResult);
+	Rule(ruleFunction:Void->Dynamic);
 	Token(type:TokenType);
 }
 
-typedef RuleResult = Dynamic;
-typedef Node = {
-};
+typedef Node = {};
 
 
 class GrammarParser
@@ -98,7 +96,6 @@ class GrammarParser
 		GrammarParser.tokens = tokens;
 		i = 0;
 
-		//test
 		var ast = [];
 		while(i < tokens.length){
 			var rootNode = root();
@@ -127,7 +124,7 @@ class GrammarParser
 		return null;
 	}
 
-	static function tryRule(ruleFunction:Void->RuleResult){
+	static function tryRule(ruleFunction:Void->Dynamic){
 		//responsible for tracking index
 		var i_before = i;
 		var result = ruleFunction();
@@ -136,7 +133,7 @@ class GrammarParser
 		return null;
 	}
 
-	static function trySequence(sequence:Array<Element>):RawResults{ //sequence is an array of either Void->RuleResult or TokenType
+	static function trySequence(sequence:Array<Element>):SequenceResults{ //sequence is an array of either Void->Dynamic or TokenType
 		var i_before = i;
 		var results:Dynamic = [];
 		for (j in 0...sequence.length) {
@@ -157,7 +154,7 @@ class GrammarParser
 			results.push(result);
 		}
 
-		return results; //array of RuleResults or Tokens
+		return results; //array of Dynamics or Tokens
 	}
 
 	//Error Reporting
@@ -224,7 +221,7 @@ class GrammarParser
 	//for each rule there is a build result function
 	//buildResult_* converts raw trySequence result into formatted result for use in AST
 
-	static function buildResult_rule(r:RawResults, sequenceIndex:Int):NodeRuleDeclaration{
+	static function buildResult_rule(r:SequenceResults, sequenceIndex:Int):NodeRuleDeclaration{
 		var name:String = r[0].data;
 		name = name.substr(0, name.length - 1);//remove : character
 		return {
@@ -233,7 +230,7 @@ class GrammarParser
 		};
 	}
 
-	static function buildResult_rule_sequence_list(r:RawResults, sequenceIndex:Int):Array<Array<NodeRuleElement>>{
+	static function buildResult_rule_sequence_list(r:SequenceResults, sequenceIndex:Int):Array<Array<NodeRuleElement>>{
 		switch (sequenceIndex) {
 			case 0: return [cast r[0]];
 			case 1: return [cast r[0]].concat( cast r[1]);
@@ -241,18 +238,18 @@ class GrammarParser
 		return null;
 	}
 
-	static function buildResult_rule_sequence(r:RawResults, sequenceIndex:Int):Array<NodeRuleElement>{
+	static function buildResult_rule_sequence(r:SequenceResults, sequenceIndex:Int):Array<NodeRuleElement>{
 		switch (sequenceIndex) {
 			case 0: return [{
 						type: Empty,
-						name: ''
+						name: r[0].data
 					}];
 			case 1: return cast r[0];
 		}
 		return null;
 	}
 
-	static function buildResult_rule_element_list(r:RawResults, sequenceIndex:Int):Array<NodeRuleElement>{
+	static function buildResult_rule_element_list(r:SequenceResults, sequenceIndex:Int):Array<NodeRuleElement>{
 		switch (sequenceIndex) {
 			case 0: return [cast r[0]];
 			case 1: return [cast r[0]].concat(cast r[1]);
@@ -260,7 +257,7 @@ class GrammarParser
 		return null;
 	}
 
-	static function buildResult_rule_element(r:RawResults, sequenceIndex:Int):NodeRuleElement{
+	static function buildResult_rule_element(r:SequenceResults, sequenceIndex:Int):NodeRuleElement{
 		return {type: sequenceIndex == 0 ? Rule : Token, name: r[0].data};
 	}
 
