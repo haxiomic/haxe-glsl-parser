@@ -9,23 +9,22 @@
 - "If a comment resides entirely within a single line, it is treated syntactically as a single space"
 - "Newlines are not eliminated by comments" i guess when replacing comments, count the number of newlines within
 
-Resources
-http://www.semdesigns.com/Products/DMS/LifeAfterParsing.html?Home=DMSToolkit
-
-- Recursive Decent Parser
-	http://stackoverflow.com/questions/2245962/is-there-an-alternative-for-flex-bison-that-is-usable-on-8-bit-embedded-systems/2336769#2336769
-	http://stackoverflow.com/questions/25049751/constructing-an-abstract-syntax-tree-with-a-list-of-tokens/25106688#25106688
 
 
-Outline:
-Recursive bottom up pattern	
+
+Currently it's a recursive decent parser with backtrack, backtracking may induce exponential time, predictive method would be better. 
+(Sub nodes are generated even though a parent may not be valid)
+
 
 - We need to eliminate left recursion from our grammar (either direct or indirect)
 - Convert an ANTLR glsl grammar (EBNF to BNF) http://lampwww.epfl.ch/teaching/archive/compilation-ssc/2000/part4/parsing/node3.html
 - Alternatively, add support for EBNF to the parser core and only convert syntax
+- Perhaps rewrite the Core parser as a LALR or shift reduce parser which supports left recursion
+
+- Read http://cs.stackexchange.com/questions/9963/why-is-left-recursion-bad
 
 'Terminals' are TOKENS
-'Non-Terminals' are RULES
+'Non-Terminals' are RULES (also 'Productions')
 
 /*
 #Grammar Recursion Issue

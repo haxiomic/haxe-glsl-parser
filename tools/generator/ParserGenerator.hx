@@ -84,6 +84,9 @@ class ParserGenerator{
 	}
 
 	static function generateBuildResultStub(ruleDecl:NodeRuleDeclaration):String{
+		//#! ? default node could be type: SomeType, data: r.data
+		//(where each node keeps track of the data which is the concatenated string of the results)
+
 		var fnHeader = 'static function buildResult_${ruleDecl.name}(r:SequenceResults, sequenceIndex:Int){\n';
 
 		var contentStart = '\ttrace("building result for ${ruleDecl.name}");\n';//#! debug
