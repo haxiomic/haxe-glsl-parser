@@ -1,3 +1,21 @@
 -main Main
--neko main.n
+-neko bin/main.n
+-cp ../../../
+
+--next
+
+-main Main
+-js bin/main.js
+-cp ../../../
+
+--next
+
+-main Main
+-php bin/main.php
+-cp ../../../
+
+--next
+
+-main Main
+-cpp bin/main
 -cp ../../../

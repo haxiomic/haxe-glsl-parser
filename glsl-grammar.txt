@@ -335,8 +335,8 @@ for_init_statement:
     declaration_statement
 
 conditionopt:
-    *empty*
     condition
+    *empty*
 
 for_rest_statement:
     conditionopt SEMICOLON

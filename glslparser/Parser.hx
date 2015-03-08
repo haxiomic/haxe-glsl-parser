@@ -17,7 +17,7 @@ class Parser{
 	static public function parseTokens(tokens:Array<Token>){
 		//init
 		i = 0;
-		errorCount = -1;
+		errorCount = 0;
 		stack = [{
 			stateno: 0,
 			major: 0,
@@ -26,7 +26,7 @@ class Parser{
 
 		var lastToken = null;
 		for(t in tokens){
-			if(ParserData.ignoredTokens.indexOf(t.type) != -1) continue;
+			if(ignoredTokens.indexOf(t.type) != -1) continue;
 			parseStep(tokenIdMap.get(t.type), t);
 			lastToken = t;
 		}
@@ -72,7 +72,7 @@ class Parser{
 					major = illegalSymbolNumber;
 				}
 			}
-		}while( major != illegalSymbolNumber && i >= 0);//would be better as plain while
+		}while( major != illegalSymbolNumber && i >= 0);
 
 		return;
 	}
@@ -80,7 +80,7 @@ class Parser{
 	static function popStack(){
 		// trace('popStack');
 		if(i < 0) return 0;
-		var major = stack.pop().major;
+		var major = stack.pop().major;//#! pop is technically unnecessary here
 		i--;
 		return major;
 	}
@@ -143,7 +143,6 @@ class Parser{
 
 	static function shift(newState:Int, major:Int, minor:Token){
 		// trace('shift newState: $newState, tokenId: $major');
-
 		i++;
 		stack[i] = {
 			stateno: newState,
@@ -194,7 +193,7 @@ class Parser{
 	}//#! needs improving
 
 	static function parseFailed(minor:Token){
-			warn('parse failed, $minor');
+		warn('parse failed, $minor');
 	}
 
 	//Utils
@@ -245,6 +244,8 @@ class Parser{
 
 	//tokenId
 	static var tokenIdMap:Map<TokenType, Int> = ParserData.tokenIdMap;
+	//skip-over tokens
+	static var ignoredTokens:Array<TokenType> = ParserData.ignoredTokens;
 }
 
 abstract RuleInfoEntry(Array<Int>) from Array<Int> {
@@ -253,7 +254,6 @@ abstract RuleInfoEntry(Array<Int>) from Array<Int> {
 	
 	function get_lhs()return this[0];
 	function set_lhs(v:Int)return this[0] = v;
-	
 	function get_nrhs()return this[1];
 	function set_nrhs(v:Int)return this[1] = v;
 }

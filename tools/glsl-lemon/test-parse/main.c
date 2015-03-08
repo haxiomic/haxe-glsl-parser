@@ -26,12 +26,6 @@ int main(){
 
 int i = 0;
 int GetNextToken(int *id, void* token){
-	*id = 42;
-	// INT//16
-	// IDENTIFIER//1
-	// EQUAL//54
-	// INTCONSTANT//2
-	// SEMICOLON//65
 	int tokenArray[] = {80,1,81,15,1,65,15,1,65,82,1,65};
 	int len = sizeof(tokenArray) / sizeof(int);
 
