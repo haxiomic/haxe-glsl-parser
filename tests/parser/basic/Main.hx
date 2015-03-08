@@ -5,7 +5,10 @@ class Main{
 	static function main(){
 		var input = '';
 
-		input = 'int a = 3 + 4; int b = 5 * 6;';
+		input = '
+		int i = 7*8;
+		void main(){i++;}
+		';
 
 		trace('"$input"');
 		var tokens = Tokenizer.tokenize(input);

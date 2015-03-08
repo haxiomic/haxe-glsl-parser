@@ -2,53 +2,265 @@ package glslparser;
 
 //#! also add node location (+lenght)? (Computed from the subnode's positions)
 //Define leaf type that is a proxy for a token?
+//Perhaps some sort of isGlobal bool on declarations to account for external_declaration
 
-//unfinished types
-typedef BinaryOperator = Dynamic; 
+import glslparser.Parser.MinorType;
+import glslparser.Tokenizer.Token;
+import glslparser.Tokenizer.TokenType;
 
+
+//AST definitions
+//Loosely following Mozilla Parser API AST
+
+//Grouping rules into classes
+/*
+
+translation_unit:
+
+- Expression
+	expression:
+	constant_expression:
+	integer_expression:
+	primary_expression:
+
+	postfix_expression:
+
+	- ConditionalExpression
+		conditional_expression:
+
+	- UnaryExpression
+		unary_expression:
+		postfix_expression: (unary case)
+
+	- BinaryExpression
+		multiplicative_expression:
+		additive_expression:
+		shift_expression:
+		relational_expression:
+		equality_expression:
+		and_expression:
+		exclusive_or_expression:
+		inclusive_or_expression:
+
+		- LogicalExpression
+			logical_and_expression:
+			logical_xor_expression:
+			logical_or_expression:
+
+	- CallExpression?
+		function_call:
+		function_call_generic:
+		function_call_header_no_parameters:
+		function_call_header_with_parameters:
+		function_call_header:
+		function_identifier:
+
+	- AssignmentExpression
+		assignment_expression:
+
+- Declaration
+	declaration:
+		init_declarator_list: ?
+
+	single_declaration:
+		fully_specified_type:
+		type_qualifier:
+		type_specifier:
+		type_specifier_no_prec:
+		precision_qualifier:
+		initializer:
+
+	external_declaration:
+
+	- FunctionPrototype
+		function_prototype:
+	
+	- FunctionDeclaration
+		function_definition:
+			function_header:
+				function_header_with_parameters:
+				function_declarator:
+				parameter_declarator:
+				parameter_declaration:
+				parameter_qualifier:
+				parameter_type_specifier:
+
+	- StructDeclaration
+		struct_declaration:
+			struct_declarator:
+			struct_specifier:
+
+	- StructDeclarationList? 
+		struct_declaration_list:
+			struct_declarator_list:
+
+
+- Condition ?
+	condition:
+	conditionopt:
+
+- StatementList ?
+	statement_list:
+	
+- Statement
+	simple_statement:
+	statement_with_scope:
+	statement_no_new_scope:
+
+	- ExpressionStatement
+		expression_statement:
+
+	- DeclarationStatement
+		declaration_statement:
+
+	- IterationStatement
+		iteration_statement:
+
+		- ForStatement
+			for_init_statement:
+			for_rest_statement:
+
+		- IfStatement
+			selection_statement:
+			selection_rest_statement:
+
+	- JumpStatement
+		- ContinueStatement
+			jump_statement:
+		- BreakStatement
+			jump_statement:
+		- ReturnStatement
+			jump_statement:
+		- ReturnStatement
+			jump_statement:
+		- DiscardStatement
+			jump_statement:
+
+	- Break
+
+	- Compound Statement?
+		compound_statement_with_scope:
+		compound_statement_no_new_scope:
+
+
+//Misc
+- Literal
+- Identifier
+	variable_identifier:
+
+	constructor_identifier: (:TokenType)
+
+- Operator (simple type)
+	unary_operator: (:TokenType)
+	assignment_operator: (:TokenType)
+
+*/
+
+//#! unfinished types
 
 
 class Node{
-	public function new(){};
+	public function new(){}
 }
 
-class Expression extends Node{
+//Expressions
+class Expression extends Node{}
 
+class TypeIdentifier extends Expression{
+	var constructType:ConstructType;
+	public function new(constructType:ConstructType){
+		super();
+		this.constructType = constructType;
+	}
 }
 
-class Literal<T> extends Node{
+class Identifier extends Expression{
+	var name:String;
+	public function new(name:String) {
+		super();
+		this.name = name;
+	}
+}
+
+class Literal<T> extends Expression{
 	var value:T;
+	var raw:String;
+	public function new(value:T, raw:String){
+		super();
+		this.value = value;
+		this.raw = raw;
+	}
 }
 
-class BinaryExpression extends Node{
+class BinaryExpression extends Expression{
 	var op:BinaryOperator;
 	var left:Expression;
 	var right:Expression;
 }
+class LogicalExpression extends BinaryExpression{}
+
+class UnaryExpression extends Expression{
+	var op:UnaryOperator;
+	var arg:Node;
+	var isPrefix:Bool;
+	public function new(op:UnaryOperator, arg:Node, isPrefix:Bool){
+		super();
+		this.op = op;
+		this.arg = arg;
+		this.isPrefix = isPrefix;
+	}
+}
+
+class ConditionalExpression extends Expression{
+	var test:Expression;
+	var alternate:Expression;
+	var consequent:Expression;
+}
+
+class AssignmentExpression extends Expression{
+	var op:AssignmentOperator;
+	var left:Expression;//#! not sure
+	var right:Expression;
+}
+
+class FunctionCallExpression extends Expression{
+	var callee:Expression;
+	var args:Expression;
+}
+
+//Declarations
+class Declaration extends Node{}
+
+//Base Types
+typedef BinaryOperator = TokenType;
+typedef UnaryOperator = TokenType;
+typedef AssignmentOperator = TokenType;
+typedef ConstructType = TokenType;
 
 
 @:access(glslparser.Parser)
 class ParserAST{
+	static var i(get, null):Int;
+	static var stack(get, null):Parser.Stack;
+	static var ruleno;
 
-	static public function reduce(ruleno:Int){
+	static public function reduce(ruleno:Int):MinorType{
 		ParserAST.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
-
-		//many rules should result in a simple pass forward of the node
 
 		switch(ruleno){
 			case 0: return s(1); //root ::= translation_unit
-			case 1: trace('(1) variable_identifier ${debug_allSymbols()}'); //variable_identifier ::= IDENTIFIER
+			case 1: return new Identifier(t(1).data);//variable_identifier ::= IDENTIFIER
 			case 2: return s(1); //primary_expression ::= variable_identifier
-			case 3: trace('(3) primary_expression ${debug_allSymbols()}');//primary_expression ::= INTCONSTANT
-			case 4: trace('(4) primary_expression ${debug_allSymbols()}'); //primary_expression ::= FLOATCONSTANT
-			case 5: trace('(5) primary_expression ${debug_allSymbols()}'); //primary_expression ::= BOOLCONSTANT
+			case 3: return new Literal<Int>(Std.parseInt(t(1).data), t(1).data);//primary_expression ::= INTCONSTANT
+			case 4: return new Literal<Float>(Std.parseFloat(t(1).data), t(1).data); //primary_expression ::= FLOATCONSTANT
+			case 5: return new Literal<Bool>(t(1).data == 'true', t(1).data); //primary_expression ::= BOOLCONSTANT
 			case 6: trace('(6) primary_expression ${debug_allSymbols()}');//primary_expression ::= LEFT_PAREN expression RIGHT_PAREN
 			case 7: return s(1); //postfix_expression ::= primary_expression
 			case 8: trace('(8) postfix_expression ${debug_allSymbols()}'); //postfix_expression ::= postfix_expression LEFT_BRACKET integer_expression RIGHT_BRACKET
 			case 9: return s(1); //postfix_expression ::= function_call
 			case 10: trace('(10) postfix_expression ${debug_allSymbols()}'); //postfix_expression ::= postfix_expression DOT FIELD_SELECTION
-			case 11: trace('(11) postfix_expression ${debug_allSymbols()}'); //postfix_expression ::= postfix_expression INC_OP
-			case 12: trace('(12) postfix_expression ${debug_allSymbols()}'); //postfix_expression ::= postfix_expression DEC_OP
+			case 11: return new UnaryExpression(t(2).type, n(1), false); //postfix_expression ::= postfix_expression INC_OP
+			case 12: return new UnaryExpression(t(2).type, n(1), false); //postfix_expression ::= postfix_expression DEC_OP
 			case 13: return s(1); //integer_expression ::= expression
 			case 14: return s(1); //function_call ::= function_call_generic
 			case 15: trace('(15) function_call_generic ${debug_allSymbols()}'); //function_call_generic ::= function_call_header_with_parameters RIGHT_PAREN
@@ -59,23 +271,23 @@ class ParserAST{
 			case 20: trace('(20) function_call_header_with_parameters ${debug_allSymbols()}'); //function_call_header_with_parameters ::= function_call_header_with_parameters COMMA assignment_expression
 			case 21: trace('(21) function_call_header ${debug_allSymbols()}'); //function_call_header ::= function_identifier LEFT_PAREN
 			case 22: return s(1); //function_identifier ::= constructor_identifier
-			case 23: trace('(23) function_identifier ${debug_allSymbols()}'); //function_identifier ::= IDENTIFIER
-			case 24: trace('(24) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= FLOAT
-			case 25: trace('(25) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= INT
-			case 26: trace('(26) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= BOOL
-			case 27: trace('(27) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= VEC2
-			case 28: trace('(28) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= VEC3
-			case 29: trace('(29) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= VEC4
-			case 30: trace('(30) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= BVEC2
-			case 31: trace('(31) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= BVEC3
-			case 32: trace('(32) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= BVEC4
-			case 33: trace('(33) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= IVEC2
-			case 34: trace('(34) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= IVEC3
-			case 35: trace('(35) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= IVEC4
-			case 36: trace('(36) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= MAT2
-			case 37: trace('(37) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= MAT3
-			case 38: trace('(38) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= MAT4
-			case 39: trace('(39) constructor_identifier ${debug_allSymbols()}'); //constructor_identifier ::= TYPE_NAME
+			case 23: return new Identifier(t(1).data); //function_identifier ::= IDENTIFIER
+			case 24: return new TypeIdentifier(t(1).type); //constructor_identifier ::= FLOAT
+			case 25: return new TypeIdentifier(t(1).type); //constructor_identifier ::= INT
+			case 26: return new TypeIdentifier(t(1).type); //constructor_identifier ::= BOOL
+			case 27: return new TypeIdentifier(t(1).type); //constructor_identifier ::= VEC2
+			case 28: return new TypeIdentifier(t(1).type); //constructor_identifier ::= VEC3
+			case 29: return new TypeIdentifier(t(1).type); //constructor_identifier ::= VEC4
+			case 30: return new TypeIdentifier(t(1).type); //constructor_identifier ::= BVEC2
+			case 31: return new TypeIdentifier(t(1).type); //constructor_identifier ::= BVEC3
+			case 32: return new TypeIdentifier(t(1).type); //constructor_identifier ::= BVEC4
+			case 33: return new TypeIdentifier(t(1).type); //constructor_identifier ::= IVEC2
+			case 34: return new TypeIdentifier(t(1).type); //constructor_identifier ::= IVEC3
+			case 35: return new TypeIdentifier(t(1).type); //constructor_identifier ::= IVEC4
+			case 36: return new TypeIdentifier(t(1).type); //constructor_identifier ::= MAT2
+			case 37: return new TypeIdentifier(t(1).type); //constructor_identifier ::= MAT3
+			case 38: return new TypeIdentifier(t(1).type); //constructor_identifier ::= MAT4
+			case 39: return new TypeIdentifier(t(1).type); //constructor_identifier ::= TYPE_NAME
 			case 40: return s(1); //unary_expression ::= postfix_expression
 			case 41: trace('(41) unary_expression ${debug_allSymbols()}'); //unary_expression ::= INC_OP unary_expression
 			case 42: trace('(42) unary_expression ${debug_allSymbols()}'); //unary_expression ::= DEC_OP unary_expression
@@ -248,17 +460,17 @@ class ParserAST{
 			case 209: trace('(209) function_definition ${debug_allSymbols()}'); //function_definition ::= function_prototype compound_statement_no_new_scope
 		}
 
-		return cast {type: glslparser.Tokenizer.TokenType.RESERVED_KEYWORD, data: 'r:'+ruleno};//#!
+		return new Node();//cast {type: glslparser.Tokenizer.TokenType.RESERVED_KEYWORD, data: 'r:'+ruleno};//#!
 	}
 
 	//#! list .data of symbols of current rule
 	static function debug_allSymbols():String{
 		var len = Parser.ruleInfo[ruleno].nrhs;
 		var symbols = [for(n in 1...len+1) Std.string(s(n))];
-		return [for(n in 1...len+1) Std.string( s(n).data ) ].join(', ');
+		return [for(n in 1...len+1) Std.string( s(n) ) ].join(', ');
 	}
 
-	//Access rule tokens from left to right
+	//Access rule symbols from left to right
 	//s(1) gives the left most symbol
 	static inline function s(n:Int){
 		if(n <= 0) return null;
@@ -267,10 +479,12 @@ class ParserAST{
 		return stack[i - j].minor;
 	}
 
-	static var i(get, null):Int;
-	static var stack(get, null):Parser.Stack;
+	//Convenience functions for casting s().v
+	static inline function n(m:Int):Node 
+		return cast s(m).v;
+	static inline function t(m:Int):Token
+		return cast s(m).v;
+
 	static inline function get_i() return Parser.i;
-	static inline function get_stack() return Parser.stack;
-	
-	static var ruleno;
+	static inline function get_stack() return Parser.stack;	
 }

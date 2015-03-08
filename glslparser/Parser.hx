@@ -40,7 +40,7 @@ class Parser{
 	}
 
 	//for each token, major = tokenId
-	static function parseStep(major:Int, minor:Token){
+	static function parseStep(major:Int, minor:MinorType){
 		var act:Int, 
 			atEOF:Bool = (major == 0),
 			errorHit:Bool = false;
@@ -133,7 +133,7 @@ class Parser{
 		return action[j];
 	}
 
-	static function shift(newState:Int, major:Int, minor:Token){
+	static function shift(newState:Int, major:Int, minor:MinorType){
 		i++;
 		stack[i] = {
 			stateno: newState,
@@ -166,11 +166,11 @@ class Parser{
 
 	static function accept() while(i >= 0) popStack();
 
-	static function syntaxError(major:Int, minor:Token){
+	static function syntaxError(major:Int, minor:MinorType){
 		warn('syntax error, $minor');
 	}//#! needs improving
 
-	static function parseFailed(minor:Token){
+	static function parseFailed(minor:MinorType){
 		warn('parse failed, $minor');
 	}
 
@@ -227,6 +227,28 @@ class Parser{
 	static var ignoredTokens:Array<TokenType> = ParserData.ignoredTokens;
 }
 
+typedef NodeType = glslparser.ParserAST.Node;
+
+//a minor may be a token or a node
+enum EMinorType{
+	Token(t:Token);
+	Node(n:NodeType);
+}
+
+abstract MinorType(EMinorType){
+	public inline function new(e:EMinorType) this = e;
+
+	public var v(get, never):Dynamic;
+	public var type(get, never):EMinorType;
+
+	inline function get_v() return this.getParameters()[0];
+
+	@:to inline function get_type() return this;
+
+	@:from static inline function fromToken(t:Token) return new MinorType(Token(t));
+	@:from static inline function fromNode(n:NodeType) return new MinorType(Node(n));
+}
+
 abstract RuleInfoEntry(Array<Int>) from Array<Int> {
 	public var lhs(get, set):Int;
 	public var nrhs(get, set):Int;
@@ -240,7 +262,7 @@ abstract RuleInfoEntry(Array<Int>) from Array<Int> {
 typedef StackEntry = {
 	var stateno:Int;
 	var major:Int;
-	var minor:Token;
+	var minor:MinorType;
 }
 
 typedef Stack = Array<StackEntry>;
