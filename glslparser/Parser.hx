@@ -24,15 +24,15 @@ class Parser{
 			minor: null
 		}];
 
-		var token = null;
+		var lastToken = null;
 		for(t in tokens){
 			if(ParserData.ignoredTokens.indexOf(t.type) != -1) continue;
-			token = t;
-			parseStep(tokenIdMap.get(token.type), token);
+			parseStep(tokenIdMap.get(t.type), t);
+			lastToken = t;
 		}
 
 		//eof step
-		parseStep(0, token);//#! reuse the last token in eof step? 
+		parseStep(0, lastToken);//using the lastToken for the EOF step allows better error reporting if it fails
 		return {};
 	}
 
