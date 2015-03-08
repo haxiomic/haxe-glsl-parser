@@ -1,2 +1,5 @@
-haxe build.hxml
-neko bin/main.n
+#!/bin/bash
+
+if haxe build.hxml; then
+	neko bin/main.n
+fi

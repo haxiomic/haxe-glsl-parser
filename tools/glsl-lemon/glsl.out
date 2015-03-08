@@ -2772,8 +2772,8 @@ State 11:
           condition ::= * expression
           condition ::= * fully_specified_type IDENTIFIER EQUAL initializer
           iteration_statement ::= FOR LEFT_PAREN for_init_statement * for_rest_statement RIGHT_PAREN statement_no_new_scope
-    (196) conditionopt ::= *
           conditionopt ::= * condition
+    (197) conditionopt ::= *
           for_rest_statement ::= * conditionopt SEMICOLON
           for_rest_statement ::= * conditionopt SEMICOLON expression
 
@@ -2851,7 +2851,7 @@ function_call_header_no_parameters shift  165
                      condition shift  179
             for_rest_statement shift  110
                   conditionopt shift  106
-                     {default} reduce 196
+                     {default} reduce 197
 
 State 12:
           variable_identifier ::= * IDENTIFIER
@@ -9581,9 +9581,9 @@ State 178:
                      {default} reduce 194
 
 State 179:
-    (197) conditionopt ::= condition *
+    (196) conditionopt ::= condition *
 
-                     {default} reduce 197
+                     {default} reduce 196
 
 State 180:
     (204) jump_statement ::= DISCARD SEMICOLON *

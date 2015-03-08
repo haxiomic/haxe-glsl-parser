@@ -1,6 +1,9 @@
 /*
 	LALR parser based on lemon parser generator
 	http://www.hwaci.com/sw/lemon/
+
+	#Notes
+	- minor is our node object! (not a Token) (it's not used in the parsing itself, it's just parsed around and stored in the stack)
 */
 
 package glslparser;
@@ -11,7 +14,7 @@ import glslparser.Tokenizer.TokenType;
 class Parser{
 	//state machine variables
 	static var i:Int; //stack index
-	static var stack:Array<StackEntry>;
+	static var stack:Stack;
 	static var errorCount:Int;
 
 	static public function parseTokens(tokens:Array<Token>){
@@ -36,21 +39,17 @@ class Parser{
 		return {};
 	}
 
-	//for each token, major = tokenId, minor = Token?
+	//for each token, major = tokenId
 	static function parseStep(major:Int, minor:Token){
-		// trace('\n----- parseStep, tokenId $major -> ${minor.type}');
-		var act:Int;
-		var atEOF:Bool;
-
-		var errorHit:Bool = false;
-
-		atEOF = major == 0;
+		var act:Int, 
+			atEOF:Bool = (major == 0),
+			errorHit:Bool = false;
 
 		do{
 			act = findShiftAction(major);
 			if(act < nStates){
 				assert( !atEOF );
-				shift(act, major, minor);
+				shift(act, major, minor); //push a leaf/token to the stack
 				errorCount--;
 				major = illegalSymbolNumber;
 			}else if(act < nStates + nRules){
@@ -78,23 +77,19 @@ class Parser{
 	}
 
 	static function popStack(){
-		// trace('popStack');
 		if(i < 0) return 0;
-		var major = stack.pop().major;//#! pop is technically unnecessary here
+		var major = stack.pop().major;
 		i--;
 		return major;
 	}
-
 
 	//Find the appropriate action for a parser given the terminal
 	//look-ahead token iLookAhead.
 	static function findShiftAction(iLookAhead:Int){
 		var stateno = stack[i].stateno;
 		var j:Int = shiftOffset[stateno];
-		// trace('findShiftAction iLookAhead: $iLookAhead, stateno: $stateno');
 
 		if(stateno > shiftCount || j == shiftUseDefault){
-			// trace('findShiftAction exit1');
 			return defaultAction[stateno];
 		}
 
@@ -103,11 +98,9 @@ class Parser{
 		j += iLookAhead;
 
 		if(j < 0 || j >= actionCount || lookahead[j] != iLookAhead){
-			// trace('findShiftAction exit2');
 			return defaultAction[stateno];
 		}
 
-		// trace('findShiftAction return action[j]');
 		return action[j];
 	}
 
@@ -122,7 +115,6 @@ class Parser{
 			assert( stateno <= reduceCount);
 		}
 
-		// trace('findReduceAction stateno: $stateno');
 		j = reduceOffset[stateno];
 
 		assert( j != reduceUseDefault );
@@ -142,7 +134,6 @@ class Parser{
 	}
 
 	static function shift(newState:Int, major:Int, minor:Token){
-		// trace('shift newState: $newState, tokenId: $major');
 		i++;
 		stack[i] = {
 			stateno: newState,
@@ -154,18 +145,10 @@ class Parser{
 	static function reduce(ruleno:Int){
 		var goto:Int;               //next state
 		var act:Int;                //next action
-		var gotoMinor:Token;        //the LHS of the rule reduced
-		var msp:StackEntry;         //top of parser stack
 		var size:Int;               //amount to pop the stack
 
-		msp = stack[i];
-
-		gotoMinor = null; //zero gotoMinor?
-
-		switch(ruleno){
-			default:
-			//#! execute custom reduce functions
-		}
+		//new node generated after reducing with this rule
+		var newNode = ParserAST.reduce(ruleno); //trigger custom reduce behavior
 
 		goto = ruleInfo[ruleno].lhs;
 		size = ruleInfo[ruleno].nrhs;
@@ -173,20 +156,15 @@ class Parser{
 
 		act = findReduceAction(stack[i].stateno, goto);
 
-		// trace('reduce ruleno: $ruleno, goto: $goto, size: $size, act: $act');
-
 		if(act < nStates){
-			shift(act, goto, gotoMinor);
+			shift(act, goto, newNode); //push a node (the result of a rule) to the stack
 		}else{
 			assert( act == nStates + nRules + 1);
 			accept();
 		}
 	}
 
-	static function accept(){
-		// trace('accept');
-		while(i >= 0) popStack();
-	}
+	static function accept() while(i >= 0) popStack();
 
 	static function syntaxError(major:Int, minor:Token){
 		warn('syntax error, $minor');
@@ -244,6 +222,7 @@ class Parser{
 
 	//tokenId
 	static var tokenIdMap:Map<TokenType, Int> = ParserData.tokenIdMap;
+
 	//skip-over tokens
 	static var ignoredTokens:Array<TokenType> = ParserData.ignoredTokens;
 }
@@ -263,3 +242,5 @@ typedef StackEntry = {
 	var major:Int;
 	var minor:Token;
 }
+
+typedef Stack = Array<StackEntry>;

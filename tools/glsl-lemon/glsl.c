@@ -4,8 +4,6 @@
 /* First off, code is included that follows the "include" declaration
 ** in the input grammar file. */
 #include <stdio.h>
-#include <assert.h>
-
 /* Next is all token values, in a form suitable for use by makeheaders.
 ** This section will be null unless lemon is run with the -m switch.
 */
@@ -682,7 +680,7 @@ static const short yy_reduce_ofst[] = {
 };
 static const YYACTIONTYPE yy_default[] = {
  /*     0 */   542,  542,  542,  542,  542,  542,  542,  542,  542,  542,
- /*    10 */   542,  528,  542,  542,  542,  530,  542,  542,  542,  542,
+ /*    10 */   542,  529,  542,  542,  542,  530,  542,  542,  542,  542,
  /*    20 */   542,  542,  542,  350,  542,  542,  542,  542,  542,  542,
  /*    30 */   542,  542,  542,  542,  542,  542,  542,  542,  542,  542,
  /*    40 */   542,  542,  542,  542,  542,  542,  542,  542,  542,  542,
@@ -698,7 +696,7 @@ static const YYACTIONTYPE yy_default[] = {
  /*   140 */   480,  479,  478,  477,  476,  475,  474,  473,  472,  471,
  /*   150 */   470,  469,  468,  542,  409,  407,  408,  405,  406,  403,
  /*   160 */   404,  401,  402,  400,  542,  542,  345,  542,  333,  537,
- /*   170 */   540,  539,  538,  541,  513,  512,  514,  527,  526,  529,
+ /*   170 */   540,  539,  538,  541,  513,  512,  514,  527,  526,  528,
  /*   180 */   536,  534,  535,  533,  532,  525,  524,  523,  522,  519,
  /*   190 */   518,  511,  510,  516,  515,  509,  508,  507,  506,  505,
  /*   200 */   504,  503,  502,  501,  500,  459,  458,  457,  449,  456,
@@ -1051,8 +1049,8 @@ static const char *const yyRuleName[] = {
  /* 193 */ "iteration_statement ::= FOR LEFT_PAREN for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope",
  /* 194 */ "for_init_statement ::= expression_statement",
  /* 195 */ "for_init_statement ::= declaration_statement",
- /* 196 */ "conditionopt ::=",
- /* 197 */ "conditionopt ::= condition",
+ /* 196 */ "conditionopt ::= condition",
+ /* 197 */ "conditionopt ::=",
  /* 198 */ "for_rest_statement ::= conditionopt SEMICOLON",
  /* 199 */ "for_rest_statement ::= conditionopt SEMICOLON expression",
  /* 200 */ "jump_statement ::= CONTINUE SEMICOLON",
@@ -1156,8 +1154,6 @@ static void yy_destructor(
 ** Return the major token number for the symbol popped.
 */
 static int yy_pop_parser_stack(yyParser *pParser){
-	printf("pop_parser_stack\n");
-
   YYCODETYPE yymajor;
   yyStackEntry *yytos = &pParser->yystack[pParser->yyidx];
 
@@ -1222,15 +1218,11 @@ static int yy_find_shift_action(
   yyParser *pParser,        /* The parser */
   YYCODETYPE iLookAhead     /* The look-ahead token */
 ){
-
   int i;
   int stateno = pParser->yystack[pParser->yyidx].stateno;
  
-	printf("find_shift_action iLookAhead:%d, stateno:%d\n", iLookAhead, stateno);
   if( stateno>YY_SHIFT_COUNT
    || (i = yy_shift_ofst[stateno])==YY_SHIFT_USE_DFLT ){
-			printf("find_shift_action exit1\n");
-
     return yy_default[stateno];
   }
   assert( iLookAhead!=YYNOCODE );
@@ -1273,12 +1265,8 @@ static int yy_find_shift_action(
       }
 #endif /* YYWILDCARD */
     }
-
-	printf("find_shift_action exit2\n");
-
     return yy_default[stateno];
   }else{
-	printf("find_shift_action return action[j]\n");
     return yy_action[i];
   }
 }
@@ -1295,8 +1283,6 @@ static int yy_find_reduce_action(
   int stateno,              /* Current state number */
   YYCODETYPE iLookAhead     /* The look-ahead token */
 ){
-	printf("find_reduce_action stateno: %d\n", stateno);
-
   int i;
 #ifdef YYERRORSYMBOL
   if( stateno>YY_REDUCE_COUNT ){
@@ -1346,8 +1332,6 @@ static void yy_shift(
   int yyMajor,                  /* The major token to shift in */
   YYMINORTYPE *yypMinor         /* Pointer to the minor token to shift in */
 ){
-	printf("shift newState: %d, tokenId: %d\n", yyNewState, yyMajor);
-
   yyStackEntry *yytos;
   yypParser->yyidx++;
 #ifdef YYTRACKMAXSTACKDEPTH
@@ -1588,8 +1572,8 @@ static const struct {
   { 152, 6 },
   { 159, 1 },
   { 159, 1 },
-  { 161, 0 },
   { 161, 1 },
+  { 161, 0 },
   { 160, 2 },
   { 160, 3 },
   { 153, 2 },
@@ -1656,6 +1640,15 @@ static void yy_reduce(
   **  #line <lineno> <thisfile>
   **     break;
   */
+      case 6: /* primary_expression ::= LEFT_PAREN expression RIGHT_PAREN */
+{yygotominor.yy0, yymsp[-2].minor.yy0, yymsp[-1].minor.yy0, yymsp[0].minor.yy0}
+        break;
+      case 126: /* fully_specified_type ::= type_specifier */
+{yygotominor.yy0 ::= yymsp[0].minor.yy0}
+        break;
+      case 127: /* fully_specified_type ::= type_qualifier type_specifier */
+{yygotominor.yy0 ::= yymsp[-1].minor.yy0 yymsp[0].minor.yy0}
+        break;
       default:
       /* (0) root ::= translation_unit */ yytestcase(yyruleno==0);
       /* (1) variable_identifier ::= IDENTIFIER */ yytestcase(yyruleno==1);
@@ -1663,7 +1656,6 @@ static void yy_reduce(
       /* (3) primary_expression ::= INTCONSTANT */ yytestcase(yyruleno==3);
       /* (4) primary_expression ::= FLOATCONSTANT */ yytestcase(yyruleno==4);
       /* (5) primary_expression ::= BOOLCONSTANT */ yytestcase(yyruleno==5);
-      /* (6) primary_expression ::= LEFT_PAREN expression RIGHT_PAREN */ yytestcase(yyruleno==6);
       /* (7) postfix_expression ::= primary_expression */ yytestcase(yyruleno==7);
       /* (8) postfix_expression ::= postfix_expression LEFT_BRACKET integer_expression RIGHT_BRACKET */ yytestcase(yyruleno==8);
       /* (9) postfix_expression ::= function_call */ yytestcase(yyruleno==9);
@@ -1783,8 +1775,6 @@ static void yy_reduce(
       /* (123) single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET */ yytestcase(yyruleno==123);
       /* (124) single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer */ yytestcase(yyruleno==124);
       /* (125) single_declaration ::= INVARIANT IDENTIFIER */ yytestcase(yyruleno==125);
-      /* (126) fully_specified_type ::= type_specifier */ yytestcase(yyruleno==126);
-      /* (127) fully_specified_type ::= type_qualifier type_specifier */ yytestcase(yyruleno==127);
       /* (128) type_qualifier ::= CONST */ yytestcase(yyruleno==128);
       /* (129) type_qualifier ::= ATTRIBUTE */ yytestcase(yyruleno==129);
       /* (130) type_qualifier ::= VARYING */ yytestcase(yyruleno==130);
@@ -1853,8 +1843,8 @@ static void yy_reduce(
       /* (193) iteration_statement ::= FOR LEFT_PAREN for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope */ yytestcase(yyruleno==193);
       /* (194) for_init_statement ::= expression_statement */ yytestcase(yyruleno==194);
       /* (195) for_init_statement ::= declaration_statement */ yytestcase(yyruleno==195);
-      /* (196) conditionopt ::= */ yytestcase(yyruleno==196);
-      /* (197) conditionopt ::= condition */ yytestcase(yyruleno==197);
+      /* (196) conditionopt ::= condition */ yytestcase(yyruleno==196);
+      /* (197) conditionopt ::= */ yytestcase(yyruleno==197);
       /* (198) for_rest_statement ::= conditionopt SEMICOLON */ yytestcase(yyruleno==198);
       /* (199) for_rest_statement ::= conditionopt SEMICOLON expression */ yytestcase(yyruleno==199);
       /* (200) jump_statement ::= CONTINUE SEMICOLON */ yytestcase(yyruleno==200);
@@ -1872,10 +1862,7 @@ static void yy_reduce(
   yygoto = yyRuleInfo[yyruleno].lhs;
   yysize = yyRuleInfo[yyruleno].nrhs;
   yypParser->yyidx -= yysize;
-
   yyact = yy_find_reduce_action(yymsp[-yysize].stateno,(YYCODETYPE)yygoto);
-	printf("reduce ruleno: %d, goto: %d, size: %d, act: %d\n", yyruleno, yygoto, yysize, yyact);
-
   if( yyact < YYNSTATE ){
 #ifdef NDEBUG
     /* If we are not debugging and the reduce action popped at least
@@ -1906,8 +1893,6 @@ static void yy_reduce(
 static void yy_parse_failed(
   yyParser *yypParser           /* The parser */
 ){
-	printf("parse_failed\n");
-
   ParseARG_FETCH;
 #ifndef NDEBUG
   if( yyTraceFILE ){
@@ -1929,8 +1914,6 @@ static void yy_syntax_error(
   int yymajor,                   /* The major type of the error token */
   YYMINORTYPE yyminor            /* The minor type of the error token */
 ){
-	printf("syntax_error\n");
-
   ParseARG_FETCH;
 #define TOKEN (yyminor.yy0)
   ParseARG_STORE; /* Suppress warning about unused %extra_argument variable */
@@ -1942,7 +1925,6 @@ static void yy_syntax_error(
 static void yy_accept(
   yyParser *yypParser           /* The parser */
 ){
-	printf("accept\n");
   ParseARG_FETCH;
 #ifndef NDEBUG
   if( yyTraceFILE ){
@@ -1980,8 +1962,6 @@ void Parse(
   ParseTOKENTYPE yyminor       /* The value for the token */
   ParseARG_PDECL               /* Optional %extra_argument parameter */
 ){
- printf("\n ------- Parse step, tokenId: %d\n", yymajor);
-
   YYMINORTYPE yyminorunion;
   int yyact;            /* The parser action. */
   int yyendofinput;     /* True if we are at the end of input */

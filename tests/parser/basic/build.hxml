@@ -2,20 +2,20 @@
 -neko bin/main.n
 -cp ../../../
 
---next
+# --next
 
--main Main
--js bin/main.js
--cp ../../../
+# -main Main
+# -js bin/main.js
+# -cp ../../../
 
---next
+# --next
 
--main Main
--php bin/main.php
--cp ../../../
+# -main Main
+# -php bin/main.php
+# -cp ../../../
 
---next
+# --next
 
--main Main
--cpp bin/main
--cp ../../../
+# -main Main
+# -cpp bin/main
+# -cp ../../../

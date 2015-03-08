@@ -20,11 +20,6 @@ class Main{
 		var savePath = Path.join([projectRoot, 'glsl-lemon.y']);
 		sys.io.File.saveContent(savePath, lemonGrammar);
 		trace('Lemon grammar generated as $savePath');
-
-		//save parser
-		// var generatedParserPath = Path.join([projectRoot, 'glslparser', 'Parser.hx']);
-		// sys.io.File.saveContent(generatedParserPath, parserCode);
-		// trace('Parser generated as $generatedParserPath');
 	}
 
 	static function getProjectRoot(){
