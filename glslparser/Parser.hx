@@ -12,7 +12,7 @@ class Parser{
 	//state machine variables
 	static var i:Int; //stack index
 	static var stack:Array<StackEntry>;
-	static var errorCount:Int; //#! generally unused
+	static var errorCount:Int;
 
 	static public function parseTokens(tokens:Array<Token>){
 		//init
@@ -26,9 +26,8 @@ class Parser{
 
 		var token = null;
 		for(t in tokens){
+			if(ParserData.ignoredTokens.indexOf(t.type) != -1) continue;
 			token = t;
-			//#! need to add ignored tokens grammar field
-			if(token.type == WHITESPACE || token.type == LINE_COMMENT || token.type == BLOCK_COMMENT) continue;
 			parseStep(tokenIdMap.get(token.type), token);
 		}
 
@@ -68,7 +67,7 @@ class Parser{
 
 					errorCount = 3;
 					if( atEOF ){
-						error('parse failed');
+						parseFailed(minor);
 					}
 					major = illegalSymbolNumber;
 				}
@@ -154,11 +153,11 @@ class Parser{
 	}
 
 	static function reduce(ruleno:Int){
-		var goto:Int;				//next state
-		var act:Int;				//next action
-		var gotoMinor:Token;		//the LHS of the rule reduced
-		var msp:StackEntry;			//top of parser stack
-		var size:Int;				//amount to pop the stack
+		var goto:Int;               //next state
+		var act:Int;                //next action
+		var gotoMinor:Token;        //the LHS of the rule reduced
+		var msp:StackEntry;         //top of parser stack
+		var size:Int;               //amount to pop the stack
 
 		msp = stack[i];
 
@@ -191,8 +190,12 @@ class Parser{
 	}
 
 	static function syntaxError(major:Int, minor:Token){
-		warn('syntax error $major, $minor');
+		warn('syntax error, $minor');
 	}//#! needs improving
+
+	static function parseFailed(minor:Token){
+			warn('parse failed, $minor');
+	}
 
 	//Utils
 	static function assert(cond:Bool, ?pos:haxe.PosInfos)
@@ -245,13 +248,13 @@ class Parser{
 }
 
 abstract RuleInfoEntry(Array<Int>) from Array<Int> {
-    public var lhs(get, set):Int;
-    public var nrhs(get, set):Int;
-    
+	public var lhs(get, set):Int;
+	public var nrhs(get, set):Int;
+	
 	function get_lhs()return this[0];
 	function set_lhs(v:Int)return this[0] = v;
-    
-    function get_nrhs()return this[1];
+	
+	function get_nrhs()return this[1];
 	function set_nrhs(v:Int)return this[1] = v;
 }
 

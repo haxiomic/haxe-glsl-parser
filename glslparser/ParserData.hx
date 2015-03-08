@@ -13,9 +13,6 @@ class ParserData{
 
 	static public inline var nStates = 332;//total number of states
 	static public inline var nRules = 210;//total number of rules
-	static public inline var noAction = nStates + nRules + 2;
-	static public inline var acceptAction = nStates + nRules + 1;
-	static public inline var errorAction = nStates + nRules;
 
 	//tables
 /* ###### ACTION ###### */
@@ -912,4 +909,5 @@ class ParserData{
 		DISCARD          => 91
 	];
 
+	static public var ignoredTokens:Array<TokenType> = [WHITESPACE, LINE_COMMENT, BLOCK_COMMENT];
 }

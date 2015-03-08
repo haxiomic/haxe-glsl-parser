@@ -14,7 +14,7 @@ class Main{
 		{
 		    float near;
 		    float far;
-		};
+		}x;
 		';
 
 		// trace('"$input"');

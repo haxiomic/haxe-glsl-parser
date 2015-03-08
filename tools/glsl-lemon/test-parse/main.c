@@ -32,7 +32,7 @@ int GetNextToken(int *id, void* token){
 	// EQUAL//54
 	// INTCONSTANT//2
 	// SEMICOLON//65
-	int tokenArray[] = {80,1,81,15,1,65,15,1,65,82,65};
+	int tokenArray[] = {80,1,81,15,1,65,15,1,65,82,1,65};
 	int len = sizeof(tokenArray) / sizeof(int);
 
 	if(i < len){
