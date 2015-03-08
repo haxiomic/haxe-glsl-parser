@@ -1,3 +1,5 @@
+//backtracking tokenizer
+
 typedef Token = {
 	var type:TokenType;
 	var data:String;

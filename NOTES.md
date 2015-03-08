@@ -1,4 +1,4 @@
-- Should the defined operator be only part of the preprocessor?
+- Should the 'defined' operator be only part of the preprocessor?
 - Add a parameter to Tokenizer to disable storing line and column and position in the token?
 
 
@@ -11,13 +11,12 @@
 
 
 
-
-Currently it's a recursive decent parser with backtrack, backtracking may induce exponential time, predictive method would be better. 
+Currently it's a recursive descent parser with backtracking, backtracking may induce exponential time so it's a suboptimal approach.
 (Sub nodes are generated even though a parent may not be valid)
 
-
+##Solutions:
 - We need to eliminate left recursion from our grammar (either direct or indirect)
-- Convert an ANTLR glsl grammar (EBNF to BNF) http://lampwww.epfl.ch/teaching/archive/compilation-ssc/2000/part4/parsing/node3.html
+	- Convert an ANTLR glsl grammar (EBNF to BNF) http://lampwww.epfl.ch/teaching/archive/compilation-ssc/2000/part4/parsing/node3.html
 - Alternatively, add support for EBNF to the parser core and only convert syntax
 - Perhaps rewrite the Core parser as a LALR or shift reduce parser which supports left recursion
 

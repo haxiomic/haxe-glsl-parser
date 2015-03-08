@@ -1,10 +1,10 @@
+/*	
+	#! Unfinished
+	Generates rule functions correctly but buildResults / (node construction) functions are left incomplete
+*/
+
 import GrammarParser.NodeRuleDeclaration;
 import GrammarParser.NodeRuleElement;
-
-/*
-	#Notes
-	- Make sure EMPTY is handled properly
-*/
 
 class ParserGenerator{
 

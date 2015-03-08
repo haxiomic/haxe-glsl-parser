@@ -3,6 +3,7 @@
 	https://www.khronos.org/files/opengles_shading_language.pdf
 	
 	* Scan and read ahead technique
+	#! needs optimizing
 */
 
 package glslparser;
@@ -72,6 +73,7 @@ class Tokenizer{
 
 	static var source:String;
 
+	static public var verbose:Bool = false;
 
 	static public function tokenize(source:String):Array<Token>{
 		Tokenizer.source = source;
@@ -159,11 +161,12 @@ class Tokenizer{
 		if(tryMode(LINE_COMMENT)) return;
 		if(tryMode(PREPROCESSOR)) return;
 		if(tryMode(WHITESPACE)) return;
-		if(tryMode(OPERATOR)) return;
 		if(tryMode(LITERAL)) return;
 
 		//FRACTIONAL_CONSTANT
 		if(tryMode(FLOATING_CONSTANT)) return;
+
+		if(tryMode(OPERATOR)) return;
 
 		//INTEGER_CONSTANT
 		if(tryMode(HEX_CONSTANT)) return;
@@ -232,13 +235,13 @@ class Tokenizer{
 			if(tt == null && previousTokenType() == DOT) tt = FIELD_SELECTION;
 			//try searching user defined types
 			if(tt == null && userDefinedTypes.indexOf(buf) != -1) tt = TYPE_NAME;
-			//check if it's a type definition
-			if(tt == null && previousTokenType(0, true) == STRUCT){
-				tt = TYPE_NAME;
-				userDefinedTypes.push(buf);	
-			}
+
 			//otherwise it must be an identifier
-			if(tt == null) tt = IDENTIFIER;
+			if(tt == null){
+				tt = IDENTIFIER;
+				//record a new type if it's a type definition 
+				if(previousTokenType(0, true) == STRUCT) userDefinedTypes.push(buf);	
+			}
 
 			buildToken(tt);
 			mode = UNDETERMINED;
@@ -321,7 +324,7 @@ class Tokenizer{
 			column: col,
 			position: i - buf.length
 		}
-		trace('building token $type, \'$buf\'');
+		if(verbose) trace('building token $type ($buf)');
 		tokens.push(token);
 	}
 
@@ -473,7 +476,7 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
 		'mat2'                => MAT2,
 		'mat3'                => MAT3,
 		'mat4'                => MAT4,
-		'sampler2d'           => SAMPLER2D,
+		'sampler2D'           => SAMPLER2D,
 		'samplerCube'         => SAMPLERCUBE,
 
 		'break'               => BREAK,

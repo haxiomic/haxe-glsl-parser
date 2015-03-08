@@ -4,25 +4,27 @@ class Main{
 	static var projectRoot = getProjectRoot();
 	static var grammarFile = Path.join([projectRoot, "glsl-grammar.txt"]);
 
-	static var generatedParserPath = Path.join([projectRoot, 'glslparser', 'Parser.hx']);
-
 	static function main() {
 		var grammar = sys.io.File.getContent(grammarFile);
 
 
 		var tokens = GrammarTokenizer.tokenize(grammar);
 
-		//print tokens
-		// for(t in tokens) trace(t.type);
+		// /*print tokens */ for(t in tokens) trace(t.type);
 
 		var ast = GrammarParser.parseTokens(tokens);
 
-		var parserCode = ParserGenerator.generate(ast, 'glslparser', 'translation_unit');
+		//generate lemon grammar file
+		var lemonGrammar = LemonGrammarGenerator.generate(ast, 'translation_unit');
+		
+		var savePath = Path.join([projectRoot, 'glsl-lemon.y']);
+		sys.io.File.saveContent(savePath, lemonGrammar);
+		trace('Lemon grammar generated as $savePath');
 
 		//save parser
-		sys.io.File.saveContent(generatedParserPath, parserCode);
-
-		trace('Parser generated as $generatedParserPath');
+		// var generatedParserPath = Path.join([projectRoot, 'glslparser', 'Parser.hx']);
+		// sys.io.File.saveContent(generatedParserPath, parserCode);
+		// trace('Parser generated as $generatedParserPath');
 	}
 
 	static function getProjectRoot(){

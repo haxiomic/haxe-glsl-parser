@@ -242,7 +242,7 @@ class GrammarParser
 		switch (sequenceIndex) {
 			case 0: return [{
 						type: Empty,
-						name: r[0].data
+						name: ''
 					}];
 			case 1: return cast r[0];
 		}

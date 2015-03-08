@@ -3,5 +3,4 @@
 with “gl_”."
 		"All identifiers containing two consecutive underscores (__) are reserved as possible future
 keywords."
-
 */
