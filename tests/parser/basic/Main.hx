@@ -6,8 +6,12 @@ class Main{
 		var input = '';
 
 		input = '
-		int i = 7*8;
-		void main(){i++;}
+		int i = 42;
+		bool;
+
+		void main(){
+			return 5;
+		}
 		';
 
 		trace('"$input"');

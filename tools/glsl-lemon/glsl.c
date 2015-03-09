@@ -1640,15 +1640,6 @@ static void yy_reduce(
   **  #line <lineno> <thisfile>
   **     break;
   */
-      case 6: /* primary_expression ::= LEFT_PAREN expression RIGHT_PAREN */
-{yygotominor.yy0, yymsp[-2].minor.yy0, yymsp[-1].minor.yy0, yymsp[0].minor.yy0}
-        break;
-      case 126: /* fully_specified_type ::= type_specifier */
-{yygotominor.yy0 ::= yymsp[0].minor.yy0}
-        break;
-      case 127: /* fully_specified_type ::= type_qualifier type_specifier */
-{yygotominor.yy0 ::= yymsp[-1].minor.yy0 yymsp[0].minor.yy0}
-        break;
       default:
       /* (0) root ::= translation_unit */ yytestcase(yyruleno==0);
       /* (1) variable_identifier ::= IDENTIFIER */ yytestcase(yyruleno==1);
@@ -1656,6 +1647,7 @@ static void yy_reduce(
       /* (3) primary_expression ::= INTCONSTANT */ yytestcase(yyruleno==3);
       /* (4) primary_expression ::= FLOATCONSTANT */ yytestcase(yyruleno==4);
       /* (5) primary_expression ::= BOOLCONSTANT */ yytestcase(yyruleno==5);
+      /* (6) primary_expression ::= LEFT_PAREN expression RIGHT_PAREN */ yytestcase(yyruleno==6);
       /* (7) postfix_expression ::= primary_expression */ yytestcase(yyruleno==7);
       /* (8) postfix_expression ::= postfix_expression LEFT_BRACKET integer_expression RIGHT_BRACKET */ yytestcase(yyruleno==8);
       /* (9) postfix_expression ::= function_call */ yytestcase(yyruleno==9);
@@ -1775,6 +1767,8 @@ static void yy_reduce(
       /* (123) single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET */ yytestcase(yyruleno==123);
       /* (124) single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer */ yytestcase(yyruleno==124);
       /* (125) single_declaration ::= INVARIANT IDENTIFIER */ yytestcase(yyruleno==125);
+      /* (126) fully_specified_type ::= type_specifier */ yytestcase(yyruleno==126);
+      /* (127) fully_specified_type ::= type_qualifier type_specifier */ yytestcase(yyruleno==127);
       /* (128) type_qualifier ::= CONST */ yytestcase(yyruleno==128);
       /* (129) type_qualifier ::= ATTRIBUTE */ yytestcase(yyruleno==129);
       /* (130) type_qualifier ::= VARYING */ yytestcase(yyruleno==130);

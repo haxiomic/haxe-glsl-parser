@@ -7,7 +7,7 @@ primary_expression ::= variable_identifier.
 primary_expression ::= INTCONSTANT.
 primary_expression ::= FLOATCONSTANT.
 primary_expression ::= BOOLCONSTANT.
-primary_expression(A) ::= LEFT_PAREN(B) expression(C) RIGHT_PAREN(D). {A, B, C, D}
+primary_expression ::= LEFT_PAREN expression RIGHT_PAREN.
 postfix_expression ::= primary_expression.
 postfix_expression ::= postfix_expression LEFT_BRACKET integer_expression RIGHT_BRACKET.
 postfix_expression ::= function_call.
@@ -127,8 +127,8 @@ single_declaration ::= fully_specified_type IDENTIFIER.
 single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET.
 single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer.
 single_declaration ::= INVARIANT IDENTIFIER.
-fully_specified_type(A) ::= type_specifier(B). {A ::= B}
-fully_specified_type(A) ::= type_qualifier(B) type_specifier(C). {A ::= B C}
+fully_specified_type ::= type_specifier.
+fully_specified_type ::= type_qualifier type_specifier.
 type_qualifier ::= CONST.
 type_qualifier ::= ATTRIBUTE.
 type_qualifier ::= VARYING.

@@ -148,7 +148,9 @@ class Parser{
 		var size:Int;               //amount to pop the stack
 
 		//new node generated after reducing with this rule
-		var newNode = ParserAST.reduce(ruleno); //trigger custom reduce behavior
+		var newNode = ParserAST.createNode(ruleno); //trigger custom reduce behavior
+
+		trace('Reduce ($ruleno) [$newNode] '+ParserDebug.ruleString(ruleno));
 
 		goto = ruleInfo[ruleno].lhs;
 		size = ruleInfo[ruleno].nrhs;
@@ -243,7 +245,7 @@ abstract MinorType(EMinorType){
 
 	inline function get_v() return this.getParameters()[0];
 
-	@:to inline function get_type() return this;
+	@:to inline function get_type():EMinorType return this;
 
 	@:from static inline function fromToken(t:Token) return new MinorType(Token(t));
 	@:from static inline function fromNode(n:NodeType) return new MinorType(Node(n));
