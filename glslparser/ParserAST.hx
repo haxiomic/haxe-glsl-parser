@@ -370,7 +370,7 @@ class ParserAST{
 			case 37: return s(1);//constructor_identifier ::= MAT3
 			case 38: return s(1);//constructor_identifier ::= MAT4
 			case 39: return s(1);//constructor_identifier ::= TYPE_NAME
-			case 40: //return s(1); //unary_expression ::= postfix_expression
+			case 40: return s(1); //unary_expression ::= postfix_expression
 			case 41: return new UnaryExpression(t(1).type, n(2), true); //unary_expression ::= INC_OP unary_expression
 			case 42: return new UnaryExpression(t(1).type, n(2), true); //unary_expression ::= DEC_OP unary_expression
 			case 43: return new UnaryExpression(t(1).type, n(2), true); //unary_expression ::= unary_operator unary_expression
@@ -379,7 +379,7 @@ class ParserAST{
 			case 46: return s(1); //unary_operator ::= BANG
 			case 47: return s(1); //unary_operator ::= TILDE
 			case 48: return s(1); //multiplicative_expression ::= unary_expression
-			case 49: //multiplicative_expression ::= multiplicative_expression STAR unary_expression
+			case 49: return new BinaryExpression(t(2).type, n(1), n(2)); //multiplicative_expression ::= multiplicative_expression STAR unary_expression
 			case 50: //multiplicative_expression ::= multiplicative_expression SLASH unary_expression
 			case 51: //multiplicative_expression ::= multiplicative_expression PERCENT unary_expression
 			case 52: return s(1); //additive_expression ::= multiplicative_expression
