@@ -138,10 +138,7 @@ class FunctionCallExpression extends Expression{
 	var args:Expression;
 }
 
-class FunctionHeader extends Node{}
-
-
-class FunctionIdentifier extends Node{
+class FunctionCallIdentifier extends Node{
 	var name:String;
 	var typeClass:ConstructableType;
 	function new(name:String, typeClass:ConstructableType){
@@ -149,6 +146,31 @@ class FunctionIdentifier extends Node{
 		this.typeClass = typeClass;
 		super();
 	}
+}
+
+class FunctionHeader extends Node{
+	var name:String;
+	var returnType:TypeSpecifier;
+	var parameters:Array<ParameterDeclaration>;
+	function new(name:String, returnType:TypeSpecifier, ?parameters:Array<ParameterDeclaration>){
+		this.name = name;
+		this.returnType = returnType;
+		this.parameters = parameters != null ? parameters : [];
+		super();
+	}
+}
+
+class FunctionPrototype extends Node{
+	var header:FunctionHeader;
+	function new(header:FunctionHeader){
+		this.header = header;
+		super();
+	}
+}
+
+class FunctionDefinition extends Node{
+	var header:FunctionHeader;
+	// var body:CompoundStatement;
 }
 
 //Declarations
@@ -276,8 +298,8 @@ class ParserAST{
 			case 19: //function_call_header_with_parameters ::= function_call_header assignment_expression
 			case 20: //function_call_header_with_parameters ::= function_call_header_with_parameters COMMA assignment_expression
 			case 21: //function_call_header ::= function_identifier LEFT_PAREN
-			case 22: return new FunctionIdentifier(t(1).data, t(1).type); //function_identifier ::= constructor_identifier
-			case 23: return new FunctionIdentifier(t(1).data, t(1).type); //function_identifier ::= IDENTIFIER
+			case 22: return new FunctionCallIdentifier(t(1).data, t(1).type); //function_identifier ::= constructor_identifier
+			case 23: return new FunctionCallIdentifier(t(1).data, t(1).type); //function_identifier ::= IDENTIFIER
 			case 24: return s(1); //constructor_identifier ::= FLOAT
 			case 25: return s(1); //constructor_identifier ::= INT
 			case 26: return s(1); //constructor_identifier ::= BOOL
@@ -350,15 +372,19 @@ class ParserAST{
 			case 93: return s(1); //expression ::= assignment_expression
 			case 94: //expression ::= expression COMMA assignment_expression
 			case 95: return s(1); //constant_expression ::= conditional_expression
-			case 96: /* the real function prototype? */ //declaration ::= function_prototype SEMICOLON
+			case 96: return new FunctionPrototype(cast s(1)); //declaration ::= function_prototype SEMICOLON
 			case 97: return s(1); //declaration ::= init_declarator_list SEMICOLON
 			case 98: return new PrecisionDeclaration(t(2).type, cast n(3)); //declaration ::= PRECISION precision_qualifier type_specifier_no_prec SEMICOLON
-			case 99: /* actually a function header? */ //function_prototype ::= function_declarator RIGHT_PAREN
-			case 100: //function_declarator ::= function_header
-			case 101: //function_declarator ::= function_header_with_parameters
-			case 102: //function_header_with_parameters ::= function_header parameter_declaration
-			case 103: //function_header_with_parameters ::= function_header_with_parameters COMMA parameter_declaration
-			case 104: //function_header ::= fully_specified_type IDENTIFIER LEFT_PAREN
+			case 99: return s(1); //function_prototype ::= function_declarator RIGHT_PAREN
+			case 100: return s(1); //function_declarator ::= function_header
+			case 101: return s(1); //function_declarator ::= function_header_with_parameters
+			case 102: var fh = cast(n(1), FunctionHeader); //function_header_with_parameters ::= function_header parameter_declaration
+						fh.parameters.push(cast n(2));
+						return fh;
+			case 103: var fh = cast(n(1), FunctionHeader); //function_header_with_parameters ::= function_header_with_parameters COMMA parameter_declaration
+						fh.parameters.push(cast n(3));
+						return fh; 
+			case 104: return new FunctionHeader(t(2).data, cast n(1)); //function_header ::= fully_specified_type IDENTIFIER LEFT_PAREN
 			case 105: return new ParameterDeclaration(t(2).data, cast n(1)); //parameter_declarator ::= type_specifier IDENTIFIER
 			case 106: return new ParameterDeclaration(t(2).data, cast n(1), null, null, cast e(3)); //parameter_declarator ::= type_specifier IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 107: var pd = cast(n(3), ParameterDeclaration); //parameter_declaration ::= type_qualifier parameter_qualifier parameter_declarator
