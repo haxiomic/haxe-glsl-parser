@@ -6,12 +6,23 @@ class Main{
 		var input = '';
 
 		input = '
+		precision mediump float;
+
 		int i = 42;
 		bool;
 
 		void main(){
 			return 5;
 		}
+		';
+
+		input = '
+			int noParams();
+			
+			int magicFunction(float a, vec2 v, inout int c);
+			int magicFunction(float a, vec2 v, inout int c){
+				return 0;
+			}
 		';
 
 		trace('"$input"');

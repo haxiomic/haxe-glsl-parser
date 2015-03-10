@@ -16,155 +16,13 @@ import glslparser.Tokenizer.TokenType;
 //http://people.freedesktop.org/~chadversary/mesa/doxygen/kevin-rogovin/d7/d26/group__AST.html
 
 //Review use and meaning of Expression
-
-//Grouping rules into classes
-/*
-translation_unit:
-
-- Expression
-	expression:
-	constant_expression:
-	integer_expression:
-	primary_expression:
-
-	postfix_expression:
-
-	- ConditionalExpression
-		conditional_expression:
-
-	- UnaryExpression
-		unary_expression:
-		postfix_expression: (unary case)
-
-	- BinaryExpression
-		multiplicative_expression:
-		additive_expression:
-		shift_expression:
-		relational_expression:
-		equality_expression:
-		and_expression:
-		exclusive_or_expression:
-		inclusive_or_expression:
-
-		- LogicalExpression
-			logical_and_expression:
-			logical_xor_expression:
-			logical_or_expression:
-
-	- CallExpression?
-		function_call:
-		function_call_generic:
-		function_call_header_no_parameters:
-		function_call_header_with_parameters:
-		function_call_header:
-		function_identifier:
-
-	- AssignmentExpression
-		assignment_expression:
-
-- Declaration
-	declaration:
-		init_declarator_list: ?
-
-	single_declaration:
-		fully_specified_type:
-		type_qualifier:
-		type_specifier:
-		type_specifier_no_prec:
-		precision_qualifier:
-		initializer:
-
-	external_declaration:
-
-	- FunctionPrototype
-		function_prototype:
-	
-	- FunctionDeclaration
-		function_definition:
-			function_header:
-				function_header_with_parameters:
-				function_declarator:
-				parameter_declarator:
-				parameter_declaration:
-				parameter_qualifier:
-				parameter_type_specifier:
-
-	- StructDeclaration
-		struct_declaration:
-			struct_declarator:
-			struct_specifier:
-
-	- StructDeclarationList? 
-		struct_declaration_list:
-			struct_declarator_list:
-
-
-- Condition ?
-	condition:
-	conditionopt:
-
-- StatementList ?
-	statement_list:
-	
-- Statement
-	simple_statement:
-	statement_with_scope:
-	statement_no_new_scope:
-
-	- ExpressionStatement
-		expression_statement:
-
-	- DeclarationStatement
-		declaration_statement:
-
-	- IterationStatement
-		iteration_statement:
-
-		- ForStatement
-			for_init_statement:
-			for_rest_statement:
-
-		- IfStatement
-			selection_statement:
-			selection_rest_statement:
-
-	- JumpStatement
-		- ContinueStatement
-			jump_statement:
-		- BreakStatement
-			jump_statement:
-		- ReturnStatement
-			jump_statement:
-		- ReturnStatement
-			jump_statement:
-		- DiscardStatement
-			jump_statement:
-
-	- Break
-
-	- Compound Statement?
-		compound_statement_with_scope:
-		compound_statement_no_new_scope:
-
-
-//Misc
-- Literal
-- Identifier
-	variable_identifier:
-
-	constructor_identifier: (:TokenType)
-
-- Operator (simple type)
-	unary_operator: (:TokenType)
-	assignment_operator: (:TokenType)
-
-*/
-
-//#! unfinished types
+//All tokens should be converted to EnumValues or Nodes?
+//Should TokenType be allow? If everything is enum, how can we easily compare equivalent enums from two sets?
+//define constant expression where necessary 
 
 @:publicFields
 class Node{
-	public function new(){
+	function new(){
 		trace(' --- New node: '+debugClassName() +' -> '+ debugString());
 	}
 
@@ -181,43 +39,35 @@ class Node{
 }
 
 class TypeSpecifier extends Node{
-	var name:String;
+	var typeName:String;
 	var typeClass:TypeClass;
-	var precisionQualifier:PrecisionQualifier;
-	public function new(typeClass:TypeClass, name:String, ?precisionQualifier:PrecisionQualifier){
-		this.name = name;
+	var qualifier:TypeQualifier;
+	var precision:PrecisionQualifier;
+	function new(typeClass:TypeClass, typeName:String, ?qualifier:TypeQualifier, ?precision:PrecisionQualifier){
+		this.typeName = typeName;
 		this.typeClass = typeClass;
-		this.precisionQualifier = precisionQualifier;
+		this.qualifier = qualifier;
+		this.precision = precision;
 		super();
 	}
 }
 
 class StructSpecifier extends TypeSpecifier{
-	public function new(name:String){
+	function new(name:String){
 		super(STRUCT, name);
-	}
-}
-
-class FullySpecifiedType extends Node{
-	var specifier:TypeSpecifier;
-	var qualifier:TypeQualifier;
-	public function new(specifier:TypeSpecifier, ?qualifier:TypeQualifier){
-		this.specifier = specifier;
-		this.qualifier = qualifier;
-		super();
 	}
 }
 
 //Expressions
 class Expression extends Node{
-	public function new(){
+	function new(){
 		super();
 	}
 }
 
 class Identifier extends Expression{
 	var name:String;
-	public function new(name:String) {
+	function new(name:String) {
 		this.name = name;
 		super();
 	}
@@ -226,7 +76,7 @@ class Identifier extends Expression{
 class Literal<T> extends Expression{
 	var value:T;
 	var raw:String;
-	public function new(value:T, raw:String){
+	function new(value:T, raw:String){
 		this.value = value;
 		this.raw = raw;
 		super();
@@ -237,8 +87,7 @@ class BinaryExpression extends Expression{
 	var op:BinaryOperator;
 	var left:Expression;
 	var right:Expression;
-
-	public function new(op:BinaryOperator, left:Expression, right:Expression){
+	function new(op:BinaryOperator, left:Expression, right:Expression){
 		this.op = op;
 		this.left = left;
 		this.right = right;
@@ -252,7 +101,7 @@ class UnaryExpression extends Expression{
 	var op:UnaryOperator;
 	var arg:Node;//#! should be expression?
 	var isPrefix:Bool;
-	public function new(op:UnaryOperator, arg:Node, isPrefix:Bool){
+	function new(op:UnaryOperator, arg:Node, isPrefix:Bool){
 		this.op = op;
 		this.arg = arg;
 		this.isPrefix = isPrefix;
@@ -262,14 +111,26 @@ class UnaryExpression extends Expression{
 
 class ConditionalExpression extends Expression{
 	var test:Expression;
-	var alternate:Expression;
 	var consequent:Expression;
+	var alternate:Expression;
+	function new(test:Expression, consequent:Expression, alternate:Expression){
+		this.test = test;
+		this.consequent = consequent;
+		this.alternate = alternate;
+		super();
+	}
 }
 
 class AssignmentExpression extends Expression{
 	var op:AssignmentOperator;
-	var left:Expression;//#! not sure
+	var left:Expression;
 	var right:Expression;
+	function new(op:AssignmentOperator, left:Expression, right:Expression){
+		this.op = op;
+		this.left = left;
+		this.right = right;
+		super();
+	}
 }
 
 class FunctionCallExpression extends Expression{
@@ -277,10 +138,13 @@ class FunctionCallExpression extends Expression{
 	var args:Expression;
 }
 
+class FunctionHeader extends Node{}
+
+
 class FunctionIdentifier extends Node{
 	var name:String;
 	var typeClass:ConstructableType;
-	public function new(typeClass:ConstructableType, name:String){
+	function new(name:String, typeClass:ConstructableType){
 		this.name = name;
 		this.typeClass = typeClass;
 		super();
@@ -290,10 +154,58 @@ class FunctionIdentifier extends Node{
 //Declarations
 class Declaration extends Node{}
 
+class PrecisionDeclaration extends Declaration{
+	var precision:PrecisionQualifier;
+	var typeSpecifier:TypeSpecifier;
+	function new(precision:PrecisionQualifier, typeSpecifier:TypeSpecifier){
+		this.precision = precision;
+		this.typeSpecifier = typeSpecifier;
+		super();
+	}
+}
+
+class SingleDeclaration extends Declaration{
+	var typeSpecifier:TypeSpecifier;
+	var name:String;
+	var invariant:Bool;
+	var initializer:Expression;
+	function new(name:String, ?typeSpecifier:TypeSpecifier, ?initializer:Expression, invariant:Bool = false){
+		this.typeSpecifier = typeSpecifier;
+		this.name = name;
+		this.initializer = initializer;
+		this.invariant = invariant;
+		super();
+	}
+}
+
+class SingleArrayDeclaration extends SingleDeclaration{
+	var arraySizeExpression:Expression;
+	function new(name:String, typeSpecifier:TypeSpecifier, arraySizeExpression:Expression){
+		this.arraySizeExpression = arraySizeExpression;
+		super(name, typeSpecifier, null, false);
+	}
+}
+
+class ParameterDeclaration extends Declaration{
+	var name:String;
+	var parameterQualifier:ParameterQualifier;
+	var typeQualifier:TypeQualifier;
+	var typeSpecifier:TypeSpecifier;
+	var arraySizeExpression:Expression;
+	function new(name:String, typeSpecifier:TypeSpecifier, ?parameterQualifier:ParameterQualifier, ?typeQualifier:TypeQualifier, ?arraySizeExpression:Expression){
+		this.name = name;
+		this.typeSpecifier = typeSpecifier;
+		this.parameterQualifier = parameterQualifier;
+		this.typeQualifier = typeQualifier;
+		this.arraySizeExpression = arraySizeExpression;
+		super();
+	}
+}
+
 //Special Statements
 class JumpStatement extends Node{
 	var mode:JumpMode;
-	public function new(mode:JumpMode){
+	function new(mode:JumpMode){
 		this.mode = mode;
 		super();
 	}
@@ -301,7 +213,7 @@ class JumpStatement extends Node{
 
 class ReturnStatement extends JumpStatement{
 	var returnValue:Expression;
-	public function new(returnValue:Expression){
+	function new(returnValue:Expression){
 		this.returnValue = returnValue;
 		super(RETURN);
 	}
@@ -312,13 +224,25 @@ typedef BinaryOperator = TokenType;
 typedef UnaryOperator = TokenType;
 typedef AssignmentOperator = TokenType;
 typedef PrecisionQualifier = TokenType;
-typedef ParameterQualifier = TokenType;
-typedef TypeQualifier = TokenType;
+
 typedef JumpMode = TokenType;
 
 typedef TypeClass = TokenType;// basic types + STRUCT + TYPE_NAME
 typedef ConstructableType = TokenType;// IDENTIFIER + basic types + TYPE_NAME
 
+enum ParameterQualifier{
+	IN;
+	OUT;
+	INOUT;
+}
+
+enum TypeQualifier{
+	CONST;
+	ATTRIBUTE;
+	VARYING;
+	INVARIANT_VARYING;
+	UNIFORM;
+}
 
 @:access(glslparser.Parser)
 class ParserAST{
@@ -352,24 +276,24 @@ class ParserAST{
 			case 19: //function_call_header_with_parameters ::= function_call_header assignment_expression
 			case 20: //function_call_header_with_parameters ::= function_call_header_with_parameters COMMA assignment_expression
 			case 21: //function_call_header ::= function_identifier LEFT_PAREN
-			case 22: return new FunctionIdentifier(t(1).type, t(1).data); //function_identifier ::= constructor_identifier
-			case 23: return new FunctionIdentifier(t(1).type, t(1).data); //function_identifier ::= IDENTIFIER
-			case 24: return s(1);//constructor_identifier ::= FLOAT
-			case 25: return s(1);//constructor_identifier ::= INT
-			case 26: return s(1);//constructor_identifier ::= BOOL
-			case 27: return s(1);//constructor_identifier ::= VEC2
-			case 28: return s(1);//constructor_identifier ::= VEC3
-			case 29: return s(1);//constructor_identifier ::= VEC4
-			case 30: return s(1);//constructor_identifier ::= BVEC2
-			case 31: return s(1);//constructor_identifier ::= BVEC3
-			case 32: return s(1);//constructor_identifier ::= BVEC4
-			case 33: return s(1);//constructor_identifier ::= IVEC2
-			case 34: return s(1);//constructor_identifier ::= IVEC3
-			case 35: return s(1);//constructor_identifier ::= IVEC4
-			case 36: return s(1);//constructor_identifier ::= MAT2
-			case 37: return s(1);//constructor_identifier ::= MAT3
-			case 38: return s(1);//constructor_identifier ::= MAT4
-			case 39: return s(1);//constructor_identifier ::= TYPE_NAME
+			case 22: return new FunctionIdentifier(t(1).data, t(1).type); //function_identifier ::= constructor_identifier
+			case 23: return new FunctionIdentifier(t(1).data, t(1).type); //function_identifier ::= IDENTIFIER
+			case 24: return s(1); //constructor_identifier ::= FLOAT
+			case 25: return s(1); //constructor_identifier ::= INT
+			case 26: return s(1); //constructor_identifier ::= BOOL
+			case 27: return s(1); //constructor_identifier ::= VEC2
+			case 28: return s(1); //constructor_identifier ::= VEC3
+			case 29: return s(1); //constructor_identifier ::= VEC4
+			case 30: return s(1); //constructor_identifier ::= BVEC2
+			case 31: return s(1); //constructor_identifier ::= BVEC3
+			case 32: return s(1); //constructor_identifier ::= BVEC4
+			case 33: return s(1); //constructor_identifier ::= IVEC2
+			case 34: return s(1); //constructor_identifier ::= IVEC3
+			case 35: return s(1); //constructor_identifier ::= IVEC4
+			case 36: return s(1); //constructor_identifier ::= MAT2
+			case 37: return s(1); //constructor_identifier ::= MAT3
+			case 38: return s(1); //constructor_identifier ::= MAT4
+			case 39: return s(1); //constructor_identifier ::= TYPE_NAME
 			case 40: return s(1); //unary_expression ::= postfix_expression
 			case 41: return new UnaryExpression(t(1).type, n(2), true); //unary_expression ::= INC_OP unary_expression
 			case 42: return new UnaryExpression(t(1).type, n(2), true); //unary_expression ::= DEC_OP unary_expression
@@ -379,39 +303,39 @@ class ParserAST{
 			case 46: return s(1); //unary_operator ::= BANG
 			case 47: return s(1); //unary_operator ::= TILDE
 			case 48: return s(1); //multiplicative_expression ::= unary_expression
-			case 49: return new BinaryExpression(t(2).type, n(1), n(2)); //multiplicative_expression ::= multiplicative_expression STAR unary_expression
-			case 50: //multiplicative_expression ::= multiplicative_expression SLASH unary_expression
-			case 51: //multiplicative_expression ::= multiplicative_expression PERCENT unary_expression
+			case 49: return new BinaryExpression(t(2).type, e(1), e(2)); //multiplicative_expression ::= multiplicative_expression STAR unary_expression
+			case 50: return new BinaryExpression(t(2).type, e(1), e(2)); //multiplicative_expression ::= multiplicative_expression SLASH unary_expression
+			case 51: return new BinaryExpression(t(2).type, e(1), e(2)); //multiplicative_expression ::= multiplicative_expression PERCENT unary_expression
 			case 52: return s(1); //additive_expression ::= multiplicative_expression
-			case 53: //additive_expression ::= additive_expression PLUS multiplicative_expression
-			case 54: //additive_expression ::= additive_expression DASH multiplicative_expression
+			case 53: return new BinaryExpression(t(2).type, e(1), e(2)); //additive_expression ::= additive_expression PLUS multiplicative_expression
+			case 54: return new BinaryExpression(t(2).type, e(1), e(2)); //additive_expression ::= additive_expression DASH multiplicative_expression
 			case 55: return s(1); //shift_expression ::= additive_expression
-			case 56: //shift_expression ::= shift_expression LEFT_OP additive_expression
-			case 57: //shift_expression ::= shift_expression RIGHT_OP additive_expression
+			case 56: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //shift_expression ::= shift_expression LEFT_OP additive_expression
+			case 57: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //shift_expression ::= shift_expression RIGHT_OP additive_expression
 			case 58: return s(1); //relational_expression ::= shift_expression
-			case 59: //relational_expression ::= relational_expression LEFT_ANGLE shift_expression
-			case 60: //relational_expression ::= relational_expression RIGHT_ANGLE shift_expression
-			case 61: //relational_expression ::= relational_expression LE_OP shift_expression
-			case 62: //relational_expression ::= relational_expression GE_OP shift_expression
+			case 59: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //relational_expression ::= relational_expression LEFT_ANGLE shift_expression
+			case 60: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //relational_expression ::= relational_expression RIGHT_ANGLE shift_expression
+			case 61: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //relational_expression ::= relational_expression LE_OP shift_expression
+			case 62: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //relational_expression ::= relational_expression GE_OP shift_expression
 			case 63: return s(1); //equality_expression ::= relational_expression
-			case 64: //equality_expression ::= equality_expression EQ_OP relational_expression
-			case 65: //equality_expression ::= equality_expression NE_OP relational_expression
+			case 64: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //equality_expression ::= equality_expression EQ_OP relational_expression
+			case 65: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //equality_expression ::= equality_expression NE_OP relational_expression
 			case 66: return s(1); //and_expression ::= equality_expression
-			case 67: //and_expression ::= and_expression AMPERSAND equality_expression
+			case 67: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //and_expression ::= and_expression AMPERSAND equality_expression
 			case 68: return s(1); //exclusive_or_expression ::= and_expression
-			case 69: //exclusive_or_expression ::= exclusive_or_expression CARET and_expression
+			case 69: return new LogicalExpression(t(2).type, cast n(1), cast n(2)); //exclusive_or_expression ::= exclusive_or_expression CARET and_expression
 			case 70: return s(1); //inclusive_or_expression ::= exclusive_or_expression
-			case 71: //inclusive_or_expression ::= inclusive_or_expression VERTICAL_BAR exclusive_or_expression
+			case 71: return new LogicalExpression(t(2).type, cast n(1), cast n(2)); //inclusive_or_expression ::= inclusive_or_expression VERTICAL_BAR exclusive_or_expression
 			case 72: return s(1); //logical_and_expression ::= inclusive_or_expression
-			case 73: //logical_and_expression ::= logical_and_expression AND_OP inclusive_or_expression
+			case 73: return new LogicalExpression(t(2).type, cast n(1), cast n(2)); //logical_and_expression ::= logical_and_expression AND_OP inclusive_or_expression
 			case 74: return s(1); //logical_xor_expression ::= logical_and_expression
-			case 75: //logical_xor_expression ::= logical_xor_expression XOR_OP logical_and_expression
+			case 75: return new LogicalExpression(t(2).type, cast n(1), cast n(2)); //logical_xor_expression ::= logical_xor_expression XOR_OP logical_and_expression
 			case 76: return s(1); //logical_or_expression ::= logical_xor_expression
-			case 77: //logical_or_expression ::= logical_or_expression OR_OP logical_xor_expression
+			case 77: return new LogicalExpression(t(2).type, cast n(1), cast n(2)); //logical_or_expression ::= logical_or_expression OR_OP logical_xor_expression
 			case 78: return s(1); //conditional_expression ::= logical_or_expression
-			case 79: //conditional_expression ::= logical_or_expression QUESTION expression COLON assignment_expression
+			case 79: return new ConditionalExpression(cast n(1), cast n(2), cast n(3)); //conditional_expression ::= logical_or_expression QUESTION expression COLON assignment_expression
 			case 80: return s(1); //assignment_expression ::= conditional_expression
-			case 81: //assignment_expression ::= unary_expression assignment_operator assignment_expression
+			case 81: return new AssignmentExpression(t(2).type, cast n(1), cast n(3)); //assignment_expression ::= unary_expression assignment_operator assignment_expression
 			case 82: return s(1); //assignment_operator ::= EQUAL
 			case 83: return s(1); //assignment_operator ::= MUL_ASSIGN
 			case 84: return s(1); //assignment_operator ::= DIV_ASSIGN
@@ -426,74 +350,76 @@ class ParserAST{
 			case 93: return s(1); //expression ::= assignment_expression
 			case 94: //expression ::= expression COMMA assignment_expression
 			case 95: return s(1); //constant_expression ::= conditional_expression
-			case 96: //declaration ::= function_prototype SEMICOLON
-			case 97: //declaration ::= init_declarator_list SEMICOLON
-			case 98: //declaration ::= PRECISION precision_qualifier type_specifier_no_prec SEMICOLON
-			case 99: //function_prototype ::= function_declarator RIGHT_PAREN
-			case 100: return s(1); //function_declarator ::= function_header
-			case 101: return s(1); //function_declarator ::= function_header_with_parameters
+			case 96: /* the real function prototype? */ //declaration ::= function_prototype SEMICOLON
+			case 97: return s(1); //declaration ::= init_declarator_list SEMICOLON
+			case 98: return new PrecisionDeclaration(t(2).type, cast n(3)); //declaration ::= PRECISION precision_qualifier type_specifier_no_prec SEMICOLON
+			case 99: /* actually a function header? */ //function_prototype ::= function_declarator RIGHT_PAREN
+			case 100: //function_declarator ::= function_header
+			case 101: //function_declarator ::= function_header_with_parameters
 			case 102: //function_header_with_parameters ::= function_header parameter_declaration
 			case 103: //function_header_with_parameters ::= function_header_with_parameters COMMA parameter_declaration
 			case 104: //function_header ::= fully_specified_type IDENTIFIER LEFT_PAREN
-			case 105: //parameter_declarator ::= type_specifier IDENTIFIER
-			case 106: //parameter_declarator ::= type_specifier IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
-			case 107: //parameter_declaration ::= type_qualifier parameter_qualifier parameter_declarator
-			case 108: //parameter_declaration ::= parameter_qualifier parameter_declarator
-			case 109: //parameter_declaration ::= type_qualifier parameter_qualifier parameter_type_specifier
-			case 110: //parameter_declaration ::= parameter_qualifier parameter_type_specifier
-			case 111: //parameter_qualifier ::=
-			case 112: return s(1);//parameter_qualifier ::= IN
-			case 113: return s(1);//parameter_qualifier ::= OUT
-			case 114: return s(1);//parameter_qualifier ::= INOUT
-			case 115: return s(1); //parameter_type_specifier ::= type_specifier
-			case 116: //parameter_type_specifier ::= type_specifier LEFT_BRACKET constant_expression RIGHT_BRACKET
+			case 105: return new ParameterDeclaration(t(2).data, cast n(1)); //parameter_declarator ::= type_specifier IDENTIFIER
+			case 106: return new ParameterDeclaration(t(2).data, cast n(1), null, null, cast e(3)); //parameter_declarator ::= type_specifier IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
+			case 107: var pd = cast(n(3), ParameterDeclaration); //parameter_declaration ::= type_qualifier parameter_qualifier parameter_declarator
+						pd.typeQualifier = cast ev(1);
+						pd.parameterQualifier = cast ev(2);
+						return pd;
+			case 108: var pd = cast(n(2), ParameterDeclaration); //parameter_declaration ::= parameter_qualifier parameter_declarator
+						pd.parameterQualifier = cast ev(1);
+						return pd;
+			case 109: var pd = cast(n(3), ParameterDeclaration); //parameter_declaration ::= type_qualifier parameter_qualifier parameter_type_specifier
+						pd.typeQualifier = cast ev(1);
+						pd.parameterQualifier = cast ev(2);
+						return pd;
+			case 110: var pd = cast(n(2), ParameterDeclaration); //parameter_declaration ::= parameter_qualifier parameter_type_specifier
+						pd.parameterQualifier = cast ev(1);
+						return pd;
+			case 111: return null; //parameter_qualifier ::=
+			case 112: return ParameterQualifier.IN;//parameter_qualifier ::= IN
+			case 113: return ParameterQualifier.OUT;//parameter_qualifier ::= OUT
+			case 114: return ParameterQualifier.INOUT;//parameter_qualifier ::= INOUT
+			case 115: return new ParameterDeclaration(null, cast n(1)); //parameter_type_specifier ::= type_specifier
+			case 116: return new ParameterDeclaration(null, cast n(1), null, null, cast e(3));//parameter_type_specifier ::= type_specifier LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 117: return s(1); //init_declarator_list ::= single_declaration
 			case 118: //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER
 			case 119: //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 120: //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER EQUAL initializer
 			case 121: return s(1); //single_declaration ::= fully_specified_type
-			case 122: //single_declaration ::= fully_specified_type IDENTIFIER
-			case 123: //single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
-			case 124: //single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer
-			case 125: //single_declaration ::= INVARIANT IDENTIFIER
-			case 126: return new FullySpecifiedType(cast n(1)); //fully_specified_type ::= type_specifier
-			case 127: return new FullySpecifiedType(cast n(2), t(1).type); //fully_specified_type ::= type_qualifier type_specifier
-			case 128: return s(1); //type_qualifier ::= CONST
-			case 129: return s(1); //type_qualifier ::= ATTRIBUTE
-			case 130: return s(1); //type_qualifier ::= VARYING
-			case 131: return s(1); //type_qualifier ::= INVARIANT VARYING
-			case 132: return s(1); //type_qualifier ::= UNIFORM
-			case 133: return switch (s(1).type) { //type_specifier ::= type_specifier_no_prec
-							case Token(tkn): new TypeSpecifier(tkn.type, tkn.data);
-							case Node(n): s(1);
-						}
-			case 134: return switch (s(2).type) { //type_specifier ::= precision_qualifier type_specifier_no_prec
-							case Token(tkn): new TypeSpecifier(tkn.type, tkn.data, t(1).type);
-							case Node(n): 
-								var ts = cast(n, TypeSpecifier);
-								ts.precisionQualifier = t(1).type; 
-								ts;
-						}
-			case 135: return s(1); //type_specifier_no_prec ::= VOID
-			case 136: return s(1); //type_specifier_no_prec ::= FLOAT
-			case 137: return s(1); //type_specifier_no_prec ::= INT
-			case 138: return s(1); //type_specifier_no_prec ::= BOOL
-			case 139: return s(1); //type_specifier_no_prec ::= VEC2
-			case 140: return s(1); //type_specifier_no_prec ::= VEC3
-			case 141: return s(1); //type_specifier_no_prec ::= VEC4
-			case 142: return s(1); //type_specifier_no_prec ::= BVEC2
-			case 143: return s(1); //type_specifier_no_prec ::= BVEC3
-			case 144: return s(1); //type_specifier_no_prec ::= BVEC4
-			case 145: return s(1); //type_specifier_no_prec ::= IVEC2
-			case 146: return s(1); //type_specifier_no_prec ::= IVEC3
-			case 147: return s(1); //type_specifier_no_prec ::= IVEC4
-			case 148: return s(1); //type_specifier_no_prec ::= MAT2
-			case 149: return s(1); //type_specifier_no_prec ::= MAT3
-			case 150: return s(1); //type_specifier_no_prec ::= MAT4
-			case 151: return s(1); //type_specifier_no_prec ::= SAMPLER2D
-			case 152: return s(1); //type_specifier_no_prec ::= SAMPLERCUBE
+			case 122: return new SingleDeclaration(t(2).data, cast n(1), null, false); //single_declaration ::= fully_specified_type IDENTIFIER
+			case 123: return new SingleArrayDeclaration(t(2).data, cast n(1), e(4)); //single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
+			case 124: return new SingleDeclaration(t(2).data, cast n(1), e(4), false); //single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer
+			case 125: return new SingleDeclaration(t(2).data, null, null, true); //single_declaration ::= INVARIANT IDENTIFIER
+			case 126: return s(1); //fully_specified_type ::= type_specifier
+			case 127: cast(n(2), TypeSpecifier).qualifier = cast ev(1); //fully_specified_type ::= type_qualifier type_specifier
+						return s(2);
+			case 128: return TypeQualifier.CONST; //type_qualifier ::= CONST
+			case 129: return TypeQualifier.ATTRIBUTE; //type_qualifier ::= ATTRIBUTE
+			case 130: return TypeQualifier.VARYING; //type_qualifier ::= VARYING
+			case 131: return TypeQualifier.INVARIANT_VARYING; //type_qualifier ::= INVARIANT VARYING
+			case 132: return TypeQualifier.UNIFORM; //type_qualifier ::= UNIFORM
+			case 133: return s(1); //type_specifier ::= type_specifier_no_prec
+			case 134: cast(n(1), TypeSpecifier).precision = t(1).type; return s(1); //type_specifier ::= precision_qualifier type_specifier_no_prec
+			case 135: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= VOID
+			case 136: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= FLOAT
+			case 137: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= INT
+			case 138: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= BOOL
+			case 139: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= VEC2
+			case 140: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= VEC3
+			case 141: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= VEC4
+			case 142: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= BVEC2
+			case 143: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= BVEC3
+			case 144: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= BVEC4
+			case 145: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= IVEC2
+			case 146: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= IVEC3
+			case 147: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= IVEC4
+			case 148: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= MAT2
+			case 149: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= MAT3
+			case 150: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= MAT4
+			case 151: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= SAMPLER2D
+			case 152: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= SAMPLERCUBE
 			case 153: return s(1); //type_specifier_no_prec ::= struct_specifier
-			case 154: return s(1); //type_specifier_no_prec ::= TYPE_NAME
+			case 154: return new TypeSpecifier(t(1).type, t(1).data); //type_specifier_no_prec ::= TYPE_NAME
 			case 155: return s(1); //precision_qualifier ::= HIGH_PRECISION
 			case 156: return s(1); //precision_qualifier ::= MEDIUM_PRECISION
 			case 157: return s(1); //precision_qualifier ::= LOW_PRECISION
@@ -551,7 +477,10 @@ class ParserAST{
 			case 209: //function_definition ::= function_prototype compound_statement_no_new_scope
 		}
 
-		trace('!!! Unhandled Rule ($ruleno) !!!');
+		var ruleNameReg = ~/^\w+/;
+		ruleNameReg.match(ParserDebug.ruleString(ruleno));
+		var ruleName = ruleNameReg.matched(0);
+		trace('!!! Unhandled CreateNode ($ruleno, $ruleName) !!!');
 		return null;
 	}
 
@@ -576,6 +505,10 @@ class ParserAST{
 		return cast s(m).v;
 	static inline function t(m:Int):Token
 		return cast s(m).v;
+	static inline function e(m:Int):Expression
+		return cast(s(m).v, Expression);
+	static inline function ev(m:Int):EnumValue
+		return s(m) != null ? cast s(m).v : null;
 
 	static inline function get_i() return Parser.i;
 	static inline function get_stack() return Parser.stack;	

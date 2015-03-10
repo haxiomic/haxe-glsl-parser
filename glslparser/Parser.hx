@@ -235,6 +235,7 @@ typedef NodeType = glslparser.ParserAST.Node;
 enum EMinorType{
 	Token(t:Token);
 	Node(n:NodeType);
+	EnumValue(e:EnumValue);
 }
 
 abstract MinorType(EMinorType){
@@ -249,6 +250,7 @@ abstract MinorType(EMinorType){
 
 	@:from static inline function fromToken(t:Token) return new MinorType(Token(t));
 	@:from static inline function fromNode(n:NodeType) return new MinorType(Node(n));
+	@:from static inline function fromEnumValue(e:EnumValue) return new MinorType(EnumValue(e));
 }
 
 abstract RuleInfoEntry(Array<Int>) from Array<Int> {
