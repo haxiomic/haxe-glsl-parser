@@ -6,23 +6,12 @@ class Main{
 		var input = '';
 
 		input = '
-		precision mediump float;
-
-		int i = 42;
-		bool;
-
-		void main(){
-			return 5;
-		}
+		
 		';
 
 		input = '
-			int noParams();
-			
-			int magicFunction(float a, vec2 v, inout int c);
-			int magicFunction(float a, vec2 v, inout int c){
-				return 0;
-			}
+			float l = callNoParams();
+			vec2 a = vec2(1.3, 2.4);
 		';
 
 		trace('"$input"');
@@ -32,7 +21,8 @@ class Main{
 		//traceCTokenArray();
 
 		var ast = glslparser.Parser.parseTokens(tokens);
-		trace('parsed');
+		trace('\n\n\n');
+		trace(ast);
 	}
 
 	static function traceCTokenArray(tokens:Array<Token>){

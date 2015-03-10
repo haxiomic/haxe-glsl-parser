@@ -36,7 +36,8 @@ class Parser{
 
 		//eof step
 		parseStep(0, lastToken);//using the lastToken for the EOF step allows better error reporting if it fails
-		return {};
+
+		return ParserAST.root;
 	}
 
 	//for each token, major = tokenId
@@ -166,7 +167,9 @@ class Parser{
 		}
 	}
 
-	static function accept() while(i >= 0) popStack();
+	static function accept(){
+		while(i >= 0) popStack();
+	}
 
 	static function syntaxError(major:Int, minor:MinorType){
 		warn('syntax error, $minor');
@@ -236,6 +239,7 @@ enum EMinorType{
 	Token(t:Token);
 	Node(n:NodeType);
 	EnumValue(e:EnumValue);
+	NodeArray(a:Array<Dynamic>);
 }
 
 abstract MinorType(EMinorType){
@@ -251,6 +255,7 @@ abstract MinorType(EMinorType){
 	@:from static inline function fromToken(t:Token) return new MinorType(Token(t));
 	@:from static inline function fromNode(n:NodeType) return new MinorType(Node(n));
 	@:from static inline function fromEnumValue(e:EnumValue) return new MinorType(EnumValue(e));
+	@:from static inline function fromNodeArray(a:Array<Dynamic>) return new MinorType(NodeArray(a));
 }
 
 abstract RuleInfoEntry(Array<Int>) from Array<Int> {
