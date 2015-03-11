@@ -23,11 +23,11 @@ class Main{
 
 		var ast = glslparser.Parser.parseTokens(tokens);
 		trace('\n\n\n');
-		trace(ast);
+		trace(haxe.Json.stringify(ast));
 	}
 
+	//trace array of tokenIds for use in the C debug build
 	static function traceCTokenArray(tokens:Array<Token>){
-		//trace array of tokenIds for use in the C debug build
 		var ids:Array<Int> = [];
 		for(t in tokens){
 			var id = glslparser.ParserData.tokenIdMap.get(t.type);

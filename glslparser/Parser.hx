@@ -2,8 +2,7 @@
 	LALR parser based on lemon parser generator
 	http://www.hwaci.com/sw/lemon/
 
-	#Notes
-	- minor is our node object! (not a Token) (it's not used in the parsing itself, it's just parsed around and stored in the stack)
+	@author George Corney
 */
 
 package glslparser;
@@ -11,11 +10,19 @@ package glslparser;
 import glslparser.Tokenizer.Token;
 import glslparser.Tokenizer.TokenType;
 
+import glslparser.ParserReducer.MinorType;
+
 class Parser{
 	//state machine variables
 	static var i:Int; //stack index
 	static var stack:Stack;
 	static var errorCount:Int;
+
+	static public var warnings:Array<String>;
+
+	static public function parse(input:String){
+		return parseTokens(Tokenizer.tokenize(input));
+	}
 
 	static public function parseTokens(tokens:Array<Token>){
 		//init
@@ -26,6 +33,8 @@ class Parser{
 			major: 0,
 			minor: null
 		}];
+		warnings = [];
+		ParserReducer.reset();
 
 		var lastToken = null;
 		for(t in tokens){
@@ -37,7 +46,7 @@ class Parser{
 		//eof step
 		parseStep(0, lastToken);//using the lastToken for the EOF step allows better error reporting if it fails
 
-		return ParserAST.result;
+		return ParserReducer.result;
 	}
 
 	//for each token, major = tokenId
@@ -149,7 +158,7 @@ class Parser{
 		var size:Int;               //amount to pop the stack
 
 		//new node generated after reducing with this rule
-		var newNode = ParserAST.createNode(ruleno); //trigger custom reduce behavior
+		var newNode = ParserReducer.reduce(ruleno); //trigger custom reduce behavior
 
 		goto = ruleInfo[ruleno].lhs;
 		size = ruleInfo[ruleno].nrhs;
@@ -174,7 +183,7 @@ class Parser{
 	}//#! needs improving
 
 	static function parseFailed(minor:MinorType){
-		warn('parse failed, $minor');
+		error('parse failed, $minor');
 	}
 
 	//Utils
@@ -183,11 +192,11 @@ class Parser{
 
 	//Error Reporting
 	static function warn(msg){
-		trace('Parser Warning: $msg');
+		warnings.push('Parser warning: $msg');
 	}
 
 	static function error(msg){
-		throw 'Parser Error: $msg';
+		throw 'Parser error: $msg';
 	}
 
 	//Language Data & Parser Settings
@@ -228,32 +237,6 @@ class Parser{
 
 	//skip-over tokens
 	static var ignoredTokens:Array<TokenType> = ParserData.ignoredTokens;
-}
-
-typedef NodeType = glslparser.ParserAST.Node;
-
-//a minor may be a token or a node
-enum EMinorType{
-	Token(t:Token);
-	Node(n:NodeType);
-	EnumValue(e:EnumValue);
-	NodeArray(a:Array<Dynamic>);
-}
-
-abstract MinorType(EMinorType){
-	public inline function new(e:EMinorType) this = e;
-
-	public var v(get, never):Dynamic;
-	public var type(get, never):EMinorType;
-
-	inline function get_v() return this.getParameters()[0];
-
-	@:to inline function get_type():EMinorType return this;
-
-	@:from static inline function fromToken(t:Token) return new MinorType(Token(t));
-	@:from static inline function fromNode(n:NodeType) return new MinorType(Node(n));
-	@:from static inline function fromEnumValue(e:EnumValue) return new MinorType(EnumValue(e));
-	@:from static inline function fromNodeArray(a:Array<Dynamic>) return new MinorType(NodeArray(a));
 }
 
 abstract RuleInfoEntry(Array<Int>) from Array<Int> {

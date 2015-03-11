@@ -1,9 +1,10 @@
 /*
 	Based on GLSL ES 1.0 Spec
 	https://www.khronos.org/files/opengles_shading_language.pdf
+
+	@author George Corney
 	
 	* Scan and read ahead technique
-	#! needs optimizing
 */
 
 package glslparser;
@@ -73,7 +74,10 @@ class Tokenizer{
 
 	static var source:String;
 
+	@:noCompletion
 	static public var verbose:Bool = false;
+
+	static public var warnings:Array<String>;
 
 	static public function tokenize(source:String):Array<Token>{
 		Tokenizer.source = source;
@@ -83,6 +87,7 @@ class Tokenizer{
 		line = 1;
 		col = 1;
 		userDefinedTypes = [];
+		warnings = [];
 
 		mode = UNDETERMINED;
 
@@ -353,7 +358,7 @@ class Tokenizer{
 
 	//Error Reporting
 	static function warn(msg){
-		trace('Tokenizer Warning: $msg, line $line, column $col');
+		warnings.push('Tokenizer Warning: $msg, line $line, column $col');
 	}
 
 	static function error(msg){
