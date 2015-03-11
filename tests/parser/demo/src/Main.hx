@@ -6,12 +6,12 @@ import Editor;
 import js.html.Element;
 
 class Main{
-	var outputElement:Element;
+	var jsonContainer:Element;
 	var warningsElement:Element;
 	var inputChanged:Bool = false;
 
 	function new(){
-		outputElement =  js.Browser.document.getElementById('ast');
+		jsonContainer =  js.Browser.document.getElementById('json-container');
 		warningsElement =  js.Browser.document.getElementById('warnings');
 
 		Editor.on("change", function(e:Dynamic){
@@ -34,17 +34,28 @@ class Main{
 			var tokens = Tokenizer.tokenize(input);
 			var ast = Parser.parseTokens(tokens);
 
-			outputElement.innerHTML = haxe.Json.stringify(ast, null, "\t");
+			displayAST(ast);
 
 			showWarnings();
 		}catch(e:Dynamic){
 			showWarnings();
 			warningsElement.innerHTML += '<br>'+e;
 
-			outputElement.innerHTML = '';
+			jsonContainer.innerHTML = '';
 		}
 
 		inputChanged = false;
+	}
+
+	function displayAST(ast:Dynamic){
+		// var jsonString = haxe.Json.stringify(ast);
+		jsonContainer.innerHTML = '';
+		untyped jsonContainer.appendChild(
+			renderjson
+			.set_show_to_level(5)
+			.set_sort_objects(true)
+			(ast)
+		);
 	}
 
 	function showWarnings(){

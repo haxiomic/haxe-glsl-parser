@@ -25,6 +25,9 @@
 			margin: 0;
 			padding: 0;
 		}
+
+		.renderjson a { text-decoration: none; }
+		.renderjson .disclosure { font-size: 130%; }
 	</style>
 </head>
 <body>
@@ -43,13 +46,13 @@
 		</div>
 
 		<div class="row ast-row">
-			<div class="column twelve">
-				<pre id="ast"></pre>
+			<div class="column twelve" id="json-container">
 			</div>
 		</div>
 	</div>
 
 	<script src="js/ace/ace.js" type="text/javascript" charset="utf-8"></script>
+	<script src="js/renderjson.js" type="text/javascript" charset="utf-8"></script>
 	<script>
 	    var editor = ace.edit("editor");
 	    editor.setTheme("ace/theme/chrome");

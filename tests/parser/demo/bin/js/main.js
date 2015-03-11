@@ -50,7 +50,7 @@ HxOverrides.indexOf = function(a,obj,i) {
 var Main = function() {
 	this.inputChanged = false;
 	var _g = this;
-	this.outputElement = window.document.getElementById("ast");
+	this.jsonContainer = window.document.getElementById("json-container");
 	this.warningsElement = window.document.getElementById("warnings");
 	Editor.on("change",function(e) {
 		_g.inputChanged = true;
@@ -71,14 +71,18 @@ Main.prototype = {
 		try {
 			var tokens = glslparser.Tokenizer.tokenize(input);
 			var ast = glslparser.Parser.parseTokens(tokens);
-			this.outputElement.innerHTML = JSON.stringify(ast,null,"\t");
+			this.displayAST(ast);
 			this.showWarnings();
 		} catch( e ) {
 			this.showWarnings();
 			this.warningsElement.innerHTML += "<br>" + Std.string(e);
-			this.outputElement.innerHTML = "";
+			this.jsonContainer.innerHTML = "";
 		}
 		this.inputChanged = false;
+	}
+	,displayAST: function(ast) {
+		this.jsonContainer.innerHTML = "";
+		this.jsonContainer.appendChild((renderjson.set_show_to_level(5).set_sort_objects(true))(ast));
 	}
 	,showWarnings: function() {
 		this.warningsElement.innerHTML = glslparser.Parser.warnings.concat(glslparser.Tokenizer.warnings).join("<br>");
