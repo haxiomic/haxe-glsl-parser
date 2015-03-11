@@ -10,8 +10,11 @@ class Main{
 		';
 
 		input = '
-			float l = callNoParams();
-			vec2 a = vec2(1.3, 2.4);
+		void main(){
+			while(i > 4){
+				doThis();
+			}
+		}
 		';
 
 		trace('"$input"');

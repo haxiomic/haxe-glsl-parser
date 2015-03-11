@@ -53,14 +53,47 @@ class TypeSpecifier extends Node{
 }
 
 class StructSpecifier extends TypeSpecifier{
-	function new(name:String){
+	var structDeclarations:StructDeclarationList;
+	function new(name:String, structDeclarations:StructDeclarationList){
+		this.structDeclarations = structDeclarations;
 		super(STRUCT, name);
+	}
+}
+
+typedef StructDeclarationList = Array<StructDeclaration>;
+
+
+class StructDeclaration extends Node{//#! extends Declaration?
+	var typeSpecifier:TypeSpecifier;
+	var declarators:StructDeclaratorList;
+	function new(typeSpecifier:TypeSpecifier, declarators:StructDeclaratorList){
+		this.typeSpecifier = typeSpecifier;
+		this.declarators = declarators;
+		super();
+	}
+}
+
+typedef StructDeclaratorList = Array<StructDeclarator>;
+
+class StructDeclarator extends Node{
+	var name:String;
+	function new(name:String){
+		this.name = name;
+		super();
+	}
+}
+
+class  StructArrayDeclarator extends StructDeclarator{
+	var arraySizeExpression:Expression;
+	function new(name:String, arraySizeExpression:Expression){
+		this.arraySizeExpression = arraySizeExpression;
+		super(name);
 	}
 }
 
 //Expressions
 class Expression extends Node{
-	var incased:Bool;
+	var parenWrap:Bool;
 }
 
 class Identifier extends Expression{
@@ -174,10 +207,8 @@ class FunctionHeader extends Expression{
 }
 
 
-
-
 //Declarations
-class Declaration extends Node{
+class Declaration extends Expression{
 	var global:Bool;
 }
 
@@ -193,31 +224,14 @@ class PrecisionDeclaration extends Declaration{
 	}
 }
 
-// class SingleDeclaration extends Declaration{
-// 	var typeSpecifier:TypeSpecifier;
-// 	var name:String;
-// 	var invariant:Bool;
-// 	var initializer:Node;
-// 	function new(name:String, ?typeSpecifier:TypeSpecifier, ?initializer:Node, invariant:Bool = false){
-// 		this.typeSpecifier = typeSpecifier;
-// 		this.name = name;
-// 		this.initializer = initializer;
-// 		this.invariant = invariant;
-// 		super();
-// 	}
-// }
-
-// class SingleArrayDeclaration extends SingleDeclaration{
-// 	var arraySizeExpression:Node;
-// 	function new(name:String, typeSpecifier:TypeSpecifier, arraySizeExpression:Node){
-// 		this.arraySizeExpression = arraySizeExpression;
-// 		super(name, typeSpecifier, null, false);
-// 	}
-// }
-
-class VariableDeclaration{
+class VariableDeclaration extends Declaration{
 	var typeSpecifier:TypeSpecifier;
 	var declarators:Array<Declarator>;
+	function new(typeSpecifier:TypeSpecifier, declarators:Array<Declarator>){
+		this.typeSpecifier = typeSpecifier;
+		this.declarators = declarators;
+		super();
+	}
 }
 
 class Declarator extends Node{
@@ -234,9 +248,9 @@ class Declarator extends Node{
 
 class ArrayDeclarator extends Declarator{
 	var arraySizeExpression:Node;
-	function new(name:String, typeSpecifier:TypeSpecifier, arraySizeExpression:Node){
+	function new(name:String, arraySizeExpression:Node){
 		this.arraySizeExpression = arraySizeExpression;
-		super(name, typeSpecifier, null, false);
+		super(name, null, false);
 	}
 }
 
@@ -276,7 +290,7 @@ class FunctionPrototype extends Declaration{
 
 
 //Statements
-class Statement extends Node{
+class Statement extends Expression{
 	var node:Node;
 	var newScope:Bool;
 	function new(node:Node, newScope:Bool){
@@ -298,7 +312,40 @@ class CompoundStatement extends Node{
 	}
 }
 
-//Special Statements
+class IterationStatement extends Node{
+	var body:Statement;
+	function new(body:Statement){
+		this.body = body;
+		super();
+	}
+}
+
+class WhileStatement extends IterationStatement{
+	var test:Expression;
+	function new(test:Expression, body:Statement){
+		this.test = test;
+		super(body);
+	}
+}
+
+class DoWhileStatement extends IterationStatement{
+	var test:Expression;
+	function new(test:Expression, body:Statement){
+		this.test = test;
+		super(body);
+	}
+}
+
+class ForStatement extends IterationStatement{
+	var initStatement:Statement;
+	var restStatement:Statement;
+	function new(initStatement:Statement, restStatement:Statement, body:Statement){
+		this.initStatement = initStatement;
+		this.restStatement = restStatement;
+		super(body);
+	}
+}
+
 class JumpStatement extends Node{
 	var mode:JumpMode;
 	function new(mode:JumpMode){
@@ -359,7 +406,7 @@ class ParserAST{
 			case 3: return new Literal<Int>(Std.parseInt(t(1).data), t(1).data);//primary_expression ::= INTCONSTANT
 			case 4: return new Literal<Float>(Std.parseFloat(t(1).data), t(1).data); //primary_expression ::= FLOATCONSTANT
 			case 5: return new Literal<Bool>(t(1).data == 'true', t(1).data); //primary_expression ::= BOOLCONSTANT
-			case 6: e(2).incased = true; return s(2); //primary_expression ::= LEFT_PAREN expression RIGHT_PAREN
+			case 6: e(2).parenWrap = true; return s(2); //primary_expression ::= LEFT_PAREN expression RIGHT_PAREN
 			case 7: return s(1); //postfix_expression ::= primary_expression
 			case 8: return new ArrayElementSelectionExpression(e(1), e(3)); //??? //postfix_expression ::= postfix_expression LEFT_BRACKET integer_expression RIGHT_BRACKET
 			case 9: return s(1); //postfix_expression ::= function_call
@@ -402,35 +449,35 @@ class ParserAST{
 			case 46: return s(1); //unary_operator ::= BANG
 			case 47: return s(1); //unary_operator ::= TILDE
 			case 48: return s(1); //multiplicative_expression ::= unary_expression
-			case 49: return new BinaryExpression(t(2).type, e(1), e(2)); //multiplicative_expression ::= multiplicative_expression STAR unary_expression
-			case 50: return new BinaryExpression(t(2).type, e(1), e(2)); //multiplicative_expression ::= multiplicative_expression SLASH unary_expression
-			case 51: return new BinaryExpression(t(2).type, e(1), e(2)); //multiplicative_expression ::= multiplicative_expression PERCENT unary_expression
+			case 49: return new BinaryExpression(t(2).type, e(1), e(3)); //multiplicative_expression ::= multiplicative_expression STAR unary_expression
+			case 50: return new BinaryExpression(t(2).type, e(1), e(3)); //multiplicative_expression ::= multiplicative_expression SLASH unary_expression
+			case 51: return new BinaryExpression(t(2).type, e(1), e(3)); //multiplicative_expression ::= multiplicative_expression PERCENT unary_expression
 			case 52: return s(1); //additive_expression ::= multiplicative_expression
-			case 53: return new BinaryExpression(t(2).type, e(1), e(2)); //additive_expression ::= additive_expression PLUS multiplicative_expression
-			case 54: return new BinaryExpression(t(2).type, e(1), e(2)); //additive_expression ::= additive_expression DASH multiplicative_expression
+			case 53: return new BinaryExpression(t(2).type, e(1), e(3)); //additive_expression ::= additive_expression PLUS multiplicative_expression
+			case 54: return new BinaryExpression(t(2).type, e(1), e(3)); //additive_expression ::= additive_expression DASH multiplicative_expression
 			case 55: return s(1); //shift_expression ::= additive_expression
-			case 56: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //shift_expression ::= shift_expression LEFT_OP additive_expression
-			case 57: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //shift_expression ::= shift_expression RIGHT_OP additive_expression
+			case 56: return new BinaryExpression(t(2).type, cast n(1), cast n(3)); //shift_expression ::= shift_expression LEFT_OP additive_expression
+			case 57: return new BinaryExpression(t(2).type, cast n(1), cast n(3)); //shift_expression ::= shift_expression RIGHT_OP additive_expression
 			case 58: return s(1); //relational_expression ::= shift_expression
-			case 59: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //relational_expression ::= relational_expression LEFT_ANGLE shift_expression
-			case 60: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //relational_expression ::= relational_expression RIGHT_ANGLE shift_expression
-			case 61: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //relational_expression ::= relational_expression LE_OP shift_expression
-			case 62: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //relational_expression ::= relational_expression GE_OP shift_expression
+			case 59: return new BinaryExpression(t(2).type, cast n(1), cast n(3)); //relational_expression ::= relational_expression LEFT_ANGLE shift_expression
+			case 60: return new BinaryExpression(t(2).type, cast n(1), cast n(3)); //relational_expression ::= relational_expression RIGHT_ANGLE shift_expression
+			case 61: return new BinaryExpression(t(2).type, cast n(1), cast n(3)); //relational_expression ::= relational_expression LE_OP shift_expression
+			case 62: return new BinaryExpression(t(2).type, cast n(1), cast n(3)); //relational_expression ::= relational_expression GE_OP shift_expression
 			case 63: return s(1); //equality_expression ::= relational_expression
-			case 64: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //equality_expression ::= equality_expression EQ_OP relational_expression
-			case 65: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //equality_expression ::= equality_expression NE_OP relational_expression
+			case 64: return new BinaryExpression(t(2).type, cast n(1), cast n(3)); //equality_expression ::= equality_expression EQ_OP relational_expression
+			case 65: return new BinaryExpression(t(2).type, cast n(1), cast n(3)); //equality_expression ::= equality_expression NE_OP relational_expression
 			case 66: return s(1); //and_expression ::= equality_expression
-			case 67: return new BinaryExpression(t(2).type, cast n(1), cast n(2)); //and_expression ::= and_expression AMPERSAND equality_expression
+			case 67: return new BinaryExpression(t(2).type, cast n(1), cast n(3)); //and_expression ::= and_expression AMPERSAND equality_expression
 			case 68: return s(1); //exclusive_or_expression ::= and_expression
-			case 69: return new LogicalExpression(t(2).type, cast n(1), cast n(2)); //exclusive_or_expression ::= exclusive_or_expression CARET and_expression
+			case 69: return new LogicalExpression(t(2).type, cast n(1), cast n(3)); //exclusive_or_expression ::= exclusive_or_expression CARET and_expression
 			case 70: return s(1); //inclusive_or_expression ::= exclusive_or_expression
-			case 71: return new LogicalExpression(t(2).type, cast n(1), cast n(2)); //inclusive_or_expression ::= inclusive_or_expression VERTICAL_BAR exclusive_or_expression
+			case 71: return new LogicalExpression(t(2).type, cast n(1), cast n(3)); //inclusive_or_expression ::= inclusive_or_expression VERTICAL_BAR exclusive_or_expression
 			case 72: return s(1); //logical_and_expression ::= inclusive_or_expression
-			case 73: return new LogicalExpression(t(2).type, cast n(1), cast n(2)); //logical_and_expression ::= logical_and_expression AND_OP inclusive_or_expression
+			case 73: return new LogicalExpression(t(2).type, cast n(1), cast n(3)); //logical_and_expression ::= logical_and_expression AND_OP inclusive_or_expression
 			case 74: return s(1); //logical_xor_expression ::= logical_and_expression
-			case 75: return new LogicalExpression(t(2).type, cast n(1), cast n(2)); //logical_xor_expression ::= logical_xor_expression XOR_OP logical_and_expression
+			case 75: return new LogicalExpression(t(2).type, cast n(1), cast n(3)); //logical_xor_expression ::= logical_xor_expression XOR_OP logical_and_expression
 			case 76: return s(1); //logical_or_expression ::= logical_xor_expression
-			case 77: return new LogicalExpression(t(2).type, cast n(1), cast n(2)); //logical_or_expression ::= logical_or_expression OR_OP logical_xor_expression
+			case 77: return new LogicalExpression(t(2).type, cast n(1), cast n(3)); //logical_or_expression ::= logical_or_expression OR_OP logical_xor_expression
 			case 78: return s(1); //conditional_expression ::= logical_or_expression
 			case 79: return new ConditionalExpression(cast n(1), cast n(2), cast n(3)); //conditional_expression ::= logical_or_expression QUESTION expression COLON assignment_expression
 			case 80: return s(1); //assignment_expression ::= conditional_expression
@@ -484,15 +531,15 @@ class ParserAST{
 			case 114: return ParameterQualifier.INOUT;//parameter_qualifier ::= INOUT
 			case 115: return new ParameterDeclaration(null, cast n(1)); //parameter_type_specifier ::= type_specifier
 			case 116: return new ParameterDeclaration(null, cast n(1), null, null, cast e(3));//parameter_type_specifier ::= type_specifier LEFT_BRACKET constant_expression RIGHT_BRACKET
-			case 117: //init_declarator_list ::= single_declaration
-			case 118: //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER
-			case 119: //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
-			case 120: //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER EQUAL initializer
-			case 121: //return new SingleDeclaration('', cast n(1), null, false); //single_declaration ::= fully_specified_type
-			case 122: //return new SingleDeclaration(t(2).data, cast n(1), null, false); //single_declaration ::= fully_specified_type IDENTIFIER
-			case 123: //return new SingleArrayDeclaration(t(2).data, cast n(1), n(4)); //single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
-			case 124: //return new SingleDeclaration(t(2).data, cast n(1), n(4), false); //single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer
-			case 125: //return new SingleDeclaration(t(2).data, null, null, true); //single_declaration ::= INVARIANT IDENTIFIER
+			case 117: return s(1); //init_declarator_list ::= single_declaration
+			case 118: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, null, false)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER
+			case 119: cast(n(1), VariableDeclaration).declarators.push(new ArrayDeclarator(t(3).data, cast n(5))); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
+			case 120: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, cast n(5), false)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER EQUAL initializer
+			case 121: return new VariableDeclaration(cast n(1), [new Declarator('', null, false)]); //single_declaration ::= fully_specified_type
+			case 122: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, null, false)]); //single_declaration ::= fully_specified_type IDENTIFIER
+			case 123: return new VariableDeclaration(cast n(1), [new ArrayDeclarator(t(2).data, cast n(4))]); //single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
+			case 124: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, cast n(4), false)]); //single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer
+			case 125: return new VariableDeclaration(null, [new Declarator(t(2).data, null, true)]); //single_declaration ::= INVARIANT IDENTIFIER
 			case 126: return s(1); //fully_specified_type ::= type_specifier
 			case 127: cast(n(2), TypeSpecifier).qualifier = cast ev(1); //fully_specified_type ::= type_qualifier type_specifier
 						return s(2);
@@ -526,15 +573,15 @@ class ParserAST{
 			case 155: return s(1); //precision_qualifier ::= HIGH_PRECISION
 			case 156: return s(1); //precision_qualifier ::= MEDIUM_PRECISION
 			case 157: return s(1); //precision_qualifier ::= LOW_PRECISION
-			case 158: //struct_specifier ::= STRUCT IDENTIFIER LEFT_BRACE struct_declaration_list RIGHT_BRACE
-			case 159: //struct_specifier ::= STRUCT LEFT_BRACE struct_declaration_list RIGHT_BRACE
-			case 160: return s(1); //struct_declaration_list ::= struct_declaration
-			case 161: //struct_declaration_list ::= struct_declaration_list struct_declaration
-			case 162: //struct_declaration ::= type_specifier struct_declarator_list SEMICOLON
-			case 163: return s(1); //struct_declarator_list ::= struct_declarator
-			case 164: //struct_declarator_list ::= struct_declarator_list COMMA struct_declarator
-			case 165: //struct_declarator ::= IDENTIFIER
-			case 166: //struct_declarator ::= IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
+			case 158: return new StructSpecifier(t(2).data, cast a(4)); //struct_specifier ::= STRUCT IDENTIFIER LEFT_BRACE struct_declaration_list RIGHT_BRACE
+			case 159: return new StructSpecifier('', cast a(3)); //struct_specifier ::= STRUCT LEFT_BRACE struct_declaration_list RIGHT_BRACE
+			case 160: return [n(1)]; //struct_declaration_list ::= struct_declaration
+			case 161: a(1).push(n(2)); return s(1); //struct_declaration_list ::= struct_declaration_list struct_declaration
+			case 162: return new StructDeclaration(cast n(1), cast a(2)); //struct_declaration ::= type_specifier struct_declarator_list SEMICOLON
+			case 163: return [n(1)]; //struct_declarator_list ::= struct_declarator
+			case 164: a(1).push(n(3)); return s(1); //struct_declarator_list ::= struct_declarator_list COMMA struct_declarator
+			case 165: return new StructDeclarator(t(1).data); //struct_declarator ::= IDENTIFIER
+			case 166: return new StructArrayDeclarator(t(1).data, cast n(3)); //struct_declarator ::= IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 167: return s(1); //initializer ::= assignment_expression
 			case 168: return s(1); //declaration_statement ::= declaration
 			case 169: return new Statement(n(1), false); //statement_no_new_scope ::= compound_statement_with_scope
@@ -556,17 +603,17 @@ class ParserAST{
 			case 185: return new Statement(e(1), false); //expression_statement ::= expression SEMICOLON
 			case 186: //selection_statement ::= IF LEFT_PAREN expression RIGHT_PAREN selection_rest_statement
 			case 187: //selection_rest_statement ::= statement_with_scope ELSE statement_with_scope
-			case 188: return s(1); //selection_rest_statement ::= statement_with_scope
+			case 188: //selection_rest_statement ::= statement_with_scope
 			case 189: return s(1); //condition ::= expression
-			case 190: //condition ::= fully_specified_type IDENTIFIER EQUAL initializer
-			case 191: //iteration_statement ::= WHILE LEFT_PAREN condition RIGHT_PAREN statement_no_new_scope
-			case 192: //iteration_statement ::= DO statement_with_scope WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON
-			case 193: //iteration_statement ::= FOR LEFT_PAREN for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope
+			case 190: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, cast n(4), false)]); //condition ::= fully_specified_type IDENTIFIER EQUAL initializer
+			case 191: return new WhileStatement(e(3), cast n(5)); //iteration_statement ::= WHILE LEFT_PAREN condition RIGHT_PAREN statement_no_new_scope
+			case 192: return new DoWhileStatement(e(5), cast n(2)); //iteration_statement ::= DO statement_with_scope WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON
+			case 193: return new ForStatement(cast n(3), cast n(4), cast n(6)); //iteration_statement ::= FOR LEFT_PAREN for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope
 			case 194: return s(1); //for_init_statement ::= expression_statement
 			case 195: return s(1); //for_init_statement ::= declaration_statement
 			case 196: return s(1); //conditionopt ::= condition
 			case 197: return null; //conditionopt ::=
-			case 198: //for_rest_statement ::= conditionopt SEMICOLON
+			case 198: return s(1); //for_rest_statement ::= conditionopt SEMICOLON
 			case 199: //for_rest_statement ::= conditionopt SEMICOLON expression
 			case 200: return new JumpStatement(t(1).type); //jump_statement ::= CONTINUE SEMICOLON
 			case 201: return new JumpStatement(t(1).type); //jump_statement ::= BREAK SEMICOLON
@@ -583,7 +630,7 @@ class ParserAST{
 		var ruleNameReg = ~/^\w+/;
 		ruleNameReg.match(ParserDebug.ruleString(ruleno));
 		var ruleName = ruleNameReg.matched(0);
-		trace('!!! Unhandled CreateNode ($ruleno, $ruleName) !!!');
+		Parser.warn('unhandled CreateNode rule, ($ruleno, $ruleName)');
 		return null;
 	}
 
@@ -603,7 +650,7 @@ class ParserAST{
 		return stack[i - j].minor;
 	}
 
-	//Convenience functions for casting s().v
+	//Convenience functions for casting s(n).v
 	static inline function n(m:Int):Node 
 		return cast s(m).v;
 	static inline function t(m:Int):Token
