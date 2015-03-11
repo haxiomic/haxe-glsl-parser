@@ -15,8 +15,8 @@ class ParserData{
 	//consts
 	static public inline var illegalSymbolNumber:Int = 165;	//YYNOCODE
 
-	static public inline var nStates = 332;//total number of states
-	static public inline var nRules = 210;//total number of rules
+	static public inline var nStates = 332; //total number of states
+	static public inline var nRules = 210; //total number of rules
 
 	//tables
 /* ###### ACTION ###### */

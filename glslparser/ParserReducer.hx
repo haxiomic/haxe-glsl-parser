@@ -1,9 +1,15 @@
+/*
+	ParserReducer is responsible for constructing the abstract syntax tree by creation
+	and concatenation of notes in accordance with the grammar rules of the language
+	
+	@author George Corney
+*/
+
 package glslparser;
 
 import glslparser.Tokenizer.Token;
 import glslparser.AST;
 
-//a minor may one of these types
 enum EMinorType{
 	Token(t:Token);
 	Node(n:Node);
