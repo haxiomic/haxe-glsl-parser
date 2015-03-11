@@ -20,3 +20,5 @@ git checkout gh-pages
 git checkout master $DEMO_DIR/bin
 
 rsync -a $DEMO_DIR/bin/* ./
+
+rm -rf $DEMO_DIR
