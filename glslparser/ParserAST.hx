@@ -15,6 +15,8 @@ import glslparser.Tokenizer.TokenType;
 //And guided by Mesa Compiler AST
 //http://people.freedesktop.org/~chadversary/mesa/doxygen/kevin-rogovin/d7/d26/group__AST.html
 
+//Should statement have node? Shouldn't it _be_ the node?
+//Shouldn't IterationStatement extend Statement?
 //Review use and meaning of Expression
 //All tokens should be converted to EnumValues or Nodes?
 //Should TokenType be allow? If everything is enum, how can we easily compare equivalent enums from two sets?
@@ -494,7 +496,7 @@ class ParserAST{
 			case 91: return s(1); //assignment_operator ::= XOR_ASSIGN
 			case 92: return s(1); //assignment_operator ::= OR_ASSIGN
 			case 93: return s(1); //expression ::= assignment_expression
-			case 94: //??? Expression List? SequenceExpression? //expression ::= expression COMMA assignment_expression
+			case 94: //??? ExpressionList? SequenceExpression? CompoundExpression //expression ::= expression COMMA assignment_expression
 			case 95: return s(1); //constant_expression ::= conditional_expression
 			case 96: return new FunctionPrototype(cast s(1)); //declaration ::= function_prototype SEMICOLON
 			case 97: return s(1); //declaration ::= init_declarator_list SEMICOLON
@@ -613,7 +615,7 @@ class ParserAST{
 			case 195: return s(1); //for_init_statement ::= declaration_statement
 			case 196: return s(1); //conditionopt ::= condition
 			case 197: return null; //conditionopt ::=
-			case 198: return s(1); //for_rest_statement ::= conditionopt SEMICOLON
+			case 198: /* define ForRestStatement? */ //return s(1); //for_rest_statement ::= conditionopt SEMICOLON
 			case 199: //for_rest_statement ::= conditionopt SEMICOLON expression
 			case 200: return new JumpStatement(t(1).type); //jump_statement ::= CONTINUE SEMICOLON
 			case 201: return new JumpStatement(t(1).type); //jump_statement ::= BREAK SEMICOLON
