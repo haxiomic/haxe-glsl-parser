@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>GLSL Parser Demo</title>
+
+	<link rel="stylesheet" type="text/css" href="css/skeleton.haxiomic.css">
+
+	<style>
+		.glsl-input{
+			width: 100%;
+			height: 400px;
+		}
+
+		#warnings{
+			color: rgb(204, 120, 120);
+		}
+
+		.ast-row{
+			margin-top:30px;
+		}
+
+		#editor {
+			width: 100%;
+			height: 300px;
+			margin: 0;
+			padding: 0;
+		}
+
+		.renderjson a { text-decoration: none; }
+		.renderjson .disclosure { font-size: 130%; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h1>GLSL Parser Demo</h1>
+		<hr>
+
+		<div class="row">
+			<div class="column twelve">
+
+				<pre id="editor">void main(){
+    int i = 3;
+}</pre>
+				<div id="warnings"></div>
+			</div>
+		</div>
+
+		<div class="row ast-row">
+			<div class="column twelve" id="json-container">
+			</div>
+		</div>
+	</div>
+
+	<script src="js/ace/ace.js" type="text/javascript" charset="utf-8"></script>
+	<script src="js/renderjson.js" type="text/javascript" charset="utf-8"></script>
+	<script>
+	    var editor = ace.edit("editor");
+	    editor.setTheme("ace/theme/chrome");
+	    editor.getSession().setMode("ace/mode/glsl");
+
+	    window.Editor = editor;//expose as class to haxe
+	</script>
+
+	<script type="text/javascript" src="js/main.js"></script>
+</body>
+</html>

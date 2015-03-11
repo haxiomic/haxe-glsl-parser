@@ -17,6 +17,6 @@ cd $DIR
 
 # # copy demo files to this branch
 git checkout gh-pages
-git checkout master tests/parser/demo/bin
+git checkout master $DEMO_DIR/bin
 
-mv tests/parser/demo/bin/* ./
+rsync -a $DEMO_DIR/bin/* ./
