@@ -37,7 +37,7 @@ class Parser{
 		//eof step
 		parseStep(0, lastToken);//using the lastToken for the EOF step allows better error reporting if it fails
 
-		return ParserAST.root;
+		return ParserAST.result;
 	}
 
 	//for each token, major = tokenId
@@ -150,8 +150,6 @@ class Parser{
 
 		//new node generated after reducing with this rule
 		var newNode = ParserAST.createNode(ruleno); //trigger custom reduce behavior
-
-		trace('Reduce ($ruleno) [$newNode] '+ParserDebug.ruleString(ruleno));
 
 		goto = ruleInfo[ruleno].lhs;
 		size = ruleInfo[ruleno].nrhs;

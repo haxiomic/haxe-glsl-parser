@@ -11,9 +11,7 @@ class Main{
 
 		input = '
 		void main(){
-			while(i > 4){
-				doThis();
-			}
+			a = 1 + 3, b += 2++;
 		}
 		';
 
