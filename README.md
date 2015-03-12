@@ -5,7 +5,7 @@ Parses [GLSL version 1.00](https://www.khronos.org/files/opengles_shading_langua
 
 Parser based on LALR parser from [The Lemon Parser Generator](http://www.hwaci.com/sw/lemon/)
 
-Supports all platforms available to the [haxe](haxe.org) compiler (notably JavaScript, Java and Python)
+Supports all platforms available to the [haxe](haxe.org) compiler (notably JavaScript, Java, C++ and Python)
 
 **Status:** parser is complete, preprocessor in development
 
