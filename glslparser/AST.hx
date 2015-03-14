@@ -175,9 +175,11 @@ class ArrayElementSelectionExpression extends Expression{
 class FunctionCall extends Expression{
 	var name:String;
 	var parameters:Array<Expression>;
-	function new(name, ?parameters){
+	var constructor:Bool;
+	function new(name, ?parameters, constructor:Bool = false){
 		this.name = name;
 		this.parameters = parameters != null ? parameters : [];
+		this.constructor = constructor;
 		super();
 	}
 }
