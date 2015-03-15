@@ -1,6 +1,6 @@
 - Since array lengths are required CPU size, **we need to evaluate constant expressions**
 
-- A constant expression includes all basic types and user define types! So ```uniform vec2 x[NewThing(3).len];``` is valid as is something awful like
+- A constant expression includes all basic types and user define types! So ```uniform vec2 x[NewThing(3).len];``` is valid as is something awful like. The result should be a basic type
 
 ````
 const struct NewThing{
@@ -9,6 +9,12 @@ const struct NewThing{
 
 uniform vec2 x[a.len];
 ````
+#Evaluating constant expression
+- GLSL is evaluated in a top-down single-pass manner
+- As Nodes are stepped through, user-types must be defined
+- When a constant expression is reached, it is evaluated with access to the other constant expressions in the state machine
+- BinaryExpressions and UnaryExpression are simple enough to handle, SequenceExpression shouldn't be necessary as far as I can tell, AssignmentExpression is tricky because I think it's invalid for consts. FieldSelectionExpression is easyish, ArrayElementSelectionExpression shouldn't be necessary because there can't be any arrays in const. 
+----
 
 - Should the 'defined' operator be only part of the preprocessor?
 - Add a parameter to Tokenizer to disable storing line and column and position in the token?

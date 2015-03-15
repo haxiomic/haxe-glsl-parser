@@ -184,18 +184,6 @@ class FunctionCall extends Expression{
 	}
 }
 
-class FunctionHeader extends Expression{
-	var name:String;
-	var returnType:TypeSpecifier;
-	var parameters:Array<ParameterDeclaration>;
-	function new(name:String, returnType:TypeSpecifier, ?parameters:Array<ParameterDeclaration>){
-		this.name = name;
-		this.returnType = returnType;
-		this.parameters = parameters != null ? parameters : [];
-		super();
-	}
-}
-
 
 //Declarations
 class Declaration extends Expression{
@@ -278,6 +266,18 @@ class FunctionPrototype extends Declaration{
 	}
 }
 
+class FunctionHeader extends Node{
+	var name:String;
+	var returnType:TypeSpecifier;
+	var parameters:Array<ParameterDeclaration>;
+	function new(name:String, returnType:TypeSpecifier, ?parameters:Array<ParameterDeclaration>){
+		this.name = name;
+		this.returnType = returnType;
+		this.parameters = parameters != null ? parameters : [];
+		super();
+	}
+}
+
 //Statements
 class Statement extends Node{
 	var newScope:Bool;
@@ -291,7 +291,7 @@ typedef StatementList = Array<Statement>;
 
 class CompoundStatement extends Statement{
 	var statementList:StatementList;
-	function new(statementList:StatementList, newScope:Bool = false){
+	function new(statementList:StatementList, newScope:Bool){
 		this.statementList = statementList;
 		super(newScope);
 	}

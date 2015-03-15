@@ -1,5 +1,6 @@
 package;
 
+import glslparser.Eval;
 import glslparser.Parser;
 import glslparser.Tokenizer;
 import Editor;
@@ -21,13 +22,13 @@ class Main{
 		var reparseTimer = new haxe.Timer(500);
 
 		reparseTimer.run = function(){
-			if(inputChanged) parse();
+			if(inputChanged) parseAndEvaluate();
 		}
 
-		parse();
+		parseAndEvaluate();
 	}
 
-	function parse(){
+	function parseAndEvaluate(){
 		var input = Editor.getValue();
 
 		try{
@@ -35,6 +36,8 @@ class Main{
 			var ast = Parser.parseTokens(tokens);
 
 			displayAST(ast);
+
+			Eval.evaluateConstantExpressions(ast);
 
 			showWarnings();
 		}catch(e:Dynamic){
