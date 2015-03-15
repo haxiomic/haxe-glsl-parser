@@ -61,6 +61,8 @@ var Main = function() {
 	this.messagesElement = window.document.getElementById("messages");
 	this.warningsElement = window.document.getElementById("warnings");
 	this.successElement = window.document.getElementById("success");
+	var savedInput = this.loadInput();
+	if($bind(this,this.saveInput) != null) Editor.setValue(savedInput);
 	Editor.on("change",function(e) {
 		_g.inputChanged = true;
 	});
@@ -82,9 +84,10 @@ Main.prototype = {
 			var ast = glslparser.Parser.parseTokens(tokens);
 			this.displayAST(ast);
 			glslparser.Eval.evaluateConstantExpressions(ast);
-			this.showMessages(glslparser.Parser.warnings.concat(glslparser.Tokenizer.warnings));
+			this.saveInput(input);
+			this.showErrors(glslparser.Parser.warnings.concat(glslparser.Tokenizer.warnings));
 		} catch( e ) {
-			this.showMessages([e]);
+			this.showErrors([e]);
 			this.jsonContainer.innerHTML = "";
 		}
 		this.inputChanged = false;
@@ -93,14 +96,22 @@ Main.prototype = {
 		this.jsonContainer.innerHTML = "";
 		this.jsonContainer.appendChild((renderjson.set_show_to_level(5).set_sort_objects(true))(ast));
 	}
-	,showMessages: function(warnings) {
+	,showErrors: function(warnings) {
 		if(warnings.length > 0) {
 			this.warningsElement.innerHTML = warnings.join("<br>");
 			this.successElement.innerHTML = "";
+			this.messagesElement.className = "error";
 		} else {
 			this.successElement.innerHTML = "GLSL parsed without error";
 			this.warningsElement.innerHTML = "";
+			this.messagesElement.className = "";
 		}
+	}
+	,saveInput: function(input) {
+		js.Browser.getLocalStorage().setItem("glsl-input",input);
+	}
+	,loadInput: function() {
+		return js.Browser.getLocalStorage().getItem("glsl-input");
 	}
 	,__class__: Main
 };
@@ -772,7 +783,13 @@ glslparser.Eval.iterate = function(node) {
 	case glslparser.StructSpecifier:
 		var _2;
 		_2 = js.Boot.__cast(node , glslparser.StructSpecifier);
+		glslparser.Eval.defineType(_2);
 		glslparser.Eval.iterate(_2.structDeclarations);
+		break;
+	case glslparser.StructDeclaration:
+		var _3;
+		_3 = js.Boot.__cast(node , glslparser.StructDeclaration);
+		glslparser.Eval.iterate(_3.typeSpecifier);
 		break;
 	default:
 		console.log("default case");
@@ -2970,6 +2987,19 @@ js.Boot.__isNativeObj = function(o) {
 js.Boot.__resolveNativeClass = function(name) {
 	if(typeof window != "undefined") return window[name]; else return global[name];
 };
+js.Browser = function() { };
+js.Browser.__name__ = ["js","Browser"];
+js.Browser.getLocalStorage = function() {
+	try {
+		var s = window.localStorage;
+		s.getItem("");
+		return s;
+	} catch( e ) {
+		return null;
+	}
+};
+var $_, $fid = 0;
+function $bind(o,m) { if( m == null ) return null; if( m.__id__ == null ) m.__id__ = $fid++; var f; if( o.hx__closures__ == null ) o.hx__closures__ = {}; else f = o.hx__closures__[m.__id__]; if( f == null ) { f = function(){ return f.method.apply(f.scope, arguments); }; f.scope = o; f.method = m; o.hx__closures__[m.__id__] = f; } return f; }
 if(Array.prototype.indexOf) HxOverrides.indexOf = function(a,o,i) {
 	return Array.prototype.indexOf.call(a,o,i);
 };
