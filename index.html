@@ -5,7 +5,7 @@
 
 	<link rel="stylesheet" type="text/css" href="css/skeleton.haxiomic.css">
 
-	<style>
+	<style type="text/css">
 		body{
 			margin: 0;
 			padding: 0;
@@ -104,6 +104,7 @@ void main( void ){
 		
 
 	<script src="js/ace/ace.js" type="text/javascript" charset="utf-8"></script>
+	<script src="js/zepto.min.js" type="text/javascript" charset="utf-8"></script>
 	<script src="js/renderjson.js" type="text/javascript" charset="utf-8"></script>
 	<script>
 	    var editor = ace.edit("editor");
@@ -113,6 +114,27 @@ void main( void ){
 	    editor.setFontSize(15);
 
 	    window.Editor = editor;//expose as class to haxe
+
+	    var $messages = $('#messages');
+	    var $jsonContainer = $('#json-container');
+	    window.fitMessageContent = function(){
+	    	var totalHeight = 0;
+
+	    	//total message content height
+	    	$messages.children().each(function(i, child){
+	    		totalHeight += $(child).height();
+	    	});
+
+	    	totalHeight += parseFloat($messages.css('padding-top'));
+	    	totalHeight += parseFloat($messages.css('padding-bottom'));
+
+	    	if(totalHeight < 40){
+	    		totalHeight = 40;
+	    	}
+
+	    	$messages.css('height', totalHeight);
+	    	$jsonContainer.css('top', totalHeight);
+	    }
 	</script>
 
 	<script type="text/javascript" src="js/main.js"></script>

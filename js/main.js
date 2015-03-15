@@ -106,6 +106,7 @@ Main.prototype = {
 			this.warningsElement.innerHTML = "";
 			this.messagesElement.className = "";
 		}
+		window.fitMessageContent();
 	}
 	,saveInput: function(input) {
 		js.Browser.getLocalStorage().setItem("glsl-input",input);
