@@ -77,7 +77,7 @@ class Main{
 		}else{
 			successElement.innerHTML = 'GLSL parsed without error';
 			warningsElement.innerHTML = '';
-			messagesElement.className = '';
+			messagesElement.className = 'success';
 		}
 
 		untyped js.Browser.window.fitMessageContent();

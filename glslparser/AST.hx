@@ -3,9 +3,6 @@
 	Design guided by Mozilla Parser AST API and Mesa GLSL Compiler AST
 
 	@author George Corney
-
-	//#! add node position and length
-	//#! define more binary expression subclasses
 */
 
 package glslparser;
