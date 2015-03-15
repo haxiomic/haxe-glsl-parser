@@ -69,9 +69,17 @@ class Main{
 		);
 	}
 
-	function showErrors(warnings){
+	function showErrors(warnings:Array<String>){
 		if(warnings.length > 0){
-			warningsElement.innerHTML = warnings.join('<br>');
+			var ul = js.Browser.document.createElement('ul');
+
+			for(w in warnings){
+				var li = js.Browser.document.createElement('li');
+				li.innerHTML = w;
+				ul.appendChild(li);
+			}
+			warningsElement.innerHTML = '';
+			warningsElement.appendChild(ul);
 			successElement.innerHTML = '';
 			messagesElement.className = 'error';
 		}else{
@@ -80,7 +88,17 @@ class Main{
 			messagesElement.className = 'success';
 		}
 
-		untyped js.Browser.window.fitMessageContent();
+		//fix for sizing issue
+		var pollTimer = new haxe.Timer(50);
+		var count = 0;
+		pollTimer.run = function(){
+			untyped js.Browser.window.fitMessageContent();
+			count++;
+			if(count > 10) pollTimer.stop();
+		}
+
+		pollTimer.run();
+
 	}
 
 	function saveInput(input:String){
