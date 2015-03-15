@@ -98,7 +98,17 @@ Main.prototype = {
 	}
 	,showErrors: function(warnings) {
 		if(warnings.length > 0) {
-			this.warningsElement.innerHTML = warnings.join("<br>");
+			var ul = window.document.createElement("ul");
+			var _g = 0;
+			while(_g < warnings.length) {
+				var w = warnings[_g];
+				++_g;
+				var li = window.document.createElement("li");
+				li.innerHTML = w;
+				ul.appendChild(li);
+			}
+			this.warningsElement.innerHTML = "";
+			this.warningsElement.appendChild(ul);
 			this.successElement.innerHTML = "";
 			this.messagesElement.className = "error";
 		} else {
@@ -106,7 +116,14 @@ Main.prototype = {
 			this.warningsElement.innerHTML = "";
 			this.messagesElement.className = "success";
 		}
-		window.fitMessageContent();
+		var pollTimer = new haxe.Timer(50);
+		var count = 0;
+		pollTimer.run = function() {
+			window.fitMessageContent();
+			count++;
+			if(count > 10) pollTimer.stop();
+		};
+		pollTimer.run();
 	}
 	,saveInput: function(input) {
 		js.Browser.getLocalStorage().setItem("glsl-input",input);
@@ -2667,7 +2684,12 @@ haxe.Timer = function(time_ms) {
 };
 haxe.Timer.__name__ = ["haxe","Timer"];
 haxe.Timer.prototype = {
-	run: function() {
+	stop: function() {
+		if(this.id == null) return;
+		clearInterval(this.id);
+		this.id = null;
+	}
+	,run: function() {
 	}
 	,__class__: haxe.Timer
 };
