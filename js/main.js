@@ -47,35 +47,44 @@ HxOverrides.indexOf = function(a,obj,i) {
 	}
 	return -1;
 };
+HxOverrides.iter = function(a) {
+	return { cur : 0, arr : a, hasNext : function() {
+		return this.cur < this.arr.length;
+	}, next : function() {
+		return this.arr[this.cur++];
+	}};
+};
 var Main = function() {
 	this.inputChanged = false;
 	var _g = this;
 	this.jsonContainer = window.document.getElementById("json-container");
+	this.messagesElement = window.document.getElementById("messages");
 	this.warningsElement = window.document.getElementById("warnings");
+	this.successElement = window.document.getElementById("success");
 	Editor.on("change",function(e) {
 		_g.inputChanged = true;
 	});
 	var reparseTimer = new haxe.Timer(500);
 	reparseTimer.run = function() {
-		if(_g.inputChanged) _g.parse();
+		if(_g.inputChanged) _g.parseAndEvaluate();
 	};
-	this.parse();
+	this.parseAndEvaluate();
 };
 Main.__name__ = ["Main"];
 Main.main = function() {
 	new Main();
 };
 Main.prototype = {
-	parse: function() {
+	parseAndEvaluate: function() {
 		var input = Editor.getValue();
 		try {
 			var tokens = glslparser.Tokenizer.tokenize(input);
 			var ast = glslparser.Parser.parseTokens(tokens);
 			this.displayAST(ast);
-			this.showWarnings();
+			glslparser.Eval.evaluateConstantExpressions(ast);
+			this.showMessages(glslparser.Parser.warnings.concat(glslparser.Tokenizer.warnings));
 		} catch( e ) {
-			this.showWarnings();
-			this.warningsElement.innerHTML += "<br>" + Std.string(e);
+			this.showMessages([e]);
 			this.jsonContainer.innerHTML = "";
 		}
 		this.inputChanged = false;
@@ -84,8 +93,14 @@ Main.prototype = {
 		this.jsonContainer.innerHTML = "";
 		this.jsonContainer.appendChild((renderjson.set_show_to_level(5).set_sort_objects(true))(ast));
 	}
-	,showWarnings: function() {
-		this.warningsElement.innerHTML = glslparser.Parser.warnings.concat(glslparser.Tokenizer.warnings).join("<br>");
+	,showMessages: function(warnings) {
+		if(warnings.length > 0) {
+			this.warningsElement.innerHTML = warnings.join("<br>");
+			this.successElement.innerHTML = "";
+		} else {
+			this.successElement.innerHTML = "GLSL parsed without error";
+			this.warningsElement.innerHTML = "";
+		}
 	}
 	,__class__: Main
 };
@@ -114,6 +129,16 @@ Std.parseInt = function(x) {
 };
 Std.parseFloat = function(x) {
 	return parseFloat(x);
+};
+var StringBuf = function() {
+	this.b = "";
+};
+StringBuf.__name__ = ["StringBuf"];
+StringBuf.prototype = {
+	add: function(x) {
+		this.b += Std.string(x);
+	}
+	,__class__: StringBuf
 };
 var Type = function() { };
 Type.__name__ = ["Type"];
@@ -284,26 +309,17 @@ glslparser.ArrayElementSelectionExpression.__super__ = glslparser.Expression;
 glslparser.ArrayElementSelectionExpression.prototype = $extend(glslparser.Expression.prototype,{
 	__class__: glslparser.ArrayElementSelectionExpression
 });
-glslparser.FunctionCall = function(name,parameters) {
+glslparser.FunctionCall = function(name,parameters,constructor) {
+	if(constructor == null) constructor = false;
 	this.name = name;
 	if(parameters != null) this.parameters = parameters; else this.parameters = [];
+	this.constructor = constructor;
 	glslparser.Expression.call(this);
 };
 glslparser.FunctionCall.__name__ = ["glslparser","FunctionCall"];
 glslparser.FunctionCall.__super__ = glslparser.Expression;
 glslparser.FunctionCall.prototype = $extend(glslparser.Expression.prototype,{
 	__class__: glslparser.FunctionCall
-});
-glslparser.FunctionHeader = function(name,returnType,parameters) {
-	this.name = name;
-	this.returnType = returnType;
-	if(parameters != null) this.parameters = parameters; else this.parameters = [];
-	glslparser.Expression.call(this);
-};
-glslparser.FunctionHeader.__name__ = ["glslparser","FunctionHeader"];
-glslparser.FunctionHeader.__super__ = glslparser.Expression;
-glslparser.FunctionHeader.prototype = $extend(glslparser.Expression.prototype,{
-	__class__: glslparser.FunctionHeader
 });
 glslparser.Declaration = function() {
 	glslparser.Expression.call(this);
@@ -386,6 +402,17 @@ glslparser.FunctionPrototype.__super__ = glslparser.Declaration;
 glslparser.FunctionPrototype.prototype = $extend(glslparser.Declaration.prototype,{
 	__class__: glslparser.FunctionPrototype
 });
+glslparser.FunctionHeader = function(name,returnType,parameters) {
+	this.name = name;
+	this.returnType = returnType;
+	if(parameters != null) this.parameters = parameters; else this.parameters = [];
+	glslparser.Node.call(this);
+};
+glslparser.FunctionHeader.__name__ = ["glslparser","FunctionHeader"];
+glslparser.FunctionHeader.__super__ = glslparser.Node;
+glslparser.FunctionHeader.prototype = $extend(glslparser.Node.prototype,{
+	__class__: glslparser.FunctionHeader
+});
 glslparser.Statement = function(newScope) {
 	this.newScope = newScope;
 	glslparser.Node.call(this);
@@ -396,7 +423,6 @@ glslparser.Statement.prototype = $extend(glslparser.Node.prototype,{
 	__class__: glslparser.Statement
 });
 glslparser.CompoundStatement = function(statementList,newScope) {
-	if(newScope == null) newScope = false;
 	this.statementList = statementList;
 	glslparser.Statement.call(this,newScope);
 };
@@ -711,6 +737,406 @@ glslparser.TypeQualifier.INVARIANT_VARYING.__enum__ = glslparser.TypeQualifier;
 glslparser.TypeQualifier.UNIFORM = ["UNIFORM",4];
 glslparser.TypeQualifier.UNIFORM.toString = $estr;
 glslparser.TypeQualifier.UNIFORM.__enum__ = glslparser.TypeQualifier;
+glslparser.Eval = function() { };
+glslparser.Eval.__name__ = ["glslparser","Eval"];
+glslparser.Eval.evaluateConstantExpressions = function(ast) {
+	glslparser.Eval.variables = new haxe.ds.StringMap();
+	glslparser.Eval.iterate(ast);
+};
+glslparser.Eval.iterate = function(node) {
+	var _g = Type.getClass(node);
+	switch(_g) {
+	case Array:
+		var _;
+		_ = js.Boot.__cast(node , Array);
+		var _g2 = 0;
+		var _g1 = _.length;
+		while(_g2 < _g1) {
+			var i = _g2++;
+			glslparser.Eval.iterate(_[i]);
+		}
+		break;
+	case glslparser.VariableDeclaration:
+		var _1;
+		_1 = js.Boot.__cast(node , glslparser.VariableDeclaration);
+		glslparser.Eval.iterate(_1.typeSpecifier);
+		if(_1.typeSpecifier.qualifier == glslparser.TypeQualifier.CONST) {
+			var _g21 = 0;
+			var _g11 = _1.declarators.length;
+			while(_g21 < _g11) {
+				var i1 = _g21++;
+				glslparser.Eval.defineConst(_1.declarators[i1]);
+			}
+		}
+		break;
+	case glslparser.StructSpecifier:
+		var _2;
+		_2 = js.Boot.__cast(node , glslparser.StructSpecifier);
+		glslparser.Eval.iterate(_2.structDeclarations);
+		break;
+	default:
+		console.log("default case");
+	}
+};
+glslparser.Eval.resolveExpression = function(expr) {
+	var _g = Type.getClass(expr);
+	switch(_g) {
+	case glslparser.Literal:
+		var _;
+		_ = js.Boot.__cast(expr , glslparser.Literal);
+		return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(_);
+	case glslparser.FunctionCall:
+		var _1;
+		_1 = js.Boot.__cast(expr , glslparser.FunctionCall);
+		return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(_1);
+	case glslparser.Identifier:
+		var _2;
+		_2 = js.Boot.__cast(expr , glslparser.Identifier);
+		var e = glslparser.Eval.variables.get(_2.name);
+		if(e == null) glslparser.Eval.warn("" + _2.name + " has not been defined in this scope");
+		return glslparser.Eval.resolveExpression(e);
+	case glslparser.BinaryExpression:
+		var _3;
+		_3 = js.Boot.__cast(expr , glslparser.BinaryExpression);
+		return glslparser.Eval.resolveBinaryExpression(_3);
+	case glslparser.UnaryExpression:
+		var _4;
+		_4 = js.Boot.__cast(expr , glslparser.UnaryExpression);
+		break;
+	case glslparser.SequenceExpression:
+		var _5;
+		_5 = js.Boot.__cast(expr , glslparser.SequenceExpression);
+		break;
+	case glslparser.ConditionalExpression:
+		var _6;
+		_6 = js.Boot.__cast(expr , glslparser.ConditionalExpression);
+		break;
+	case glslparser.AssignmentExpression:
+		var _7;
+		_7 = js.Boot.__cast(expr , glslparser.AssignmentExpression);
+		break;
+	case glslparser.FieldSelectionExpression:
+		var _8;
+		_8 = js.Boot.__cast(expr , glslparser.FieldSelectionExpression);
+		break;
+	}
+	glslparser.Eval.error("cannot resolve expression " + Std.string(expr));
+	return null;
+};
+glslparser.Eval.resolveBinaryExpression = function(binExpr) {
+	var left = glslparser.Eval.resolveExpression(binExpr.left);
+	var right = glslparser.Eval.resolveExpression(binExpr.right);
+	var op = binExpr.op;
+	var leftType = glslparser._Eval.GLSLBasicExpr_Impl_.toGLSLBasicType(left);
+	var rightType = glslparser._Eval.GLSLBasicExpr_Impl_.toGLSLBasicType(right);
+	{
+		var _g = glslparser.OpType.BinOp(leftType,rightType,op);
+		switch(_g[1]) {
+		case 0:
+			switch(_g[2][1]) {
+			case 0:
+				switch(_g[2][2][1]) {
+				case 2:
+					switch(_g[3][1]) {
+					case 0:
+						switch(_g[3][2][1]) {
+						case 2:
+							switch(_g[4][1]) {
+							case 0:
+								var rv = _g[3][3];
+								var lv = _g[2][3];
+								var r = Math.floor(lv * rv);
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r,glslparser.Eval.glslFloatInt(r),glslparser.TypeClass.INT));
+							case 1:
+								var rv1 = _g[3][3];
+								var lv1 = _g[2][3];
+								var r1 = Math.floor(lv1 / rv1);
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r1,glslparser.Eval.glslFloatInt(r1),glslparser.TypeClass.INT));
+							case 2:
+								var rv2 = _g[3][3];
+								var lv2 = _g[2][3];
+								var r2 = Math.floor(lv2 % rv2);
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r2,glslparser.Eval.glslFloatInt(r2),glslparser.TypeClass.INT));
+							case 3:
+								var rv3 = _g[3][3];
+								var lv3 = _g[2][3];
+								var r3 = Math.floor(lv3 + rv3);
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r3,glslparser.Eval.glslFloatInt(r3),glslparser.TypeClass.INT));
+							case 4:
+								var rv4 = _g[3][3];
+								var lv4 = _g[2][3];
+								var r4 = Math.floor(lv4 - rv4);
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r4,glslparser.Eval.glslFloatInt(r4),glslparser.TypeClass.INT));
+							case 7:
+								var rv5 = _g[3][3];
+								var lv5 = _g[2][3];
+								var r5 = lv5 < rv5;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r5,glslparser.Eval.glslBoolString(r5),glslparser.TypeClass.BOOL));
+							case 8:
+								var rv6 = _g[3][3];
+								var lv6 = _g[2][3];
+								var r6 = lv6 > rv6;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r6,glslparser.Eval.glslBoolString(r6),glslparser.TypeClass.BOOL));
+							case 9:
+								var rv7 = _g[3][3];
+								var lv7 = _g[2][3];
+								var r7 = lv7 <= rv7;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r7,glslparser.Eval.glslBoolString(r7),glslparser.TypeClass.BOOL));
+							case 10:
+								var rv8 = _g[3][3];
+								var lv8 = _g[2][3];
+								var r8 = lv8 >= rv8;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r8,glslparser.Eval.glslBoolString(r8),glslparser.TypeClass.BOOL));
+							case 11:
+								var rv9 = _g[3][3];
+								var lv9 = _g[2][3];
+								var r9 = lv9 == rv9;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r9,glslparser.Eval.glslBoolString(r9),glslparser.TypeClass.BOOL));
+							case 12:
+								var rv10 = _g[3][3];
+								var lv10 = _g[2][3];
+								var r10 = lv10 != rv10;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r10,glslparser.Eval.glslBoolString(r10),glslparser.TypeClass.BOOL));
+							case 5:
+								var rv11 = _g[3][3];
+								var lv11 = _g[2][3];
+								var r11 = Math.floor(lv11 << rv11);
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r11,glslparser.Eval.glslFloatInt(r11),glslparser.TypeClass.INT));
+							case 6:
+								var rv12 = _g[3][3];
+								var lv12 = _g[2][3];
+								var r12 = Math.floor(lv12 >> rv12);
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r12,glslparser.Eval.glslFloatInt(r12),glslparser.TypeClass.INT));
+							case 13:
+								var rv13 = _g[3][3];
+								var lv13 = _g[2][3];
+								var r13 = Math.floor(lv13 & rv13);
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r13,glslparser.Eval.glslFloatInt(r13),glslparser.TypeClass.INT));
+							case 14:
+								var rv14 = _g[3][3];
+								var lv14 = _g[2][3];
+								var r14 = Math.floor(lv14 ^ rv14);
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r14,glslparser.Eval.glslFloatInt(r14),glslparser.TypeClass.INT));
+							case 15:
+								var rv15 = _g[3][3];
+								var lv15 = _g[2][3];
+								var r15 = Math.floor(lv15 | rv15);
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r15,glslparser.Eval.glslFloatInt(r15),glslparser.TypeClass.INT));
+							default:
+							}
+							break;
+						default:
+						}
+						break;
+					default:
+					}
+					break;
+				case 1:
+					switch(_g[3][1]) {
+					case 0:
+						switch(_g[3][2][1]) {
+						case 1:
+							switch(_g[4][1]) {
+							case 0:
+								var rv16 = _g[3][3];
+								var lv16 = _g[2][3];
+								var r16 = lv16 * rv16;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r16,glslparser.Eval.glslFloatString(r16),glslparser.TypeClass.FLOAT));
+							case 1:
+								var rv17 = _g[3][3];
+								var lv17 = _g[2][3];
+								var r17 = lv17 / rv17;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r17,glslparser.Eval.glslFloatString(r17),glslparser.TypeClass.FLOAT));
+							case 2:
+								var rv18 = _g[3][3];
+								var lv18 = _g[2][3];
+								var r18 = Math.floor(lv18 % rv18);
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r18,glslparser.Eval.glslFloatString(r18),glslparser.TypeClass.FLOAT));
+							case 3:
+								var rv19 = _g[3][3];
+								var lv19 = _g[2][3];
+								var r19 = lv19 + rv19;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r19,glslparser.Eval.glslFloatString(r19),glslparser.TypeClass.FLOAT));
+							case 4:
+								var rv20 = _g[3][3];
+								var lv20 = _g[2][3];
+								var r20 = lv20 - rv20;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r20,glslparser.Eval.glslFloatString(r20),glslparser.TypeClass.FLOAT));
+							case 7:
+								var rv21 = _g[3][3];
+								var lv21 = _g[2][3];
+								var r21 = lv21 < rv21;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r21,glslparser.Eval.glslBoolString(r21),glslparser.TypeClass.BOOL));
+							case 8:
+								var rv22 = _g[3][3];
+								var lv22 = _g[2][3];
+								var r22 = lv22 > rv22;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r22,glslparser.Eval.glslBoolString(r22),glslparser.TypeClass.BOOL));
+							case 9:
+								var rv23 = _g[3][3];
+								var lv23 = _g[2][3];
+								var r23 = lv23 <= rv23;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r23,glslparser.Eval.glslBoolString(r23),glslparser.TypeClass.BOOL));
+							case 10:
+								var rv24 = _g[3][3];
+								var lv24 = _g[2][3];
+								var r24 = lv24 >= rv24;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r24,glslparser.Eval.glslBoolString(r24),glslparser.TypeClass.BOOL));
+							case 11:
+								var rv25 = _g[3][3];
+								var lv25 = _g[2][3];
+								var r25 = lv25 == rv25;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r25,glslparser.Eval.glslBoolString(r25),glslparser.TypeClass.BOOL));
+							case 12:
+								var rv26 = _g[3][3];
+								var lv26 = _g[2][3];
+								var r26 = lv26 != rv26;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r26,glslparser.Eval.glslBoolString(r26),glslparser.TypeClass.BOOL));
+							default:
+							}
+							break;
+						default:
+						}
+						break;
+					default:
+					}
+					break;
+				case 3:
+					switch(_g[3][1]) {
+					case 0:
+						switch(_g[3][2][1]) {
+						case 3:
+							switch(_g[4][1]) {
+							case 11:
+								var rv27 = _g[3][3];
+								var lv27 = _g[2][3];
+								var r27 = lv27 == rv27;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r27,glslparser.Eval.glslBoolString(r27),glslparser.TypeClass.BOOL));
+							case 16:
+								var rv28 = _g[3][3];
+								var lv28 = _g[2][3];
+								var r28 = lv28 && rv28;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r28,glslparser.Eval.glslBoolString(r28),glslparser.TypeClass.BOOL));
+							case 17:
+								var rv29 = _g[3][3];
+								var lv29 = _g[2][3];
+								var r29 = !lv29 != !rv29;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r29,glslparser.Eval.glslBoolString(r29),glslparser.TypeClass.BOOL));
+							case 18:
+								var rv30 = _g[3][3];
+								var lv30 = _g[2][3];
+								var r30 = lv30 || rv30;
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r30,glslparser.Eval.glslBoolString(r30),glslparser.TypeClass.BOOL));
+							default:
+							}
+							break;
+						default:
+						}
+						break;
+					default:
+					}
+					break;
+				default:
+				}
+				break;
+			default:
+			}
+			break;
+		default:
+		}
+	}
+	glslparser.Eval.error("could not resolve binary expression " + Std.string(left) + " " + Std.string(op) + " " + Std.string(rightType));
+	return null;
+};
+glslparser.Eval.resolveUnaryExpression = function(unExpr) {
+	var arg = glslparser.Eval.resolveExpression(unExpr.arg);
+	var op = unExpr.op;
+	var argType = glslparser._Eval.GLSLBasicExpr_Impl_.toGLSLBasicType(arg);
+	glslparser.Eval.error("could not resolve unary expression " + Std.string(unExpr));
+	return null;
+};
+glslparser.Eval.defineType = function(specifier) {
+	console.log("#! define type " + Std.string(specifier));
+};
+glslparser.Eval.defineConst = function(declarator) {
+	console.log("define const " + declarator.name);
+	var value = glslparser.Eval.resolveExpression(declarator.initializer);
+	glslparser.Eval.variables.set(declarator.name,value);
+	console.log(glslparser.Eval.variables.toString());
+};
+glslparser.Eval.glslFloatString = function(f) {
+	var str;
+	if(f == null) str = "null"; else str = "" + f;
+	var rx = new EReg("\\.","g");
+	if(!rx.match(str)) str += ".0";
+	return str;
+};
+glslparser.Eval.glslFloatInt = function(i) {
+	var str;
+	if(i == null) str = "null"; else str = "" + i;
+	var rx = new EReg("(\\d+)\\.","g");
+	if(rx.match(str)) str = rx.matched(1);
+	if(str == "") str = "0";
+	return str;
+};
+glslparser.Eval.glslBoolString = function(b) {
+	if(b == null) return "null"; else return "" + b;
+};
+glslparser.Eval.warn = function(msg) {
+	console.log("Eval warning: " + msg);
+};
+glslparser.Eval.error = function(msg) {
+	throw "Eval error: " + msg;
+};
+glslparser.OpType = { __ename__ : true, __constructs__ : ["BinOp","UnOp"] };
+glslparser.OpType.BinOp = function(l,r,op) { var $x = ["BinOp",0,l,r,op]; $x.__enum__ = glslparser.OpType; $x.toString = $estr; return $x; };
+glslparser.OpType.UnOp = function(arg,op,isPrefix) { var $x = ["UnOp",1,arg,op,isPrefix]; $x.__enum__ = glslparser.OpType; $x.toString = $estr; return $x; };
+glslparser.GLSLBasicType = { __ename__ : true, __constructs__ : ["LiteralType","FunctionCallType"] };
+glslparser.GLSLBasicType.LiteralType = function(t,v) { var $x = ["LiteralType",0,t,v]; $x.__enum__ = glslparser.GLSLBasicType; $x.toString = $estr; return $x; };
+glslparser.GLSLBasicType.FunctionCallType = ["FunctionCallType",1];
+glslparser.GLSLBasicType.FunctionCallType.toString = $estr;
+glslparser.GLSLBasicType.FunctionCallType.__enum__ = glslparser.GLSLBasicType;
+glslparser._Eval = {};
+glslparser._Eval.GLSLBasicExpr_Impl_ = {};
+glslparser._Eval.GLSLBasicExpr_Impl_.__name__ = ["glslparser","_Eval","GLSLBasicExpr_Impl_"];
+glslparser._Eval.GLSLBasicExpr_Impl_._new = function(expr) {
+	var this1;
+	if(!glslparser._Eval.GLSLBasicExpr_Impl_.isFullyresolved(expr)) glslparser.Eval.error("cannot create GLSLBasicExpr; expression is not fully resolved. " + Std.string(expr));
+	this1 = expr;
+	return this1;
+};
+glslparser._Eval.GLSLBasicExpr_Impl_.isFullyresolved = function(expr) {
+	var _g = Type.getClass(expr);
+	switch(_g) {
+	case glslparser.Literal:
+		return true;
+	case glslparser.FunctionCall:
+		var _;
+		_ = js.Boot.__cast(expr , glslparser.FunctionCall);
+		return _.constructor;
+	}
+	return false;
+};
+glslparser._Eval.GLSLBasicExpr_Impl_.toGLSLBasicType = function(this1) {
+	if(Type.getClass(this1) == glslparser.Literal) {
+		var _;
+		_ = js.Boot.__cast(this1 , glslparser.Literal);
+		return glslparser.GLSLBasicType.LiteralType(_.typeClass,_.value);
+	} else if(Type.getClass(this1) == glslparser.FunctionCall) {
+		var _1;
+		_1 = js.Boot.__cast(this1 , glslparser.FunctionCall);
+		glslparser.Eval.error("FunctionCallType not supported yet");
+		return glslparser.GLSLBasicType.FunctionCallType;
+	}
+	glslparser.Eval.error("unrecognized GLSLBasicExpr: " + Std.string(this1));
+	return null;
+};
+glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression = function(expr) {
+	var this1;
+	if(!glslparser._Eval.GLSLBasicExpr_Impl_.isFullyresolved(expr)) glslparser.Eval.error("cannot create GLSLBasicExpr; expression is not fully resolved. " + Std.string(expr));
+	this1 = expr;
+	return this1;
+};
 glslparser.TokenType = { __ename__ : true, __constructs__ : ["ATTRIBUTE","CONST","BOOL","FLOAT","INT","BREAK","CONTINUE","DO","ELSE","FOR","IF","DISCARD","RETURN","BVEC2","BVEC3","BVEC4","IVEC2","IVEC3","IVEC4","VEC2","VEC3","VEC4","MAT2","MAT3","MAT4","IN","OUT","INOUT","UNIFORM","VARYING","SAMPLER2D","SAMPLERCUBE","STRUCT","VOID","WHILE","INVARIANT","HIGH_PRECISION","MEDIUM_PRECISION","LOW_PRECISION","PRECISION","BOOLCONSTANT","RESERVED_KEYWORD","LEFT_OP","RIGHT_OP","INC_OP","DEC_OP","LE_OP","GE_OP","EQ_OP","NE_OP","AND_OP","OR_OP","XOR_OP","MUL_ASSIGN","DIV_ASSIGN","ADD_ASSIGN","MOD_ASSIGN","SUB_ASSIGN","LEFT_ASSIGN","RIGHT_ASSIGN","AND_ASSIGN","XOR_ASSIGN","OR_ASSIGN","LEFT_PAREN","RIGHT_PAREN","LEFT_BRACKET","RIGHT_BRACKET","LEFT_BRACE","RIGHT_BRACE","DOT","COMMA","COLON","EQUAL","SEMICOLON","BANG","DASH","TILDE","PLUS","STAR","SLASH","PERCENT","LEFT_ANGLE","RIGHT_ANGLE","VERTICAL_BAR","CARET","AMPERSAND","QUESTION","IDENTIFIER","TYPE_NAME","FIELD_SELECTION","INTCONSTANT","FLOATCONSTANT","BLOCK_COMMENT","LINE_COMMENT","PREPROCESSOR","WHITESPACE"] };
 glslparser.TokenType.ATTRIBUTE = ["ATTRIBUTE",0];
 glslparser.TokenType.ATTRIBUTE.toString = $estr;
@@ -1246,11 +1672,11 @@ glslparser.ParserReducer.reduce = function(ruleno) {
 	case 21:
 		return glslparser.ParserReducer.s(1);
 	case 22:
-		var n8 = new glslparser.FunctionCall(glslparser.ParserReducer.t(1).data);
+		var n8 = new glslparser.FunctionCall(glslparser.ParserReducer.t(1).data,null,true);
 		var e8 = glslparser.EMinorType.Node(n8);
 		return e8;
 	case 23:
-		var n9 = new glslparser.FunctionCall(glslparser.ParserReducer.t(1).data);
+		var n9 = new glslparser.FunctionCall(glslparser.ParserReducer.t(1).data,null,false);
 		var e9 = glslparser.EMinorType.Node(n9);
 		return e9;
 	case 24:
@@ -2383,6 +2809,27 @@ haxe.ds.StringMap.prototype = {
 	}
 	,exists: function(key) {
 		return this.h.hasOwnProperty("$" + key);
+	}
+	,keys: function() {
+		var a = [];
+		for( var key in this.h ) {
+		if(this.h.hasOwnProperty(key)) a.push(key.substr(1));
+		}
+		return HxOverrides.iter(a);
+	}
+	,toString: function() {
+		var s = new StringBuf();
+		s.b += "{";
+		var it = this.keys();
+		while( it.hasNext() ) {
+			var i = it.next();
+			if(i == null) s.b += "null"; else s.b += "" + i;
+			s.b += " => ";
+			s.add(Std.string(this.get(i)));
+			if(it.hasNext()) s.b += ", ";
+		}
+		s.b += "}";
+		return s.b;
 	}
 	,__class__: haxe.ds.StringMap
 };
