@@ -21,7 +21,7 @@ class Main{
 
 		//load input if there is any
 		var savedInput = loadInput();
-		if(saveInput != null) Editor.setValue(savedInput);
+		if(savedInput != null) Editor.setValue(savedInput);
 
 		Editor.on("change", function(e:Dynamic){
 			inputChanged = true;
