@@ -79,6 +79,8 @@ class Main{
 			warningsElement.innerHTML = '';
 			messagesElement.className = '';
 		}
+
+		untyped js.Browser.window.fitMessageContent();
 	}
 
 	function saveInput(input:String){
