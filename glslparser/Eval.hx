@@ -20,10 +20,10 @@ import glslparser.AST;
 import haxe.macro.Expr;
 
 class Eval{
-	static var variables:Map<String, GLSLConstantValue>;
+	static var variables:Map<String, GLSLBasicExpr>;
 
 	static public function evaluateConstantExpressions(ast:Node):Void{
-		variables = new Map<String, GLSLConstantValue>();
+		variables = new Map<String, GLSLBasicExpr>();
 		iterate(ast);
 	}
 
@@ -42,6 +42,8 @@ class Eval{
 			case StructSpecifier: var _ = cast(node, StructSpecifier);
 				iterate(_.structDeclarations);
 
+			//#!
+
 			default:
 				trace('default case');
 		}
@@ -49,7 +51,7 @@ class Eval{
 	}
 
 	//collapses constant expression down to singular expression
-	static function resolveExpression(expr:Expression):GLSLConstantValue{
+	static function resolveExpression(expr:Expression):GLSLBasicExpr{
 		switch (Type.getClass(expr)) {
 			//fully resolved expressions
 			case Literal: var _ = cast(expr, Literal<Dynamic>);
@@ -83,7 +85,7 @@ class Eval{
 		return null;
 	}
 
-	static function resolveBinaryExpression(binExpr:BinaryExpression):GLSLConstantValue{
+	static function resolveBinaryExpression(binExpr:BinaryExpression):GLSLBasicExpr{
 		var left = resolveExpression(binExpr.left);
 		var right = resolveExpression(binExpr.right);
 		var op = binExpr.op;
@@ -211,6 +213,23 @@ class Eval{
 		return null;
 	}
 
+	static function resolveUnaryExpression(unExpr:UnaryExpression):GLSLBasicExpr{
+		var arg = resolveExpression(unExpr.arg);
+		var op = unExpr.op;
+
+		var argType:GLSLBasicType = arg;
+
+		// switch (UnOp(argType, unExpr.op, unExpr.isPrefix)) {
+		// 	case UnOp(INT, INC_OP, isPrefix):
+		// 		// alter arg?
+		// 		// return new Literal(r, glslBoolString(r), INT);
+
+		// }
+
+		error('could not resolve unary expression $unExpr'); //#! needs improving
+		return null;
+	}
+
 	static function defineType(specifier:StructSpecifier){
 		trace('#! define type $specifier');
 	}
@@ -254,6 +273,7 @@ class Eval{
 
 enum OpType{
 	BinOp(l:GLSLBasicType, r:GLSLBasicType, op:BinaryOperator);
+	UnOp(arg:GLSLBasicType, op:UnaryOperator, isPrefix:Bool);
 }
  
 enum GLSLBasicType{
@@ -262,10 +282,10 @@ enum GLSLBasicType{
 }
 
 @:access(glslparser.Eval)
-abstract GLSLConstantValue(Expression) to Expression{
+abstract GLSLBasicExpr(Expression) to Expression{
 	public inline function new(expr:Expression){
 		if(!isFullyresolved(expr))
-			Eval.error('cannot create GLSLConstantValue; expression is not fully resolved. $expr');
+			Eval.error('cannot create GLSLBasicExpr; expression is not fully resolved. $expr');
 
 		this = expr;
 	}
@@ -290,9 +310,9 @@ abstract GLSLConstantValue(Expression) to Expression{
 			return FunctionCallType;
 		}
 
-		Eval.error('unrecognized GLSLConstantValue: $this');
+		Eval.error('unrecognized GLSLBasicExpr: $this');
 		return null;
 	}
 
-	@:from static function fromExpression(expr:Expression) return new GLSLConstantValue(expr);
+	@:from static function fromExpression(expr:Expression) return new GLSLBasicExpr(expr);
 }

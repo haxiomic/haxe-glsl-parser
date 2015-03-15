@@ -6,22 +6,66 @@
 	<link rel="stylesheet" type="text/css" href="css/skeleton.haxiomic.css">
 
 	<style>
-		.glsl-input{
-			width: 100%;
-			height: 400px;
+		body{
+			margin: 0;
+			padding: 0;
 		}
+
+		#editor {
+			margin: 0;
+			padding: 0;
+
+			position: absolute;
+			left: 0;
+			right: 50%;
+			top: 0;
+			bottom: 0;
+		}
+
+		#json-container{
+			position: absolute;
+			left: 50%;
+			right: 0;
+			top: 40px;
+			bottom: 0;
+
+			margin: 0;
+			padding: 20px 30px;
+			overflow: scroll;
+			background-color: #F9F5F7;
+		}
+
+		#messages{
+			position: absolute;
+			left: 50%;
+			right: 0;
+			top: 0;
+			height: 40px;
+
+			display: flex;
+			box-sizing: border-box;
+			align-items: center;
+
+			margin: 0;
+			padding: 5px 30px;
+			overflow: scroll;
+			font-size: 16px;
+			background-color: rgb(236, 232, 234);
+
+			border-bottom: 2px solid rgb(221, 221, 223);
+		}
+
+		#success{
+			/*font-size: 19px;*/
+			color: rgb(186, 185, 190);
+		}
+
 
 		#warnings{
 			color: rgb(204, 120, 120);
 		}
 
-		.ast-row{
-			margin-top:30px;
-		}
-
-		#editor {
-			width: 100%;
-			height: 300px;
+		.renderjson{
 			margin: 0;
 			padding: 0;
 		}
@@ -40,33 +84,24 @@
 	</style>
 </head>
 <body>
-	<div class="container">
-		<h1>GLSL Parser Demo</h1>
-		<hr>
-
-		<div class="row">
-			<div class="column twelve">
-
-				<pre id="editor">uniform float time;
+	<pre id="editor">uniform float time;
 
 void main( void ){
     int i = 3;
 }</pre>
-				<div id="warnings"></div>
-			</div>
-		</div>
 
-		<div class="row ast-row">
-			<div class="column twelve" id="json-container">
-			</div>
-		</div>
+	<div id="json-container"></div>
+	<div id="messages">
+		<div id="success"></div>
+		<div id="warnings"></div>
 	</div>
+		
 
 	<script src="js/ace/ace.js" type="text/javascript" charset="utf-8"></script>
 	<script src="js/renderjson.js" type="text/javascript" charset="utf-8"></script>
 	<script>
 	    var editor = ace.edit("editor");
-	    editor.setTheme("ace/theme/chrome");
+	    editor.setTheme("ace/theme/monokai");
 	    editor.getSession().setMode("ace/mode/glsl");
 	    editor.setShowPrintMargin(false);
 
