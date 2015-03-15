@@ -19,6 +19,10 @@ class Main{
 		warningsElement =  js.Browser.document.getElementById('warnings');
 		successElement =  js.Browser.document.getElementById('success');
 
+		//load input if there is any
+		var savedInput = loadInput();
+		if(saveInput != null) Editor.setValue(savedInput);
+
 		Editor.on("change", function(e:Dynamic){
 			inputChanged = true;
 		});
@@ -43,9 +47,10 @@ class Main{
 
 			Eval.evaluateConstantExpressions(ast);
 
-			showMessages(Parser.warnings.concat(Tokenizer.warnings));
+			saveInput(input);
+			showErrors(Parser.warnings.concat(Tokenizer.warnings));
 		}catch(e:Dynamic){
-			showMessages([e]);
+			showErrors([e]);
 			
 			jsonContainer.innerHTML = '';
 		}
@@ -64,17 +69,24 @@ class Main{
 		);
 	}
 
-	function showMessages(warnings){
-
+	function showErrors(warnings){
 		if(warnings.length > 0){
 			warningsElement.innerHTML = warnings.join('<br>');
 			successElement.innerHTML = '';
+			messagesElement.className = 'error';
 		}else{
 			successElement.innerHTML = 'GLSL parsed without error';
 			warningsElement.innerHTML = '';
+			messagesElement.className = '';
 		}
+	}
 
+	function saveInput(input:String){
+		js.Browser.getLocalStorage().setItem('glsl-input', input);
+	}
 
+	function loadInput(){
+		return js.Browser.getLocalStorage().getItem('glsl-input');
 	}
 
 	static function main() new Main();

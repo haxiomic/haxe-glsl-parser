@@ -40,9 +40,12 @@ class Eval{
 				}
 
 			case StructSpecifier: var _ = cast(node, StructSpecifier);
+				defineType(_);
 				iterate(_.structDeclarations);
 
-			//#!
+			case StructDeclaration: var _ = cast(node, StructDeclaration);
+				iterate(_.typeSpecifier);
+
 
 			default:
 				trace('default case');
