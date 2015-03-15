@@ -104,7 +104,7 @@ Main.prototype = {
 		} else {
 			this.successElement.innerHTML = "GLSL parsed without error";
 			this.warningsElement.innerHTML = "";
-			this.messagesElement.className = "";
+			this.messagesElement.className = "success";
 		}
 		window.fitMessageContent();
 	}
