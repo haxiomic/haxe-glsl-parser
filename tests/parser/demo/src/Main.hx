@@ -21,7 +21,8 @@ class Main{
 
 		//load input if there is any
 		var savedInput = loadInput();
-		if(savedInput != null) Editor.setValue(savedInput);
+		if(savedInput != null) Editor.setValue(savedInput, 1);
+		else Editor.setValue('uniform float time;\nvoid main( void ){\n\tint i = 3;\n}', 1);
 
 		Editor.on("change", function(e:Dynamic){
 			inputChanged = true;
@@ -63,8 +64,9 @@ class Main{
 		jsonContainer.innerHTML = '';
 		untyped jsonContainer.appendChild(
 			renderjson
-			.set_show_to_level(5)
+			.set_show_to_level(3)
 			.set_sort_objects(true)
+			.set_icons('', '-')
 			(ast)
 		);
 	}
@@ -80,25 +82,21 @@ class Main{
 			}
 			warningsElement.innerHTML = '';
 			warningsElement.appendChild(ul);
+			warningsElement.style.width = '100%';//chrome dom size fix
+			warningsElement.style.display = '';
 			successElement.innerHTML = '';
+			successElement.style.display = 'none';
 			messagesElement.className = 'error';
 		}else{
 			successElement.innerHTML = 'GLSL parsed without error';
+			successElement.style.width = '100%';
+			successElement.style.display = '';
 			warningsElement.innerHTML = '';
+			warningsElement.style.display = 'none';
 			messagesElement.className = 'success';
 		}
 
-		//fix for sizing issue
-		var pollTimer = new haxe.Timer(50);
-		var count = 0;
-		pollTimer.run = function(){
-			untyped js.Browser.window.fitMessageContent();
-			count++;
-			if(count > 10) pollTimer.stop();
-		}
-
-		pollTimer.run();
-
+		untyped js.Browser.window.fitMessageContent();
 	}
 
 	function saveInput(input:String){
