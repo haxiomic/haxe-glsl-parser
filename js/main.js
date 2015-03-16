@@ -47,13 +47,6 @@ HxOverrides.indexOf = function(a,obj,i) {
 	}
 	return -1;
 };
-HxOverrides.iter = function(a) {
-	return { cur : 0, arr : a, hasNext : function() {
-		return this.cur < this.arr.length;
-	}, next : function() {
-		return this.arr[this.cur++];
-	}};
-};
 var Main = function() {
 	this.inputChanged = false;
 	var _g = this;
@@ -62,7 +55,7 @@ var Main = function() {
 	this.warningsElement = window.document.getElementById("warnings");
 	this.successElement = window.document.getElementById("success");
 	var savedInput = this.loadInput();
-	if(savedInput != null) Editor.setValue(savedInput);
+	if(savedInput != null) Editor.setValue(savedInput,1); else Editor.setValue("uniform float time;\nvoid main( void ){\n\tint i = 3;\n}",1);
 	Editor.on("change",function(e) {
 		_g.inputChanged = true;
 	});
@@ -94,7 +87,7 @@ Main.prototype = {
 	}
 	,displayAST: function(ast) {
 		this.jsonContainer.innerHTML = "";
-		this.jsonContainer.appendChild((renderjson.set_show_to_level(5).set_sort_objects(true))(ast));
+		this.jsonContainer.appendChild((renderjson.set_show_to_level(3).set_sort_objects(true).set_icons("","-"))(ast));
 	}
 	,showErrors: function(warnings) {
 		if(warnings.length > 0) {
@@ -109,21 +102,20 @@ Main.prototype = {
 			}
 			this.warningsElement.innerHTML = "";
 			this.warningsElement.appendChild(ul);
+			this.warningsElement.style.width = "100%";
+			this.warningsElement.style.display = "";
 			this.successElement.innerHTML = "";
+			this.successElement.style.display = "none";
 			this.messagesElement.className = "error";
 		} else {
 			this.successElement.innerHTML = "GLSL parsed without error";
+			this.successElement.style.width = "100%";
+			this.successElement.style.display = "";
 			this.warningsElement.innerHTML = "";
+			this.warningsElement.style.display = "none";
 			this.messagesElement.className = "success";
 		}
-		var pollTimer = new haxe.Timer(50);
-		var count = 0;
-		pollTimer.run = function() {
-			window.fitMessageContent();
-			count++;
-			if(count > 10) pollTimer.stop();
-		};
-		pollTimer.run();
+		window.fitMessageContent();
 	}
 	,saveInput: function(input) {
 		js.Browser.getLocalStorage().setItem("glsl-input",input);
@@ -158,16 +150,6 @@ Std.parseInt = function(x) {
 };
 Std.parseFloat = function(x) {
 	return parseFloat(x);
-};
-var StringBuf = function() {
-	this.b = "";
-};
-StringBuf.__name__ = ["StringBuf"];
-StringBuf.prototype = {
-	add: function(x) {
-		this.b += Std.string(x);
-	}
-	,__class__: StringBuf
 };
 var Type = function() { };
 Type.__name__ = ["Type"];
@@ -245,6 +227,14 @@ glslparser.Expression.__super__ = glslparser.Node;
 glslparser.Expression.prototype = $extend(glslparser.Node.prototype,{
 	__class__: glslparser.Expression
 });
+glslparser.TypedExpression = function() {
+	glslparser.Expression.call(this);
+};
+glslparser.TypedExpression.__name__ = ["glslparser","TypedExpression"];
+glslparser.TypedExpression.__super__ = glslparser.Expression;
+glslparser.TypedExpression.prototype = $extend(glslparser.Expression.prototype,{
+	__class__: glslparser.TypedExpression
+});
 glslparser.Identifier = function(name) {
 	this.name = name;
 	glslparser.Expression.call(this);
@@ -258,11 +248,11 @@ glslparser.Literal = function(value,raw,typeClass) {
 	this.value = value;
 	this.raw = raw;
 	this.typeClass = typeClass;
-	glslparser.Expression.call(this);
+	glslparser.TypedExpression.call(this);
 };
 glslparser.Literal.__name__ = ["glslparser","Literal"];
-glslparser.Literal.__super__ = glslparser.Expression;
-glslparser.Literal.prototype = $extend(glslparser.Expression.prototype,{
+glslparser.Literal.__super__ = glslparser.TypedExpression;
+glslparser.Literal.prototype = $extend(glslparser.TypedExpression.prototype,{
 	__class__: glslparser.Literal
 });
 glslparser.BinaryExpression = function(op,left,right) {
@@ -338,17 +328,24 @@ glslparser.ArrayElementSelectionExpression.__super__ = glslparser.Expression;
 glslparser.ArrayElementSelectionExpression.prototype = $extend(glslparser.Expression.prototype,{
 	__class__: glslparser.ArrayElementSelectionExpression
 });
-glslparser.FunctionCall = function(name,parameters,constructor) {
-	if(constructor == null) constructor = false;
+glslparser.FunctionCall = function(name,parameters) {
 	this.name = name;
 	if(parameters != null) this.parameters = parameters; else this.parameters = [];
-	this.constructor = constructor;
-	glslparser.Expression.call(this);
+	glslparser.TypedExpression.call(this);
 };
 glslparser.FunctionCall.__name__ = ["glslparser","FunctionCall"];
-glslparser.FunctionCall.__super__ = glslparser.Expression;
-glslparser.FunctionCall.prototype = $extend(glslparser.Expression.prototype,{
+glslparser.FunctionCall.__super__ = glslparser.TypedExpression;
+glslparser.FunctionCall.prototype = $extend(glslparser.TypedExpression.prototype,{
 	__class__: glslparser.FunctionCall
+});
+glslparser.Constructor = function(name,typeClass,parameters) {
+	this.typeClass = typeClass;
+	glslparser.FunctionCall.call(this,name,parameters);
+};
+glslparser.Constructor.__name__ = ["glslparser","Constructor"];
+glslparser.Constructor.__super__ = glslparser.FunctionCall;
+glslparser.Constructor.prototype = $extend(glslparser.FunctionCall.prototype,{
+	__class__: glslparser.Constructor
 });
 glslparser.Declaration = function() {
 	glslparser.Expression.call(this);
@@ -679,7 +676,7 @@ glslparser.JumpMode.RETURN.__enum__ = glslparser.JumpMode;
 glslparser.JumpMode.DISCARD = ["DISCARD",3];
 glslparser.JumpMode.DISCARD.toString = $estr;
 glslparser.JumpMode.DISCARD.__enum__ = glslparser.JumpMode;
-glslparser.TypeClass = { __ename__ : true, __constructs__ : ["VOID","FLOAT","INT","BOOL","VEC2","VEC3","VEC4","BVEC2","BVEC3","BVEC4","IVEC2","IVEC3","IVEC4","MAT2","MAT3","MAT4","SAMPLER2D","SAMPLERCUBE","STRUCT","TYPE_NAME"] };
+glslparser.TypeClass = { __ename__ : true, __constructs__ : ["VOID","FLOAT","INT","BOOL","VEC2","VEC3","VEC4","BVEC2","BVEC3","BVEC4","IVEC2","IVEC3","IVEC4","MAT2","MAT3","MAT4","SAMPLER2D","SAMPLERCUBE","STRUCT","USER_TYPE"] };
 glslparser.TypeClass.VOID = ["VOID",0];
 glslparser.TypeClass.VOID.toString = $estr;
 glslparser.TypeClass.VOID.__enum__ = glslparser.TypeClass;
@@ -737,9 +734,9 @@ glslparser.TypeClass.SAMPLERCUBE.__enum__ = glslparser.TypeClass;
 glslparser.TypeClass.STRUCT = ["STRUCT",18];
 glslparser.TypeClass.STRUCT.toString = $estr;
 glslparser.TypeClass.STRUCT.__enum__ = glslparser.TypeClass;
-glslparser.TypeClass.TYPE_NAME = ["TYPE_NAME",19];
-glslparser.TypeClass.TYPE_NAME.toString = $estr;
-glslparser.TypeClass.TYPE_NAME.__enum__ = glslparser.TypeClass;
+glslparser.TypeClass.USER_TYPE = ["USER_TYPE",19];
+glslparser.TypeClass.USER_TYPE.toString = $estr;
+glslparser.TypeClass.USER_TYPE.__enum__ = glslparser.TypeClass;
 glslparser.ParameterQualifier = { __ename__ : true, __constructs__ : ["IN","OUT","INOUT"] };
 glslparser.ParameterQualifier.IN = ["IN",0];
 glslparser.ParameterQualifier.IN.toString = $estr;
@@ -794,7 +791,8 @@ glslparser.Eval.iterate = function(node) {
 			var _g11 = _1.declarators.length;
 			while(_g21 < _g11) {
 				var i1 = _g21++;
-				glslparser.Eval.defineConst(_1.declarators[i1]);
+				var initExpr = glslparser.Eval.defineConst(_1.declarators[i1]);
+				if(glslparser._Eval.GLSLBasicExpr_Impl_.get_typeName(initExpr) != _1.typeSpecifier.typeName) glslparser.Eval.error("type mismatch");
 			}
 		}
 		break;
@@ -820,39 +818,49 @@ glslparser.Eval.resolveExpression = function(expr) {
 		var _;
 		_ = js.Boot.__cast(expr , glslparser.Literal);
 		return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(_);
-	case glslparser.FunctionCall:
+	case glslparser.Constructor:
 		var _1;
-		_1 = js.Boot.__cast(expr , glslparser.FunctionCall);
+		_1 = js.Boot.__cast(expr , glslparser.Constructor);
+		var _g2 = 0;
+		var _g1 = _1.parameters.length;
+		while(_g2 < _g1) {
+			var i = _g2++;
+			_1.parameters[i] = glslparser.Eval.resolveExpression(_1.parameters[i]);
+		}
 		return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(_1);
-	case glslparser.Identifier:
+	case glslparser.FunctionCall:
 		var _2;
-		_2 = js.Boot.__cast(expr , glslparser.Identifier);
-		var e = glslparser.Eval.variables.get(_2.name);
-		if(e == null) glslparser.Eval.warn("" + _2.name + " has not been defined in this scope");
+		_2 = js.Boot.__cast(expr , glslparser.FunctionCall);
+		break;
+	case glslparser.Identifier:
+		var _3;
+		_3 = js.Boot.__cast(expr , glslparser.Identifier);
+		var e = glslparser.Eval.variables.get(_3.name);
+		if(e == null) glslparser.Eval.warn("" + _3.name + " has not been defined in this scope");
 		return glslparser.Eval.resolveExpression(e);
 	case glslparser.BinaryExpression:
-		var _3;
-		_3 = js.Boot.__cast(expr , glslparser.BinaryExpression);
-		return glslparser.Eval.resolveBinaryExpression(_3);
-	case glslparser.UnaryExpression:
 		var _4;
-		_4 = js.Boot.__cast(expr , glslparser.UnaryExpression);
+		_4 = js.Boot.__cast(expr , glslparser.BinaryExpression);
+		return glslparser.Eval.resolveBinaryExpression(_4);
+	case glslparser.UnaryExpression:
+		var _5;
+		_5 = js.Boot.__cast(expr , glslparser.UnaryExpression);
 		break;
 	case glslparser.SequenceExpression:
-		var _5;
-		_5 = js.Boot.__cast(expr , glslparser.SequenceExpression);
+		var _6;
+		_6 = js.Boot.__cast(expr , glslparser.SequenceExpression);
 		break;
 	case glslparser.ConditionalExpression:
-		var _6;
-		_6 = js.Boot.__cast(expr , glslparser.ConditionalExpression);
+		var _7;
+		_7 = js.Boot.__cast(expr , glslparser.ConditionalExpression);
 		break;
 	case glslparser.AssignmentExpression:
-		var _7;
-		_7 = js.Boot.__cast(expr , glslparser.AssignmentExpression);
+		var _8;
+		_8 = js.Boot.__cast(expr , glslparser.AssignmentExpression);
 		break;
 	case glslparser.FieldSelectionExpression:
-		var _8;
-		_8 = js.Boot.__cast(expr , glslparser.FieldSelectionExpression);
+		var _9;
+		_9 = js.Boot.__cast(expr , glslparser.FieldSelectionExpression);
 		break;
 	}
 	glslparser.Eval.error("cannot resolve expression " + Std.string(expr));
@@ -865,7 +873,7 @@ glslparser.Eval.resolveBinaryExpression = function(binExpr) {
 	var leftType = glslparser._Eval.GLSLBasicExpr_Impl_.toGLSLBasicType(left);
 	var rightType = glslparser._Eval.GLSLBasicExpr_Impl_.toGLSLBasicType(right);
 	{
-		var _g = glslparser.OpType.BinOp(leftType,rightType,op);
+		var _g = glslparser.OperationType.BinaryOp(leftType,rightType,op);
 		switch(_g[1]) {
 		case 0:
 			switch(_g[2][1]) {
@@ -881,27 +889,27 @@ glslparser.Eval.resolveBinaryExpression = function(binExpr) {
 								var rv = _g[3][3];
 								var lv = _g[2][3];
 								var r = Math.floor(lv * rv);
-								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r,glslparser.Eval.glslFloatInt(r),glslparser.TypeClass.INT));
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r,glslparser.Eval.glslIntString(r),glslparser.TypeClass.INT));
 							case 1:
 								var rv1 = _g[3][3];
 								var lv1 = _g[2][3];
 								var r1 = Math.floor(lv1 / rv1);
-								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r1,glslparser.Eval.glslFloatInt(r1),glslparser.TypeClass.INT));
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r1,glslparser.Eval.glslIntString(r1),glslparser.TypeClass.INT));
 							case 2:
 								var rv2 = _g[3][3];
 								var lv2 = _g[2][3];
 								var r2 = Math.floor(lv2 % rv2);
-								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r2,glslparser.Eval.glslFloatInt(r2),glslparser.TypeClass.INT));
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r2,glslparser.Eval.glslIntString(r2),glslparser.TypeClass.INT));
 							case 3:
 								var rv3 = _g[3][3];
 								var lv3 = _g[2][3];
 								var r3 = Math.floor(lv3 + rv3);
-								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r3,glslparser.Eval.glslFloatInt(r3),glslparser.TypeClass.INT));
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r3,glslparser.Eval.glslIntString(r3),glslparser.TypeClass.INT));
 							case 4:
 								var rv4 = _g[3][3];
 								var lv4 = _g[2][3];
 								var r4 = Math.floor(lv4 - rv4);
-								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r4,glslparser.Eval.glslFloatInt(r4),glslparser.TypeClass.INT));
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r4,glslparser.Eval.glslIntString(r4),glslparser.TypeClass.INT));
 							case 7:
 								var rv5 = _g[3][3];
 								var lv5 = _g[2][3];
@@ -936,27 +944,27 @@ glslparser.Eval.resolveBinaryExpression = function(binExpr) {
 								var rv11 = _g[3][3];
 								var lv11 = _g[2][3];
 								var r11 = Math.floor(lv11 << rv11);
-								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r11,glslparser.Eval.glslFloatInt(r11),glslparser.TypeClass.INT));
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r11,glslparser.Eval.glslIntString(r11),glslparser.TypeClass.INT));
 							case 6:
 								var rv12 = _g[3][3];
 								var lv12 = _g[2][3];
 								var r12 = Math.floor(lv12 >> rv12);
-								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r12,glslparser.Eval.glslFloatInt(r12),glslparser.TypeClass.INT));
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r12,glslparser.Eval.glslIntString(r12),glslparser.TypeClass.INT));
 							case 13:
 								var rv13 = _g[3][3];
 								var lv13 = _g[2][3];
 								var r13 = Math.floor(lv13 & rv13);
-								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r13,glslparser.Eval.glslFloatInt(r13),glslparser.TypeClass.INT));
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r13,glslparser.Eval.glslIntString(r13),glslparser.TypeClass.INT));
 							case 14:
 								var rv14 = _g[3][3];
 								var lv14 = _g[2][3];
 								var r14 = Math.floor(lv14 ^ rv14);
-								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r14,glslparser.Eval.glslFloatInt(r14),glslparser.TypeClass.INT));
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r14,glslparser.Eval.glslIntString(r14),glslparser.TypeClass.INT));
 							case 15:
 								var rv15 = _g[3][3];
 								var lv15 = _g[2][3];
 								var r15 = Math.floor(lv15 | rv15);
-								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r15,glslparser.Eval.glslFloatInt(r15),glslparser.TypeClass.INT));
+								return glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression(new glslparser.Literal(r15,glslparser.Eval.glslIntString(r15),glslparser.TypeClass.INT));
 							default:
 							}
 							break;
@@ -1094,10 +1102,10 @@ glslparser.Eval.defineType = function(specifier) {
 	console.log("#! define type " + Std.string(specifier));
 };
 glslparser.Eval.defineConst = function(declarator) {
-	console.log("define const " + declarator.name);
-	var value = glslparser.Eval.resolveExpression(declarator.initializer);
-	glslparser.Eval.variables.set(declarator.name,value);
-	console.log(glslparser.Eval.variables.toString());
+	var resolvedExpr = glslparser.Eval.resolveExpression(declarator.initializer);
+	glslparser.Eval.variables.set(declarator.name,resolvedExpr);
+	console.log("defining const " + declarator.name + " as " + Std.string(resolvedExpr));
+	return resolvedExpr;
 };
 glslparser.Eval.glslFloatString = function(f) {
 	var str;
@@ -1106,7 +1114,7 @@ glslparser.Eval.glslFloatString = function(f) {
 	if(!rx.match(str)) str += ".0";
 	return str;
 };
-glslparser.Eval.glslFloatInt = function(i) {
+glslparser.Eval.glslIntString = function(i) {
 	var str;
 	if(i == null) str = "null"; else str = "" + i;
 	var rx = new EReg("(\\d+)\\.","g");
@@ -1123,32 +1131,42 @@ glslparser.Eval.warn = function(msg) {
 glslparser.Eval.error = function(msg) {
 	throw "Eval error: " + msg;
 };
-glslparser.OpType = { __ename__ : true, __constructs__ : ["BinOp","UnOp"] };
-glslparser.OpType.BinOp = function(l,r,op) { var $x = ["BinOp",0,l,r,op]; $x.__enum__ = glslparser.OpType; $x.toString = $estr; return $x; };
-glslparser.OpType.UnOp = function(arg,op,isPrefix) { var $x = ["UnOp",1,arg,op,isPrefix]; $x.__enum__ = glslparser.OpType; $x.toString = $estr; return $x; };
-glslparser.GLSLBasicType = { __ename__ : true, __constructs__ : ["LiteralType","FunctionCallType"] };
+glslparser.OperationType = { __ename__ : true, __constructs__ : ["BinaryOp","UnaryOp"] };
+glslparser.OperationType.BinaryOp = function(l,r,op) { var $x = ["BinaryOp",0,l,r,op]; $x.__enum__ = glslparser.OperationType; $x.toString = $estr; return $x; };
+glslparser.OperationType.UnaryOp = function(arg,op,isPrefix) { var $x = ["UnaryOp",1,arg,op,isPrefix]; $x.__enum__ = glslparser.OperationType; $x.toString = $estr; return $x; };
+glslparser.GLSLBasicType = { __ename__ : true, __constructs__ : ["LiteralType","ConstructorType"] };
 glslparser.GLSLBasicType.LiteralType = function(t,v) { var $x = ["LiteralType",0,t,v]; $x.__enum__ = glslparser.GLSLBasicType; $x.toString = $estr; return $x; };
-glslparser.GLSLBasicType.FunctionCallType = ["FunctionCallType",1];
-glslparser.GLSLBasicType.FunctionCallType.toString = $estr;
-glslparser.GLSLBasicType.FunctionCallType.__enum__ = glslparser.GLSLBasicType;
+glslparser.GLSLBasicType.ConstructorType = ["ConstructorType",1];
+glslparser.GLSLBasicType.ConstructorType.toString = $estr;
+glslparser.GLSLBasicType.ConstructorType.__enum__ = glslparser.GLSLBasicType;
 glslparser._Eval = {};
 glslparser._Eval.GLSLBasicExpr_Impl_ = {};
 glslparser._Eval.GLSLBasicExpr_Impl_.__name__ = ["glslparser","_Eval","GLSLBasicExpr_Impl_"];
 glslparser._Eval.GLSLBasicExpr_Impl_._new = function(expr) {
 	var this1;
-	if(!glslparser._Eval.GLSLBasicExpr_Impl_.isFullyresolved(expr)) glslparser.Eval.error("cannot create GLSLBasicExpr; expression is not fully resolved. " + Std.string(expr));
+	if(!glslparser._Eval.GLSLBasicExpr_Impl_.isFullyResolved(expr) || !js.Boot.__instanceof(expr,glslparser.TypedExpression)) glslparser.Eval.error("cannot create GLSLBasicExpr; expression is not fully resolved. " + Std.string(expr));
 	this1 = expr;
 	return this1;
 };
-glslparser._Eval.GLSLBasicExpr_Impl_.isFullyresolved = function(expr) {
+glslparser._Eval.GLSLBasicExpr_Impl_.get_typeName = function(this1) {
+	if(this1.typeClass != glslparser.TypeClass.USER_TYPE) return this1.typeClass[0].toLowerCase(); else return (js.Boot.__cast(this1 , glslparser.Constructor)).name;
+};
+glslparser._Eval.GLSLBasicExpr_Impl_.isFullyResolved = function(expr) {
 	var _g = Type.getClass(expr);
 	switch(_g) {
 	case glslparser.Literal:
 		return true;
-	case glslparser.FunctionCall:
+	case glslparser.Constructor:
 		var _;
-		_ = js.Boot.__cast(expr , glslparser.FunctionCall);
-		return _.constructor;
+		_ = js.Boot.__cast(expr , glslparser.Constructor);
+		var _g1 = 0;
+		var _g2 = _.parameters;
+		while(_g1 < _g2.length) {
+			var p = _g2[_g1];
+			++_g1;
+			if(!glslparser._Eval.GLSLBasicExpr_Impl_.isFullyResolved(p)) return false;
+		}
+		return true;
 	}
 	return false;
 };
@@ -1157,20 +1175,29 @@ glslparser._Eval.GLSLBasicExpr_Impl_.toGLSLBasicType = function(this1) {
 		var _;
 		_ = js.Boot.__cast(this1 , glslparser.Literal);
 		return glslparser.GLSLBasicType.LiteralType(_.typeClass,_.value);
-	} else if(Type.getClass(this1) == glslparser.FunctionCall) {
+	} else if(Type.getClass(this1) == glslparser.Constructor) {
 		var _1;
-		_1 = js.Boot.__cast(this1 , glslparser.FunctionCall);
+		_1 = js.Boot.__cast(this1 , glslparser.Constructor);
 		glslparser.Eval.error("FunctionCallType not supported yet");
-		return glslparser.GLSLBasicType.FunctionCallType;
+		return glslparser.GLSLBasicType.ConstructorType;
 	}
 	glslparser.Eval.error("unrecognized GLSLBasicExpr: " + Std.string(this1));
 	return null;
 };
 glslparser._Eval.GLSLBasicExpr_Impl_.fromExpression = function(expr) {
 	var this1;
-	if(!glslparser._Eval.GLSLBasicExpr_Impl_.isFullyresolved(expr)) glslparser.Eval.error("cannot create GLSLBasicExpr; expression is not fully resolved. " + Std.string(expr));
+	if(!glslparser._Eval.GLSLBasicExpr_Impl_.isFullyResolved(expr) || !js.Boot.__instanceof(expr,glslparser.TypedExpression)) glslparser.Eval.error("cannot create GLSLBasicExpr; expression is not fully resolved. " + Std.string(expr));
 	this1 = expr;
 	return this1;
+};
+glslparser.GLSLCompositeType = function() {
+};
+glslparser.GLSLCompositeType.__name__ = ["glslparser","GLSLCompositeType"];
+glslparser.GLSLCompositeType.prototype = {
+	accessField: function(name,swizzling) {
+		if(swizzling == null) swizzling = true;
+	}
+	,__class__: glslparser.GLSLCompositeType
 };
 glslparser.TokenType = { __ename__ : true, __constructs__ : ["ATTRIBUTE","CONST","BOOL","FLOAT","INT","BREAK","CONTINUE","DO","ELSE","FOR","IF","DISCARD","RETURN","BVEC2","BVEC3","BVEC4","IVEC2","IVEC3","IVEC4","VEC2","VEC3","VEC4","MAT2","MAT3","MAT4","IN","OUT","INOUT","UNIFORM","VARYING","SAMPLER2D","SAMPLERCUBE","STRUCT","VOID","WHILE","INVARIANT","HIGH_PRECISION","MEDIUM_PRECISION","LOW_PRECISION","PRECISION","BOOLCONSTANT","RESERVED_KEYWORD","LEFT_OP","RIGHT_OP","INC_OP","DEC_OP","LE_OP","GE_OP","EQ_OP","NE_OP","AND_OP","OR_OP","XOR_OP","MUL_ASSIGN","DIV_ASSIGN","ADD_ASSIGN","MOD_ASSIGN","SUB_ASSIGN","LEFT_ASSIGN","RIGHT_ASSIGN","AND_ASSIGN","XOR_ASSIGN","OR_ASSIGN","LEFT_PAREN","RIGHT_PAREN","LEFT_BRACKET","RIGHT_BRACKET","LEFT_BRACE","RIGHT_BRACE","DOT","COMMA","COLON","EQUAL","SEMICOLON","BANG","DASH","TILDE","PLUS","STAR","SLASH","PERCENT","LEFT_ANGLE","RIGHT_ANGLE","VERTICAL_BAR","CARET","AMPERSAND","QUESTION","IDENTIFIER","TYPE_NAME","FIELD_SELECTION","INTCONSTANT","FLOATCONSTANT","BLOCK_COMMENT","LINE_COMMENT","PREPROCESSOR","WHITESPACE"] };
 glslparser.TokenType.ATTRIBUTE = ["ATTRIBUTE",0];
@@ -1480,20 +1507,10 @@ glslparser.Parser.parseTokens = function(tokens) {
 		var t = tokens[_g];
 		++_g;
 		if(HxOverrides.indexOf(glslparser.Parser.ignoredTokens,t.type,0) != -1) continue;
-		glslparser.Parser.parseStep(glslparser.Parser.tokenIdMap.get(t.type),(function($this) {
-			var $r;
-			var e = glslparser.EMinorType.Token(t);
-			$r = e;
-			return $r;
-		}(this)));
+		glslparser.Parser.parseStep(glslparser.Parser.tokenIdMap.get(t.type),t);
 		lastToken = t;
 	}
-	glslparser.Parser.parseStep(0,(function($this) {
-		var $r;
-		var e1 = glslparser.EMinorType.Token(lastToken);
-		$r = e1;
-		return $r;
-	}(this)));
+	glslparser.Parser.parseStep(0,lastToken);
 	return glslparser.ParserReducer.result;
 };
 glslparser.Parser.parseStep = function(major,minor) {
@@ -1604,88 +1621,39 @@ glslparser.ParserDebugData.ruleName = function(ruleno) {
 	ruleNameReg.match(glslparser.ParserDebugData.ruleString(ruleno));
 	return ruleNameReg.matched(0);
 };
-glslparser.EMinorType = { __ename__ : true, __constructs__ : ["Token","Node","EnumValue","NodeArray"] };
-glslparser.EMinorType.Token = function(t) { var $x = ["Token",0,t]; $x.__enum__ = glslparser.EMinorType; $x.toString = $estr; return $x; };
-glslparser.EMinorType.Node = function(n) { var $x = ["Node",1,n]; $x.__enum__ = glslparser.EMinorType; $x.toString = $estr; return $x; };
-glslparser.EMinorType.EnumValue = function(e) { var $x = ["EnumValue",2,e]; $x.__enum__ = glslparser.EMinorType; $x.toString = $estr; return $x; };
-glslparser.EMinorType.NodeArray = function(a) { var $x = ["NodeArray",3,a]; $x.__enum__ = glslparser.EMinorType; $x.toString = $estr; return $x; };
-glslparser._ParserReducer = {};
-glslparser._ParserReducer.MinorType_Impl_ = {};
-glslparser._ParserReducer.MinorType_Impl_.__name__ = ["glslparser","_ParserReducer","MinorType_Impl_"];
-glslparser._ParserReducer.MinorType_Impl_._new = function(e) {
-	return e;
-};
-glslparser._ParserReducer.MinorType_Impl_.get_v = function(this1) {
-	return this1.slice(2)[0];
-};
-glslparser._ParserReducer.MinorType_Impl_.get_type = function(this1) {
-	return this1;
-};
-glslparser._ParserReducer.MinorType_Impl_.fromToken = function(t) {
-	var e = glslparser.EMinorType.Token(t);
-	return e;
-};
-glslparser._ParserReducer.MinorType_Impl_.fromNode = function(n) {
-	var e = glslparser.EMinorType.Node(n);
-	return e;
-};
-glslparser._ParserReducer.MinorType_Impl_.fromEnumValue = function(e) {
-	var e1 = glslparser.EMinorType.EnumValue(e);
-	return e1;
-};
-glslparser._ParserReducer.MinorType_Impl_.fromNodeArray = function(a) {
-	var e = glslparser.EMinorType.NodeArray(a);
-	return e;
-};
 glslparser.ParserReducer = function() { };
 glslparser.ParserReducer.__name__ = ["glslparser","ParserReducer"];
 glslparser.ParserReducer.reduce = function(ruleno) {
 	glslparser.ParserReducer.ruleno = ruleno;
 	switch(ruleno) {
 	case 0:
-		glslparser.ParserReducer.result = glslparser.ParserReducer.n(1);
+		glslparser.ParserReducer.result = glslparser.ParserReducer.s(1);
 		return glslparser.ParserReducer.s(1);
 	case 1:
-		var n = new glslparser.Identifier(glslparser.ParserReducer.t(1).data);
-		var e = glslparser.EMinorType.Node(n);
-		return e;
+		return new glslparser.Identifier(glslparser.ParserReducer.s(1).data);
 	case 2:
 		return glslparser.ParserReducer.s(1);
 	case 3:
-		var n1 = new glslparser.Literal(Std.parseInt(glslparser.ParserReducer.t(1).data),glslparser.ParserReducer.t(1).data,glslparser.TypeClass.INT);
-		var e1 = glslparser.EMinorType.Node(n1);
-		return e1;
+		return new glslparser.Literal(Std.parseInt(glslparser.ParserReducer.s(1).data),glslparser.ParserReducer.s(1).data,glslparser.TypeClass.INT);
 	case 4:
-		var n2 = new glslparser.Literal(Std.parseFloat(glslparser.ParserReducer.t(1).data),glslparser.ParserReducer.t(1).data,glslparser.TypeClass.FLOAT);
-		var e2 = glslparser.EMinorType.Node(n2);
-		return e2;
+		return new glslparser.Literal(Std.parseFloat(glslparser.ParserReducer.s(1).data),glslparser.ParserReducer.s(1).data,glslparser.TypeClass.FLOAT);
 	case 5:
-		var n3 = new glslparser.Literal(glslparser.ParserReducer.t(1).data == "true",glslparser.ParserReducer.t(1).data,glslparser.TypeClass.BOOL);
-		var e3 = glslparser.EMinorType.Node(n3);
-		return e3;
+		return new glslparser.Literal(glslparser.ParserReducer.s(1).data == "true",glslparser.ParserReducer.s(1).data,glslparser.TypeClass.BOOL);
 	case 6:
-		glslparser.ParserReducer.e(2).parenWrap = true;
+		(js.Boot.__cast(glslparser.ParserReducer.s(2) , glslparser.Expression)).parenWrap = true;
 		return glslparser.ParserReducer.s(2);
 	case 7:
 		return glslparser.ParserReducer.s(1);
 	case 8:
-		var n4 = new glslparser.ArrayElementSelectionExpression(glslparser.ParserReducer.e(1),glslparser.ParserReducer.e(3));
-		var e4 = glslparser.EMinorType.Node(n4);
-		return e4;
+		return new glslparser.ArrayElementSelectionExpression(js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression));
 	case 9:
 		return glslparser.ParserReducer.s(1);
 	case 10:
-		var n5 = new glslparser.FieldSelectionExpression(glslparser.ParserReducer.e(1),new glslparser.Identifier(glslparser.ParserReducer.t(3).data));
-		var e5 = glslparser.EMinorType.Node(n5);
-		return e5;
+		return new glslparser.FieldSelectionExpression(js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),new glslparser.Identifier(glslparser.ParserReducer.s(3).data));
 	case 11:
-		var n6 = new glslparser.UnaryExpression(glslparser.UnaryOperator.INC_OP,glslparser.ParserReducer.e(1),false);
-		var e6 = glslparser.EMinorType.Node(n6);
-		return e6;
+		return new glslparser.UnaryExpression(glslparser.UnaryOperator.INC_OP,js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),false);
 	case 12:
-		var n7 = new glslparser.UnaryExpression(glslparser.UnaryOperator.DEC_OP,glslparser.ParserReducer.e(1),false);
-		var e7 = glslparser.EMinorType.Node(n7);
-		return e7;
+		return new glslparser.UnaryExpression(glslparser.UnaryOperator.DEC_OP,js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),false);
 	case 13:
 		return glslparser.ParserReducer.s(1);
 	case 14:
@@ -1699,246 +1667,171 @@ glslparser.ParserReducer.reduce = function(ruleno) {
 	case 18:
 		return glslparser.ParserReducer.s(1);
 	case 19:
-		(js.Boot.__cast(glslparser.ParserReducer.n(1) , glslparser.FunctionCall)).parameters.push(glslparser.ParserReducer.n(2));
+		(js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.FunctionCall)).parameters.push(glslparser.ParserReducer.s(2));
 		return glslparser.ParserReducer.s(1);
 	case 20:
-		(js.Boot.__cast(glslparser.ParserReducer.n(1) , glslparser.FunctionCall)).parameters.push(glslparser.ParserReducer.n(3));
+		(js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.FunctionCall)).parameters.push(glslparser.ParserReducer.s(3));
 		return glslparser.ParserReducer.s(1);
 	case 21:
 		return glslparser.ParserReducer.s(1);
 	case 22:
-		var n8 = new glslparser.FunctionCall(glslparser.ParserReducer.t(1).data,null,true);
-		var e8 = glslparser.EMinorType.Node(n8);
-		return e8;
+		return new glslparser.Constructor(glslparser.ParserReducer.s(1).name,glslparser.ParserReducer.s(1).typeClass);
 	case 23:
-		var n9 = new glslparser.FunctionCall(glslparser.ParserReducer.t(1).data,null,false);
-		var e9 = glslparser.EMinorType.Node(n9);
-		return e9;
+		return new glslparser.FunctionCall(glslparser.ParserReducer.s(1).data);
 	case 24:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.FLOAT, name : glslparser.ParserReducer.s(1).data};
 	case 25:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.INT, name : glslparser.ParserReducer.s(1).data};
 	case 26:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.BOOL, name : glslparser.ParserReducer.s(1).data};
 	case 27:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.VEC2, name : glslparser.ParserReducer.s(1).data};
 	case 28:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.VEC3, name : glslparser.ParserReducer.s(1).data};
 	case 29:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.VEC4, name : glslparser.ParserReducer.s(1).data};
 	case 30:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.BVEC2, name : glslparser.ParserReducer.s(1).data};
 	case 31:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.BVEC3, name : glslparser.ParserReducer.s(1).data};
 	case 32:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.BVEC4, name : glslparser.ParserReducer.s(1).data};
 	case 33:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.IVEC2, name : glslparser.ParserReducer.s(1).data};
 	case 34:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.IVEC3, name : glslparser.ParserReducer.s(1).data};
 	case 35:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.IVEC4, name : glslparser.ParserReducer.s(1).data};
 	case 36:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.MAT2, name : glslparser.ParserReducer.s(1).data};
 	case 37:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.MAT3, name : glslparser.ParserReducer.s(1).data};
 	case 38:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.MAT4, name : glslparser.ParserReducer.s(1).data};
 	case 39:
-		return glslparser.ParserReducer.s(1);
+		return { typeClass : glslparser.TypeClass.USER_TYPE, name : glslparser.ParserReducer.s(1).data};
 	case 40:
 		return glslparser.ParserReducer.s(1);
 	case 41:
-		var n10 = new glslparser.UnaryExpression(glslparser.UnaryOperator.INC_OP,glslparser.ParserReducer.e(2),true);
-		var e10 = glslparser.EMinorType.Node(n10);
-		return e10;
+		return new glslparser.UnaryExpression(glslparser.UnaryOperator.INC_OP,js.Boot.__cast(glslparser.ParserReducer.s(2) , glslparser.Expression),true);
 	case 42:
-		var n11 = new glslparser.UnaryExpression(glslparser.UnaryOperator.DEC_OP,glslparser.ParserReducer.e(2),true);
-		var e11 = glslparser.EMinorType.Node(n11);
-		return e11;
+		return new glslparser.UnaryExpression(glslparser.UnaryOperator.DEC_OP,js.Boot.__cast(glslparser.ParserReducer.s(2) , glslparser.Expression),true);
 	case 43:
-		var n12 = new glslparser.UnaryExpression(glslparser.ParserReducer.ev(1),glslparser.ParserReducer.e(2),true);
-		var e12 = glslparser.EMinorType.Node(n12);
-		return e12;
+		return new glslparser.UnaryExpression(glslparser.ParserReducer.s(1) != null?glslparser.ParserReducer.s(1):null,js.Boot.__cast(glslparser.ParserReducer.s(2) , glslparser.Expression),true);
 	case 44:
-		var e13 = glslparser.EMinorType.EnumValue(glslparser.UnaryOperator.PLUS);
-		return e13;
+		return glslparser.UnaryOperator.PLUS;
 	case 45:
-		var e14 = glslparser.EMinorType.EnumValue(glslparser.UnaryOperator.DASH);
-		return e14;
+		return glslparser.UnaryOperator.DASH;
 	case 46:
-		var e15 = glslparser.EMinorType.EnumValue(glslparser.UnaryOperator.BANG);
-		return e15;
+		return glslparser.UnaryOperator.BANG;
 	case 47:
-		var e16 = glslparser.EMinorType.EnumValue(glslparser.UnaryOperator.TILDE);
-		return e16;
+		return glslparser.UnaryOperator.TILDE;
 	case 48:
 		return glslparser.ParserReducer.s(1);
 	case 49:
-		var n13 = new glslparser.BinaryExpression(glslparser.BinaryOperator.STAR,glslparser.ParserReducer.e(1),glslparser.ParserReducer.e(3));
-		var e17 = glslparser.EMinorType.Node(n13);
-		return e17;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.STAR,js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression));
 	case 50:
-		var n14 = new glslparser.BinaryExpression(glslparser.BinaryOperator.SLASH,glslparser.ParserReducer.e(1),glslparser.ParserReducer.e(3));
-		var e18 = glslparser.EMinorType.Node(n14);
-		return e18;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.SLASH,js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression));
 	case 51:
-		var n15 = new glslparser.BinaryExpression(glslparser.BinaryOperator.PERCENT,glslparser.ParserReducer.e(1),glslparser.ParserReducer.e(3));
-		var e19 = glslparser.EMinorType.Node(n15);
-		return e19;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.PERCENT,js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression));
 	case 52:
 		return glslparser.ParserReducer.s(1);
 	case 53:
-		var n16 = new glslparser.BinaryExpression(glslparser.BinaryOperator.PLUS,glslparser.ParserReducer.e(1),glslparser.ParserReducer.e(3));
-		var e20 = glslparser.EMinorType.Node(n16);
-		return e20;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.PLUS,js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression));
 	case 54:
-		var n17 = new glslparser.BinaryExpression(glslparser.BinaryOperator.DASH,glslparser.ParserReducer.e(1),glslparser.ParserReducer.e(3));
-		var e21 = glslparser.EMinorType.Node(n17);
-		return e21;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.DASH,js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression));
 	case 55:
 		return glslparser.ParserReducer.s(1);
 	case 56:
-		var n18 = new glslparser.BinaryExpression(glslparser.BinaryOperator.LEFT_OP,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e22 = glslparser.EMinorType.Node(n18);
-		return e22;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.LEFT_OP,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 57:
-		var n19 = new glslparser.BinaryExpression(glslparser.BinaryOperator.RIGHT_OP,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e23 = glslparser.EMinorType.Node(n19);
-		return e23;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.RIGHT_OP,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 58:
 		return glslparser.ParserReducer.s(1);
 	case 59:
-		var n20 = new glslparser.BinaryExpression(glslparser.BinaryOperator.LEFT_ANGLE,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e24 = glslparser.EMinorType.Node(n20);
-		return e24;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.LEFT_ANGLE,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 60:
-		var n21 = new glslparser.BinaryExpression(glslparser.BinaryOperator.RIGHT_ANGLE,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e25 = glslparser.EMinorType.Node(n21);
-		return e25;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.RIGHT_ANGLE,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 61:
-		var n22 = new glslparser.BinaryExpression(glslparser.BinaryOperator.LE_OP,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e26 = glslparser.EMinorType.Node(n22);
-		return e26;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.LE_OP,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 62:
-		var n23 = new glslparser.BinaryExpression(glslparser.BinaryOperator.GE_OP,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e27 = glslparser.EMinorType.Node(n23);
-		return e27;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.GE_OP,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 63:
 		return glslparser.ParserReducer.s(1);
 	case 64:
-		var n24 = new glslparser.BinaryExpression(glslparser.BinaryOperator.EQ_OP,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e28 = glslparser.EMinorType.Node(n24);
-		return e28;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.EQ_OP,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 65:
-		var n25 = new glslparser.BinaryExpression(glslparser.BinaryOperator.NE_OP,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e29 = glslparser.EMinorType.Node(n25);
-		return e29;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.NE_OP,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 66:
 		return glslparser.ParserReducer.s(1);
 	case 67:
-		var n26 = new glslparser.BinaryExpression(glslparser.BinaryOperator.AMPERSAND,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e30 = glslparser.EMinorType.Node(n26);
-		return e30;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.AMPERSAND,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 68:
 		return glslparser.ParserReducer.s(1);
 	case 69:
-		var n27 = new glslparser.BinaryExpression(glslparser.BinaryOperator.CARET,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e31 = glslparser.EMinorType.Node(n27);
-		return e31;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.CARET,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 70:
 		return glslparser.ParserReducer.s(1);
 	case 71:
-		var n28 = new glslparser.BinaryExpression(glslparser.BinaryOperator.VERTICAL_BAR,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e32 = glslparser.EMinorType.Node(n28);
-		return e32;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.VERTICAL_BAR,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 72:
 		return glslparser.ParserReducer.s(1);
 	case 73:
-		var n29 = new glslparser.BinaryExpression(glslparser.BinaryOperator.AND_OP,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e33 = glslparser.EMinorType.Node(n29);
-		return e33;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.AND_OP,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 74:
 		return glslparser.ParserReducer.s(1);
 	case 75:
-		var n30 = new glslparser.BinaryExpression(glslparser.BinaryOperator.XOR_OP,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e34 = glslparser.EMinorType.Node(n30);
-		return e34;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.XOR_OP,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 76:
 		return glslparser.ParserReducer.s(1);
 	case 77:
-		var n31 = new glslparser.BinaryExpression(glslparser.BinaryOperator.OR_OP,glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e35 = glslparser.EMinorType.Node(n31);
-		return e35;
+		return new glslparser.BinaryExpression(glslparser.BinaryOperator.OR_OP,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 78:
 		return glslparser.ParserReducer.s(1);
 	case 79:
-		var n32 = new glslparser.ConditionalExpression(glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(2),glslparser.ParserReducer.n(3));
-		var e36 = glslparser.EMinorType.Node(n32);
-		return e36;
+		return new glslparser.ConditionalExpression(glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(2),glslparser.ParserReducer.s(3));
 	case 80:
 		return glslparser.ParserReducer.s(1);
 	case 81:
-		var n33 = new glslparser.AssignmentExpression(glslparser.ParserReducer.ev(2),glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3));
-		var e37 = glslparser.EMinorType.Node(n33);
-		return e37;
+		return new glslparser.AssignmentExpression(glslparser.ParserReducer.s(2) != null?glslparser.ParserReducer.s(2):null,glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3));
 	case 82:
-		var e38 = glslparser.EMinorType.EnumValue(glslparser.AssignmentOperator.EQUAL);
-		return e38;
+		return glslparser.AssignmentOperator.EQUAL;
 	case 83:
-		var e39 = glslparser.EMinorType.EnumValue(glslparser.AssignmentOperator.MUL_ASSIGN);
-		return e39;
+		return glslparser.AssignmentOperator.MUL_ASSIGN;
 	case 84:
-		var e40 = glslparser.EMinorType.EnumValue(glslparser.AssignmentOperator.DIV_ASSIGN);
-		return e40;
+		return glslparser.AssignmentOperator.DIV_ASSIGN;
 	case 85:
-		var e41 = glslparser.EMinorType.EnumValue(glslparser.AssignmentOperator.MOD_ASSIGN);
-		return e41;
+		return glslparser.AssignmentOperator.MOD_ASSIGN;
 	case 86:
-		var e42 = glslparser.EMinorType.EnumValue(glslparser.AssignmentOperator.ADD_ASSIGN);
-		return e42;
+		return glslparser.AssignmentOperator.ADD_ASSIGN;
 	case 87:
-		var e43 = glslparser.EMinorType.EnumValue(glslparser.AssignmentOperator.SUB_ASSIGN);
-		return e43;
+		return glslparser.AssignmentOperator.SUB_ASSIGN;
 	case 88:
-		var e44 = glslparser.EMinorType.EnumValue(glslparser.AssignmentOperator.LEFT_ASSIGN);
-		return e44;
+		return glslparser.AssignmentOperator.LEFT_ASSIGN;
 	case 89:
-		var e45 = glslparser.EMinorType.EnumValue(glslparser.AssignmentOperator.RIGHT_ASSIGN);
-		return e45;
+		return glslparser.AssignmentOperator.RIGHT_ASSIGN;
 	case 90:
-		var e46 = glslparser.EMinorType.EnumValue(glslparser.AssignmentOperator.AND_ASSIGN);
-		return e46;
+		return glslparser.AssignmentOperator.AND_ASSIGN;
 	case 91:
-		var e47 = glslparser.EMinorType.EnumValue(glslparser.AssignmentOperator.XOR_ASSIGN);
-		return e47;
+		return glslparser.AssignmentOperator.XOR_ASSIGN;
 	case 92:
-		var e48 = glslparser.EMinorType.EnumValue(glslparser.AssignmentOperator.OR_ASSIGN);
-		return e48;
+		return glslparser.AssignmentOperator.OR_ASSIGN;
 	case 93:
 		return glslparser.ParserReducer.s(1);
 	case 94:
-		if(Std["is"](glslparser.ParserReducer.e(1),glslparser.SequenceExpression)) {
-			(js.Boot.__cast(glslparser.ParserReducer.e(1) , glslparser.SequenceExpression)).expressions.push(glslparser.ParserReducer.e(3));
+		if(Std["is"](js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),glslparser.SequenceExpression)) {
+			(js.Boot.__cast(js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression) , glslparser.SequenceExpression)).expressions.push(js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression));
 			return glslparser.ParserReducer.s(1);
-		} else {
-			var n34 = new glslparser.SequenceExpression([glslparser.ParserReducer.e(1),glslparser.ParserReducer.e(3)]);
-			var e49 = glslparser.EMinorType.Node(n34);
-			return e49;
-		}
+		} else return new glslparser.SequenceExpression([js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression)]);
 		break;
 	case 95:
 		return glslparser.ParserReducer.s(1);
 	case 96:
-		var n35 = new glslparser.FunctionPrototype(glslparser.ParserReducer.s(1));
-		var e50 = glslparser.EMinorType.Node(n35);
-		return e50;
+		return new glslparser.FunctionPrototype(glslparser.ParserReducer.s(1));
 	case 97:
 		return glslparser.ParserReducer.s(1);
 	case 98:
-		var n36 = new glslparser.PrecisionDeclaration(glslparser.ParserReducer.ev(2),glslparser.ParserReducer.n(3));
-		var e51 = glslparser.EMinorType.Node(n36);
-		return e51;
+		return new glslparser.PrecisionDeclaration(glslparser.ParserReducer.s(2) != null?glslparser.ParserReducer.s(2):null,glslparser.ParserReducer.s(3));
 	case 99:
 		return glslparser.ParserReducer.s(1);
 	case 100:
@@ -1947,256 +1840,165 @@ glslparser.ParserReducer.reduce = function(ruleno) {
 		return glslparser.ParserReducer.s(1);
 	case 102:
 		var fh;
-		fh = js.Boot.__cast(glslparser.ParserReducer.n(1) , glslparser.FunctionHeader);
-		fh.parameters.push(glslparser.ParserReducer.n(2));
-		var e52 = glslparser.EMinorType.Node(fh);
-		return e52;
+		fh = js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.FunctionHeader);
+		fh.parameters.push(glslparser.ParserReducer.s(2));
+		return fh;
 	case 103:
 		var fh1;
-		fh1 = js.Boot.__cast(glslparser.ParserReducer.n(1) , glslparser.FunctionHeader);
-		fh1.parameters.push(glslparser.ParserReducer.n(3));
-		var e53 = glslparser.EMinorType.Node(fh1);
-		return e53;
+		fh1 = js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.FunctionHeader);
+		fh1.parameters.push(glslparser.ParserReducer.s(3));
+		return fh1;
 	case 104:
-		var n37 = new glslparser.FunctionHeader(glslparser.ParserReducer.t(2).data,glslparser.ParserReducer.n(1));
-		var e54 = glslparser.EMinorType.Node(n37);
-		return e54;
+		return new glslparser.FunctionHeader(glslparser.ParserReducer.s(2).data,glslparser.ParserReducer.s(1));
 	case 105:
-		var n38 = new glslparser.ParameterDeclaration(glslparser.ParserReducer.t(2).data,glslparser.ParserReducer.n(1));
-		var e55 = glslparser.EMinorType.Node(n38);
-		return e55;
+		return new glslparser.ParameterDeclaration(glslparser.ParserReducer.s(2).data,glslparser.ParserReducer.s(1));
 	case 106:
-		var n39 = new glslparser.ParameterDeclaration(glslparser.ParserReducer.t(2).data,glslparser.ParserReducer.n(1),null,null,glslparser.ParserReducer.e(3));
-		var e56 = glslparser.EMinorType.Node(n39);
-		return e56;
+		return new glslparser.ParameterDeclaration(glslparser.ParserReducer.s(2).data,glslparser.ParserReducer.s(1),null,null,js.Boot.__cast(glslparser.ParserReducer.s(4) , glslparser.Expression));
 	case 107:
 		var pd;
-		pd = js.Boot.__cast(glslparser.ParserReducer.n(3) , glslparser.ParameterDeclaration);
-		pd.typeQualifier = glslparser.ParserReducer.ev(1);
-		pd.parameterQualifier = glslparser.ParserReducer.ev(2);
-		var e57 = glslparser.EMinorType.Node(pd);
-		return e57;
+		pd = js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.ParameterDeclaration);
+		if(glslparser.ParserReducer.s(1) != null) pd.typeQualifier = glslparser.ParserReducer.s(1); else pd.typeQualifier = null;
+		if(glslparser.ParserReducer.s(2) != null) pd.parameterQualifier = glslparser.ParserReducer.s(2); else pd.parameterQualifier = null;
+		return pd;
 	case 108:
 		var pd1;
-		pd1 = js.Boot.__cast(glslparser.ParserReducer.n(2) , glslparser.ParameterDeclaration);
-		pd1.parameterQualifier = glslparser.ParserReducer.ev(1);
-		var e58 = glslparser.EMinorType.Node(pd1);
-		return e58;
+		pd1 = js.Boot.__cast(glslparser.ParserReducer.s(2) , glslparser.ParameterDeclaration);
+		if(glslparser.ParserReducer.s(1) != null) pd1.parameterQualifier = glslparser.ParserReducer.s(1); else pd1.parameterQualifier = null;
+		return pd1;
 	case 109:
 		var pd2;
-		pd2 = js.Boot.__cast(glslparser.ParserReducer.n(3) , glslparser.ParameterDeclaration);
-		pd2.typeQualifier = glslparser.ParserReducer.ev(1);
-		pd2.parameterQualifier = glslparser.ParserReducer.ev(2);
-		var e59 = glslparser.EMinorType.Node(pd2);
-		return e59;
+		pd2 = js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.ParameterDeclaration);
+		if(glslparser.ParserReducer.s(1) != null) pd2.typeQualifier = glslparser.ParserReducer.s(1); else pd2.typeQualifier = null;
+		if(glslparser.ParserReducer.s(2) != null) pd2.parameterQualifier = glslparser.ParserReducer.s(2); else pd2.parameterQualifier = null;
+		return pd2;
 	case 110:
 		var pd3;
-		pd3 = js.Boot.__cast(glslparser.ParserReducer.n(2) , glslparser.ParameterDeclaration);
-		pd3.parameterQualifier = glslparser.ParserReducer.ev(1);
-		var e60 = glslparser.EMinorType.Node(pd3);
-		return e60;
+		pd3 = js.Boot.__cast(glslparser.ParserReducer.s(2) , glslparser.ParameterDeclaration);
+		if(glslparser.ParserReducer.s(1) != null) pd3.parameterQualifier = glslparser.ParserReducer.s(1); else pd3.parameterQualifier = null;
+		return pd3;
 	case 111:
 		return null;
 	case 112:
-		var e61 = glslparser.EMinorType.EnumValue(glslparser.ParameterQualifier.IN);
-		return e61;
+		return glslparser.ParameterQualifier.IN;
 	case 113:
-		var e62 = glslparser.EMinorType.EnumValue(glslparser.ParameterQualifier.OUT);
-		return e62;
+		return glslparser.ParameterQualifier.OUT;
 	case 114:
-		var e63 = glslparser.EMinorType.EnumValue(glslparser.ParameterQualifier.INOUT);
-		return e63;
+		return glslparser.ParameterQualifier.INOUT;
 	case 115:
-		var n40 = new glslparser.ParameterDeclaration(null,glslparser.ParserReducer.n(1));
-		var e64 = glslparser.EMinorType.Node(n40);
-		return e64;
+		return new glslparser.ParameterDeclaration(null,glslparser.ParserReducer.s(1));
 	case 116:
-		var n41 = new glslparser.ParameterDeclaration(null,glslparser.ParserReducer.n(1),null,null,glslparser.ParserReducer.e(3));
-		var e65 = glslparser.EMinorType.Node(n41);
-		return e65;
+		return new glslparser.ParameterDeclaration(null,glslparser.ParserReducer.s(1),null,null,js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression));
 	case 117:
 		return glslparser.ParserReducer.s(1);
 	case 118:
-		(js.Boot.__cast(glslparser.ParserReducer.n(1) , glslparser.VariableDeclaration)).declarators.push(new glslparser.Declarator(glslparser.ParserReducer.t(3).data,null,false));
+		(js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.VariableDeclaration)).declarators.push(new glslparser.Declarator(glslparser.ParserReducer.s(3).data,null,false));
 		return glslparser.ParserReducer.s(1);
 	case 119:
-		(js.Boot.__cast(glslparser.ParserReducer.n(1) , glslparser.VariableDeclaration)).declarators.push(new glslparser.ArrayDeclarator(glslparser.ParserReducer.t(3).data,glslparser.ParserReducer.e(5)));
+		(js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.VariableDeclaration)).declarators.push(new glslparser.ArrayDeclarator(glslparser.ParserReducer.s(3).data,js.Boot.__cast(glslparser.ParserReducer.s(5) , glslparser.Expression)));
 		return glslparser.ParserReducer.s(1);
 	case 120:
-		(js.Boot.__cast(glslparser.ParserReducer.n(1) , glslparser.VariableDeclaration)).declarators.push(new glslparser.Declarator(glslparser.ParserReducer.t(3).data,glslparser.ParserReducer.e(5),false));
+		(js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.VariableDeclaration)).declarators.push(new glslparser.Declarator(glslparser.ParserReducer.s(3).data,js.Boot.__cast(glslparser.ParserReducer.s(5) , glslparser.Expression),false));
 		return glslparser.ParserReducer.s(1);
 	case 121:
-		var n42 = new glslparser.VariableDeclaration(glslparser.ParserReducer.n(1),[new glslparser.Declarator("",null,false)]);
-		var e66 = glslparser.EMinorType.Node(n42);
-		return e66;
+		return new glslparser.VariableDeclaration(glslparser.ParserReducer.s(1),[new glslparser.Declarator(null,null,false)]);
 	case 122:
-		var n43 = new glslparser.VariableDeclaration(glslparser.ParserReducer.n(1),[new glslparser.Declarator(glslparser.ParserReducer.t(2).data,null,false)]);
-		var e67 = glslparser.EMinorType.Node(n43);
-		return e67;
+		return new glslparser.VariableDeclaration(glslparser.ParserReducer.s(1),[new glslparser.Declarator(glslparser.ParserReducer.s(2).data,null,false)]);
 	case 123:
-		var n44 = new glslparser.VariableDeclaration(glslparser.ParserReducer.n(1),[new glslparser.ArrayDeclarator(glslparser.ParserReducer.t(2).data,glslparser.ParserReducer.e(4))]);
-		var e68 = glslparser.EMinorType.Node(n44);
-		return e68;
+		return new glslparser.VariableDeclaration(glslparser.ParserReducer.s(1),[new glslparser.ArrayDeclarator(glslparser.ParserReducer.s(2).data,js.Boot.__cast(glslparser.ParserReducer.s(4) , glslparser.Expression))]);
 	case 124:
-		var n45 = new glslparser.VariableDeclaration(glslparser.ParserReducer.n(1),[new glslparser.Declarator(glslparser.ParserReducer.t(2).data,glslparser.ParserReducer.e(4),false)]);
-		var e69 = glslparser.EMinorType.Node(n45);
-		return e69;
+		return new glslparser.VariableDeclaration(glslparser.ParserReducer.s(1),[new glslparser.Declarator(glslparser.ParserReducer.s(2).data,js.Boot.__cast(glslparser.ParserReducer.s(4) , glslparser.Expression),false)]);
 	case 125:
-		var n46 = new glslparser.VariableDeclaration(null,[new glslparser.Declarator(glslparser.ParserReducer.t(2).data,null,true)]);
-		var e70 = glslparser.EMinorType.Node(n46);
-		return e70;
+		return new glslparser.VariableDeclaration(null,[new glslparser.Declarator(glslparser.ParserReducer.s(2).data,null,true)]);
 	case 126:
 		return glslparser.ParserReducer.s(1);
 	case 127:
-		(js.Boot.__cast(glslparser.ParserReducer.n(2) , glslparser.TypeSpecifier)).qualifier = glslparser.ParserReducer.ev(1);
+		if(glslparser.ParserReducer.s(1) != null) (js.Boot.__cast(glslparser.ParserReducer.s(2) , glslparser.TypeSpecifier)).qualifier = glslparser.ParserReducer.s(1); else (js.Boot.__cast(glslparser.ParserReducer.s(2) , glslparser.TypeSpecifier)).qualifier = null;
 		return glslparser.ParserReducer.s(2);
 	case 128:
-		var e71 = glslparser.EMinorType.EnumValue(glslparser.TypeQualifier.CONST);
-		return e71;
+		return glslparser.TypeQualifier.CONST;
 	case 129:
-		var e72 = glslparser.EMinorType.EnumValue(glslparser.TypeQualifier.ATTRIBUTE);
-		return e72;
+		return glslparser.TypeQualifier.ATTRIBUTE;
 	case 130:
-		var e73 = glslparser.EMinorType.EnumValue(glslparser.TypeQualifier.VARYING);
-		return e73;
+		return glslparser.TypeQualifier.VARYING;
 	case 131:
-		var e74 = glslparser.EMinorType.EnumValue(glslparser.TypeQualifier.INVARIANT_VARYING);
-		return e74;
+		return glslparser.TypeQualifier.INVARIANT_VARYING;
 	case 132:
-		var e75 = glslparser.EMinorType.EnumValue(glslparser.TypeQualifier.UNIFORM);
-		return e75;
+		return glslparser.TypeQualifier.UNIFORM;
 	case 133:
 		return glslparser.ParserReducer.s(1);
 	case 134:
-		(js.Boot.__cast(glslparser.ParserReducer.n(1) , glslparser.TypeSpecifier)).precision = glslparser.ParserReducer.ev(1);
+		if(glslparser.ParserReducer.s(1) != null) (js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.TypeSpecifier)).precision = glslparser.ParserReducer.s(1); else (js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.TypeSpecifier)).precision = null;
 		return glslparser.ParserReducer.s(1);
 	case 135:
-		var n47 = new glslparser.TypeSpecifier(glslparser.TypeClass.VOID,glslparser.ParserReducer.t(1).data);
-		var e76 = glslparser.EMinorType.Node(n47);
-		return e76;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.VOID,glslparser.ParserReducer.s(1).data);
 	case 136:
-		var n48 = new glslparser.TypeSpecifier(glslparser.TypeClass.FLOAT,glslparser.ParserReducer.t(1).data);
-		var e77 = glslparser.EMinorType.Node(n48);
-		return e77;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.FLOAT,glslparser.ParserReducer.s(1).data);
 	case 137:
-		var n49 = new glslparser.TypeSpecifier(glslparser.TypeClass.INT,glslparser.ParserReducer.t(1).data);
-		var e78 = glslparser.EMinorType.Node(n49);
-		return e78;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.INT,glslparser.ParserReducer.s(1).data);
 	case 138:
-		var n50 = new glslparser.TypeSpecifier(glslparser.TypeClass.BOOL,glslparser.ParserReducer.t(1).data);
-		var e79 = glslparser.EMinorType.Node(n50);
-		return e79;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.BOOL,glslparser.ParserReducer.s(1).data);
 	case 139:
-		var n51 = new glslparser.TypeSpecifier(glslparser.TypeClass.VEC2,glslparser.ParserReducer.t(1).data);
-		var e80 = glslparser.EMinorType.Node(n51);
-		return e80;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.VEC2,glslparser.ParserReducer.s(1).data);
 	case 140:
-		var n52 = new glslparser.TypeSpecifier(glslparser.TypeClass.VEC3,glslparser.ParserReducer.t(1).data);
-		var e81 = glslparser.EMinorType.Node(n52);
-		return e81;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.VEC3,glslparser.ParserReducer.s(1).data);
 	case 141:
-		var n53 = new glslparser.TypeSpecifier(glslparser.TypeClass.VEC4,glslparser.ParserReducer.t(1).data);
-		var e82 = glslparser.EMinorType.Node(n53);
-		return e82;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.VEC4,glslparser.ParserReducer.s(1).data);
 	case 142:
-		var n54 = new glslparser.TypeSpecifier(glslparser.TypeClass.BVEC2,glslparser.ParserReducer.t(1).data);
-		var e83 = glslparser.EMinorType.Node(n54);
-		return e83;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.BVEC2,glslparser.ParserReducer.s(1).data);
 	case 143:
-		var n55 = new glslparser.TypeSpecifier(glslparser.TypeClass.BVEC3,glslparser.ParserReducer.t(1).data);
-		var e84 = glslparser.EMinorType.Node(n55);
-		return e84;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.BVEC3,glslparser.ParserReducer.s(1).data);
 	case 144:
-		var n56 = new glslparser.TypeSpecifier(glslparser.TypeClass.BVEC4,glslparser.ParserReducer.t(1).data);
-		var e85 = glslparser.EMinorType.Node(n56);
-		return e85;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.BVEC4,glslparser.ParserReducer.s(1).data);
 	case 145:
-		var n57 = new glslparser.TypeSpecifier(glslparser.TypeClass.IVEC2,glslparser.ParserReducer.t(1).data);
-		var e86 = glslparser.EMinorType.Node(n57);
-		return e86;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.IVEC2,glslparser.ParserReducer.s(1).data);
 	case 146:
-		var n58 = new glslparser.TypeSpecifier(glslparser.TypeClass.IVEC3,glslparser.ParserReducer.t(1).data);
-		var e87 = glslparser.EMinorType.Node(n58);
-		return e87;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.IVEC3,glslparser.ParserReducer.s(1).data);
 	case 147:
-		var n59 = new glslparser.TypeSpecifier(glslparser.TypeClass.IVEC4,glslparser.ParserReducer.t(1).data);
-		var e88 = glslparser.EMinorType.Node(n59);
-		return e88;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.IVEC4,glslparser.ParserReducer.s(1).data);
 	case 148:
-		var n60 = new glslparser.TypeSpecifier(glslparser.TypeClass.MAT2,glslparser.ParserReducer.t(1).data);
-		var e89 = glslparser.EMinorType.Node(n60);
-		return e89;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.MAT2,glslparser.ParserReducer.s(1).data);
 	case 149:
-		var n61 = new glslparser.TypeSpecifier(glslparser.TypeClass.MAT3,glslparser.ParserReducer.t(1).data);
-		var e90 = glslparser.EMinorType.Node(n61);
-		return e90;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.MAT3,glslparser.ParserReducer.s(1).data);
 	case 150:
-		var n62 = new glslparser.TypeSpecifier(glslparser.TypeClass.MAT4,glslparser.ParserReducer.t(1).data);
-		var e91 = glslparser.EMinorType.Node(n62);
-		return e91;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.MAT4,glslparser.ParserReducer.s(1).data);
 	case 151:
-		var n63 = new glslparser.TypeSpecifier(glslparser.TypeClass.SAMPLER2D,glslparser.ParserReducer.t(1).data);
-		var e92 = glslparser.EMinorType.Node(n63);
-		return e92;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.SAMPLER2D,glslparser.ParserReducer.s(1).data);
 	case 152:
-		var n64 = new glslparser.TypeSpecifier(glslparser.TypeClass.SAMPLERCUBE,glslparser.ParserReducer.t(1).data);
-		var e93 = glslparser.EMinorType.Node(n64);
-		return e93;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.SAMPLERCUBE,glslparser.ParserReducer.s(1).data);
 	case 153:
 		return glslparser.ParserReducer.s(1);
 	case 154:
-		var n65 = new glslparser.TypeSpecifier(glslparser.TypeClass.TYPE_NAME,glslparser.ParserReducer.t(1).data);
-		var e94 = glslparser.EMinorType.Node(n65);
-		return e94;
+		return new glslparser.TypeSpecifier(glslparser.TypeClass.USER_TYPE,glslparser.ParserReducer.s(1).data);
 	case 155:
-		var e95 = glslparser.EMinorType.EnumValue(glslparser.PrecisionQualifier.HIGH_PRECISION);
-		return e95;
+		return glslparser.PrecisionQualifier.HIGH_PRECISION;
 	case 156:
-		var e96 = glslparser.EMinorType.EnumValue(glslparser.PrecisionQualifier.MEDIUM_PRECISION);
-		return e96;
+		return glslparser.PrecisionQualifier.MEDIUM_PRECISION;
 	case 157:
-		var e97 = glslparser.EMinorType.EnumValue(glslparser.PrecisionQualifier.LOW_PRECISION);
-		return e97;
+		return glslparser.PrecisionQualifier.LOW_PRECISION;
 	case 158:
-		var n66 = new glslparser.StructSpecifier(glslparser.ParserReducer.t(2).data,glslparser.ParserReducer.a(4));
-		var e98 = glslparser.EMinorType.Node(n66);
-		return e98;
+		return new glslparser.StructSpecifier(glslparser.ParserReducer.s(2).data,glslparser.ParserReducer.s(4));
 	case 159:
-		var n67 = new glslparser.StructSpecifier("",glslparser.ParserReducer.a(3));
-		var e99 = glslparser.EMinorType.Node(n67);
-		return e99;
+		return new glslparser.StructSpecifier(null,glslparser.ParserReducer.s(3));
 	case 160:
-		var a = [glslparser.ParserReducer.n(1)];
-		var e100 = glslparser.EMinorType.NodeArray(a);
-		return e100;
+		return [glslparser.ParserReducer.s(1)];
 	case 161:
-		glslparser.ParserReducer.a(1).push(glslparser.ParserReducer.n(2));
+		glslparser.ParserReducer.s(1).push(glslparser.ParserReducer.s(2));
 		return glslparser.ParserReducer.s(1);
 	case 162:
-		var n68 = new glslparser.StructDeclaration(glslparser.ParserReducer.n(1),glslparser.ParserReducer.a(2));
-		var e101 = glslparser.EMinorType.Node(n68);
-		return e101;
+		return new glslparser.StructDeclaration(glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(2));
 	case 163:
-		var a1 = [glslparser.ParserReducer.n(1)];
-		var e102 = glslparser.EMinorType.NodeArray(a1);
-		return e102;
+		return [glslparser.ParserReducer.s(1)];
 	case 164:
-		glslparser.ParserReducer.a(1).push(glslparser.ParserReducer.n(3));
+		glslparser.ParserReducer.s(1).push(glslparser.ParserReducer.s(3));
 		return glslparser.ParserReducer.s(1);
 	case 165:
-		var n69 = new glslparser.StructDeclarator(glslparser.ParserReducer.t(1).data);
-		var e103 = glslparser.EMinorType.Node(n69);
-		return e103;
+		return new glslparser.StructDeclarator(glslparser.ParserReducer.s(1).data);
 	case 166:
-		var n70 = new glslparser.StructArrayDeclarator(glslparser.ParserReducer.t(1).data,glslparser.ParserReducer.e(3));
-		var e104 = glslparser.EMinorType.Node(n70);
-		return e104;
+		return new glslparser.StructArrayDeclarator(glslparser.ParserReducer.s(1).data,js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression));
 	case 167:
 		return glslparser.ParserReducer.s(1);
 	case 168:
-		var n71 = new glslparser.DeclarationStatement(glslparser.ParserReducer.n(1));
-		var e105 = glslparser.EMinorType.Node(n71);
-		return e105;
+		return new glslparser.DeclarationStatement(glslparser.ParserReducer.s(1));
 	case 169:
 		return glslparser.ParserReducer.s(1);
 	case 170:
@@ -2212,70 +2014,42 @@ glslparser.ParserReducer.reduce = function(ruleno) {
 	case 175:
 		return glslparser.ParserReducer.s(1);
 	case 176:
-		var n72 = new glslparser.CompoundStatement([],true);
-		var e106 = glslparser.EMinorType.Node(n72);
-		return e106;
+		return new glslparser.CompoundStatement([],true);
 	case 177:
-		var n73 = new glslparser.CompoundStatement(glslparser.ParserReducer.a(2),true);
-		var e107 = glslparser.EMinorType.Node(n73);
-		return e107;
+		return new glslparser.CompoundStatement(glslparser.ParserReducer.s(2),true);
 	case 178:
 		return glslparser.ParserReducer.s(1);
 	case 179:
 		return glslparser.ParserReducer.s(1);
 	case 180:
-		var n74 = new glslparser.CompoundStatement([],false);
-		var e108 = glslparser.EMinorType.Node(n74);
-		return e108;
+		return new glslparser.CompoundStatement([],false);
 	case 181:
-		var n75 = new glslparser.CompoundStatement(glslparser.ParserReducer.a(2),false);
-		var e109 = glslparser.EMinorType.Node(n75);
-		return e109;
+		return new glslparser.CompoundStatement(glslparser.ParserReducer.s(2),false);
 	case 182:
-		var a2 = [glslparser.ParserReducer.n(1)];
-		var e110 = glslparser.EMinorType.NodeArray(a2);
-		return e110;
+		return [glslparser.ParserReducer.s(1)];
 	case 183:
-		glslparser.ParserReducer.a(1).push(glslparser.ParserReducer.n(2));
+		glslparser.ParserReducer.s(1).push(glslparser.ParserReducer.s(2));
 		return glslparser.ParserReducer.s(1);
 	case 184:
-		var n76 = new glslparser.ExpressionStatement(null);
-		var e111 = glslparser.EMinorType.Node(n76);
-		return e111;
+		return new glslparser.ExpressionStatement(null);
 	case 185:
-		var n77 = new glslparser.ExpressionStatement(glslparser.ParserReducer.e(1));
-		var e112 = glslparser.EMinorType.Node(n77);
-		return e112;
+		return new glslparser.ExpressionStatement(js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression));
 	case 186:
-		var n78 = new glslparser.IfStatement(glslparser.ParserReducer.e(3),glslparser.ParserReducer.a(5)[0],glslparser.ParserReducer.a(5)[1]);
-		var e113 = glslparser.EMinorType.Node(n78);
-		return e113;
+		return new glslparser.IfStatement(js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression),glslparser.ParserReducer.s(5)[0],glslparser.ParserReducer.s(5)[1]);
 	case 187:
-		var a3 = [glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(3)];
-		var e114 = glslparser.EMinorType.NodeArray(a3);
-		return e114;
+		return [glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(3)];
 	case 188:
-		var a4 = [glslparser.ParserReducer.n(1),null];
-		var e115 = glslparser.EMinorType.NodeArray(a4);
-		return e115;
+		return [glslparser.ParserReducer.s(1),null];
 	case 189:
 		return glslparser.ParserReducer.s(1);
 	case 190:
-		var n79 = new glslparser.VariableDeclaration(glslparser.ParserReducer.n(1),[new glslparser.Declarator(glslparser.ParserReducer.t(2).data,glslparser.ParserReducer.e(4),false)]);
-		var e116 = glslparser.EMinorType.Node(n79);
-		return e116;
+		return new glslparser.VariableDeclaration(glslparser.ParserReducer.s(1),[new glslparser.Declarator(glslparser.ParserReducer.s(2).data,js.Boot.__cast(glslparser.ParserReducer.s(4) , glslparser.Expression),false)]);
 	case 191:
-		var n80 = new glslparser.WhileStatement(glslparser.ParserReducer.e(3),glslparser.ParserReducer.n(5));
-		var e117 = glslparser.EMinorType.Node(n80);
-		return e117;
+		return new glslparser.WhileStatement(js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression),glslparser.ParserReducer.s(5));
 	case 192:
-		var n81 = new glslparser.DoWhileStatement(glslparser.ParserReducer.e(5),glslparser.ParserReducer.n(2));
-		var e118 = glslparser.EMinorType.Node(n81);
-		return e118;
+		return new glslparser.DoWhileStatement(js.Boot.__cast(glslparser.ParserReducer.s(5) , glslparser.Expression),glslparser.ParserReducer.s(2));
 	case 193:
-		var n82 = new glslparser.ForStatement(glslparser.ParserReducer.n(3),glslparser.ParserReducer.a(4)[0],glslparser.ParserReducer.a(4)[1],glslparser.ParserReducer.n(6));
-		var e119 = glslparser.EMinorType.Node(n82);
-		return e119;
+		return new glslparser.ForStatement(glslparser.ParserReducer.s(3),glslparser.ParserReducer.s(4)[0],glslparser.ParserReducer.s(4)[1],glslparser.ParserReducer.s(6));
 	case 194:
 		return glslparser.ParserReducer.s(1);
 	case 195:
@@ -2285,50 +2059,32 @@ glslparser.ParserReducer.reduce = function(ruleno) {
 	case 197:
 		return null;
 	case 198:
-		var a5 = [glslparser.ParserReducer.e(1),null];
-		var e120 = glslparser.EMinorType.NodeArray(a5);
-		return e120;
+		return [js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),null];
 	case 199:
-		var a6 = [glslparser.ParserReducer.e(1),glslparser.ParserReducer.e(3)];
-		var e121 = glslparser.EMinorType.NodeArray(a6);
-		return e121;
+		return [js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Expression),js.Boot.__cast(glslparser.ParserReducer.s(3) , glslparser.Expression)];
 	case 200:
-		var n83 = new glslparser.JumpStatement(glslparser.JumpMode.CONTINUE);
-		var e122 = glslparser.EMinorType.Node(n83);
-		return e122;
+		return new glslparser.JumpStatement(glslparser.JumpMode.CONTINUE);
 	case 201:
-		var n84 = new glslparser.JumpStatement(glslparser.JumpMode.BREAK);
-		var e123 = glslparser.EMinorType.Node(n84);
-		return e123;
+		return new glslparser.JumpStatement(glslparser.JumpMode.BREAK);
 	case 202:
-		var n85 = new glslparser.JumpStatement(glslparser.JumpMode.RETURN);
-		var e124 = glslparser.EMinorType.Node(n85);
-		return e124;
+		return new glslparser.JumpStatement(glslparser.JumpMode.RETURN);
 	case 203:
-		var n86 = new glslparser.ReturnStatement(glslparser.ParserReducer.n(2));
-		var e125 = glslparser.EMinorType.Node(n86);
-		return e125;
+		return new glslparser.ReturnStatement(glslparser.ParserReducer.s(2));
 	case 204:
-		var n87 = new glslparser.JumpStatement(glslparser.JumpMode.DISCARD);
-		var e126 = glslparser.EMinorType.Node(n87);
-		return e126;
+		return new glslparser.JumpStatement(glslparser.JumpMode.DISCARD);
 	case 205:
-		var a7 = [glslparser.ParserReducer.n(1)];
-		var e127 = glslparser.EMinorType.NodeArray(a7);
-		return e127;
+		return [glslparser.ParserReducer.s(1)];
 	case 206:
-		glslparser.ParserReducer.a(1).push(glslparser.ParserReducer.n(2));
+		glslparser.ParserReducer.s(1).push(glslparser.ParserReducer.s(2));
 		return glslparser.ParserReducer.s(1);
 	case 207:
-		(js.Boot.__cast(glslparser.ParserReducer.n(1) , glslparser.Declaration)).global = true;
+		(js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Declaration)).global = true;
 		return glslparser.ParserReducer.s(1);
 	case 208:
-		(js.Boot.__cast(glslparser.ParserReducer.n(1) , glslparser.Declaration)).global = true;
+		(js.Boot.__cast(glslparser.ParserReducer.s(1) , glslparser.Declaration)).global = true;
 		return glslparser.ParserReducer.s(1);
 	case 209:
-		var n88 = new glslparser.FunctionDefinition(glslparser.ParserReducer.n(1),glslparser.ParserReducer.n(2));
-		var e128 = glslparser.EMinorType.Node(n88);
-		return e128;
+		return new glslparser.FunctionDefinition(glslparser.ParserReducer.s(1),glslparser.ParserReducer.s(2));
 	}
 	glslparser.Parser.warn("unhandled reduce rule, (" + ruleno + ", " + glslparser.ParserDebugData.ruleName(ruleno) + ")");
 	return null;
@@ -2343,30 +2099,19 @@ glslparser.ParserReducer.s = function(n) {
 	return glslparser.Parser.stack[glslparser.Parser.i - j].minor;
 };
 glslparser.ParserReducer.n = function(m) {
-	var this1 = glslparser.ParserReducer.s(m);
-	return this1.slice(2)[0];
+	return glslparser.ParserReducer.s(m);
 };
 glslparser.ParserReducer.t = function(m) {
-	var this1 = glslparser.ParserReducer.s(m);
-	return this1.slice(2)[0];
+	return glslparser.ParserReducer.s(m);
 };
 glslparser.ParserReducer.e = function(m) {
-	return js.Boot.__cast((function($this) {
-		var $r;
-		var this1 = glslparser.ParserReducer.s(m);
-		$r = this1.slice(2)[0];
-		return $r;
-	}(this)) , glslparser.Expression);
+	return js.Boot.__cast(glslparser.ParserReducer.s(m) , glslparser.Expression);
 };
 glslparser.ParserReducer.ev = function(m) {
-	if(glslparser.ParserReducer.s(m) != null) {
-		var this1 = glslparser.ParserReducer.s(m);
-		return this1.slice(2)[0];
-	} else return null;
+	if(glslparser.ParserReducer.s(m) != null) return glslparser.ParserReducer.s(m); else return null;
 };
 glslparser.ParserReducer.a = function(m) {
-	var this1 = glslparser.ParserReducer.s(m);
-	return this1.slice(2)[0];
+	return glslparser.ParserReducer.s(m);
 };
 glslparser.ParserReducer.get_i = function() {
 	return glslparser.Parser.i;
@@ -2474,6 +2219,32 @@ glslparser.Tokenizer.tokenize = function(source) {
 			break;
 		}
 	}
+	var _g1 = 0;
+	var _g2 = glslparser.Tokenizer.tokens.length;
+	while(_g1 < _g2) {
+		var j = _g1++;
+		var t = glslparser.Tokenizer.tokens[j];
+		if(t.type != glslparser.TokenType.IDENTIFIER) continue;
+		var previousTokenType = null;
+		var k = j - 1;
+		while(k >= 0 && previousTokenType == null) {
+			var tt = glslparser.Tokenizer.tokens[k--].type;
+			if(HxOverrides.indexOf(glslparser.Tokenizer.skippableTypes,tt,0) == -1) previousTokenType = tt;
+		}
+		if(previousTokenType == glslparser.TokenType.STRUCT) {
+			glslparser.Tokenizer.userDefinedTypes.push(t.data);
+			continue;
+		}
+		if(HxOverrides.indexOf(glslparser.Tokenizer.userDefinedTypes,t.data,0) != -1) {
+			var nextTokenType = null;
+			var k1 = j + 1;
+			while(k1 < glslparser.Tokenizer.tokens.length && nextTokenType == null) {
+				var tt1 = glslparser.Tokenizer.tokens[k1++].type;
+				if(HxOverrides.indexOf(glslparser.Tokenizer.skippableTypes,tt1,0) == -1) nextTokenType = tt1;
+			}
+			if(nextTokenType == glslparser.TokenType.IDENTIFIER || nextTokenType == glslparser.TokenType.LEFT_PAREN || nextTokenType == glslparser.TokenType.LEFT_BRACKET) t.type = glslparser.TokenType.TYPE_NAME;
+		}
+	}
 	return glslparser.Tokenizer.tokens;
 };
 glslparser.Tokenizer.startLen = function(m) {
@@ -2570,11 +2341,7 @@ glslparser.Tokenizer.literalMode = function() {
 		var tt = null;
 		tt = glslparser.Tokenizer.literalKeywordMap.get(glslparser.Tokenizer.buf);
 		if(tt == null && glslparser.Tokenizer.previousTokenType() == glslparser.TokenType.DOT) tt = glslparser.TokenType.FIELD_SELECTION;
-		if(tt == null && HxOverrides.indexOf(glslparser.Tokenizer.userDefinedTypes,glslparser.Tokenizer.buf,0) != -1) tt = glslparser.TokenType.TYPE_NAME;
-		if(tt == null) {
-			tt = glslparser.TokenType.IDENTIFIER;
-			if(glslparser.Tokenizer.previousTokenType(0,true) == glslparser.TokenType.STRUCT) glslparser.Tokenizer.userDefinedTypes.push(glslparser.Tokenizer.buf);
-		}
+		if(tt == null) tt = glslparser.TokenType.IDENTIFIER;
 		glslparser.Tokenizer.buildToken(tt);
 		glslparser.Tokenizer.mode = glslparser.ScanMode.UNDETERMINED;
 		return;
@@ -2656,7 +2423,7 @@ glslparser.Tokenizer.previousToken = function(n,ignoreWhitespaceAndComments) {
 		var i = 0;
 		while(n >= 0 && i < glslparser.Tokenizer.tokens.length) {
 			t = glslparser.Tokenizer.tokens[-i + glslparser.Tokenizer.tokens.length - 1];
-			if(t.type != glslparser.TokenType.WHITESPACE && t.type != glslparser.TokenType.BLOCK_COMMENT && t.type != glslparser.TokenType.LINE_COMMENT) n--;
+			if(HxOverrides.indexOf(glslparser.Tokenizer.skippableTypes,t.type,0) == -1) n--;
 			i++;
 		}
 		return t;
@@ -2684,12 +2451,7 @@ haxe.Timer = function(time_ms) {
 };
 haxe.Timer.__name__ = ["haxe","Timer"];
 haxe.Timer.prototype = {
-	stop: function() {
-		if(this.id == null) return;
-		clearInterval(this.id);
-		this.id = null;
-	}
-	,run: function() {
+	run: function() {
 	}
 	,__class__: haxe.Timer
 };
@@ -2849,27 +2611,6 @@ haxe.ds.StringMap.prototype = {
 	}
 	,exists: function(key) {
 		return this.h.hasOwnProperty("$" + key);
-	}
-	,keys: function() {
-		var a = [];
-		for( var key in this.h ) {
-		if(this.h.hasOwnProperty(key)) a.push(key.substr(1));
-		}
-		return HxOverrides.iter(a);
-	}
-	,toString: function() {
-		var s = new StringBuf();
-		s.b += "{";
-		var it = this.keys();
-		while( it.hasNext() ) {
-			var i = it.next();
-			if(i == null) s.b += "null"; else s.b += "" + i;
-			s.b += " => ";
-			s.add(Std.string(this.get(i)));
-			if(it.hasNext()) s.b += ", ";
-		}
-		s.b += "}";
-		return s.b;
 	}
 	,__class__: haxe.ds.StringMap
 };
@@ -3640,6 +3381,7 @@ glslparser.Tokenizer.literalKeywordMap = (function($this) {
 	$r = _g;
 	return $r;
 }(this));
+glslparser.Tokenizer.skippableTypes = [glslparser.TokenType.WHITESPACE,glslparser.TokenType.BLOCK_COMMENT,glslparser.TokenType.LINE_COMMENT];
 js.Boot.__toStr = {}.toString;
 Main.main();
 })();
