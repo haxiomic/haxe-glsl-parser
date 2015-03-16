@@ -1,5 +1,6 @@
 /*
-	//#! need to account for scoping!
+	#! need to account for scoping!
+	#! create Constructor class
 
 	#Expressions
 	Literal
@@ -19,7 +20,8 @@ package glslparser;
 import glslparser.AST;
 import haxe.macro.Expr;
 
-class Eval{
+class Eval {
+
 	static var variables:Map<String, GLSLBasicExpr>;
 
 	static public function evaluateConstantExpressions(ast:Node):Void{
@@ -36,7 +38,13 @@ class Eval{
 			case VariableDeclaration: var _ = cast(node, VariableDeclaration);
 				iterate(_.typeSpecifier);
 				if(_.typeSpecifier.qualifier == CONST){
-					for(i in 0..._.declarators.length) defineConst(_.declarators[i]);
+					for(i in 0..._.declarators.length){
+						var initExpr = defineConst(_.declarators[i]);
+						if(initExpr.typeName != _.typeSpecifier.typeName)
+							error('type mismatch'); //#! needs more info
+					}
+
+					//#! ensure the type is correct
 				}
 
 			case StructSpecifier: var _ = cast(node, StructSpecifier);
@@ -60,8 +68,14 @@ class Eval{
 			case Literal: var _ = cast(expr, Literal<Dynamic>);
 				return _;
 
-			case FunctionCall: var _ = cast(expr, FunctionCall);
+			case Constructor: var _ = cast(expr, Constructor);
+				//resolve parameters
+				for(i in 0..._.parameters.length)
+					_.parameters[i] = resolveExpression(_.parameters[i]);
 				return _;
+
+			case FunctionCall: var _ = cast(expr, FunctionCall);
+				//cannot handle function call
 
 			//not fully resolved
 			case Identifier: var _ = cast(expr, Identifier);
@@ -96,117 +110,117 @@ class Eval{
 		var leftType:GLSLBasicType = left;
 		var rightType:GLSLBasicType = right;
 
-		switch (BinOp(leftType, rightType, op)) {
+		switch (BinaryOp(leftType, rightType, op)) {
 			//STAR
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), STAR):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), STAR):
 				var r:Int = Math.floor(lv * rv);
-				return new Literal(r, glslFloatInt(r), INT);
-			case BinOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), STAR):
+				return new Literal(r, glslIntString(r), INT);
+			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), STAR):
 				var r:Float = lv * rv;
 				return new Literal(r, glslFloatString(r), FLOAT);
 			//SLASH
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), SLASH):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), SLASH):
 				var r:Int = Math.floor(lv / rv);
-				return new Literal(r, glslFloatInt(r), INT);
-			case BinOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), SLASH):
+				return new Literal(r, glslIntString(r), INT);
+			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), SLASH):
 				var r:Float = lv / rv;
 				return new Literal(r, glslFloatString(r), FLOAT);
 			//PERCENT
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), PERCENT):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), PERCENT):
 				var r:Int = Math.floor(lv % rv);
-				return new Literal(r, glslFloatInt(r), INT);
-			case BinOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), PERCENT):
+				return new Literal(r, glslIntString(r), INT);
+			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), PERCENT):
 				var r:Float = Math.floor(lv % rv);
 				return new Literal(r, glslFloatString(r), FLOAT);
 			//PLUS
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), PLUS):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), PLUS):
 				var r:Int = Math.floor(lv + rv);
-				return new Literal(r, glslFloatInt(r), INT);
-			case BinOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), PLUS):
+				return new Literal(r, glslIntString(r), INT);
+			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), PLUS):
 				var r:Float = lv + rv;
 				return new Literal(r, glslFloatString(r), FLOAT);
 			//DASH
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), DASH):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), DASH):
 				var r:Int = Math.floor(lv - rv);
-				return new Literal(r, glslFloatInt(r), INT);
-			case BinOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), DASH):
+				return new Literal(r, glslIntString(r), INT);
+			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), DASH):
 				var r:Float = lv - rv;
 				return new Literal(r, glslFloatString(r), FLOAT);
 			//LEFT_ANGLE
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), LEFT_ANGLE):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), LEFT_ANGLE):
 				var r:Bool = lv < rv;
 				return new Literal(r, glslBoolString(r), BOOL);
-			case BinOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), LEFT_ANGLE):
+			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), LEFT_ANGLE):
 				var r:Bool = lv < rv;
 				return new Literal(r, glslBoolString(r), BOOL);
 			//RIGHT_ANGLE
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), RIGHT_ANGLE):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), RIGHT_ANGLE):
 				var r:Bool = lv > rv;
 				return new Literal(r, glslBoolString(r), BOOL);
-			case BinOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), RIGHT_ANGLE):
+			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), RIGHT_ANGLE):
 				var r:Bool = lv > rv;
 				return new Literal(r, glslBoolString(r), BOOL);
 			//LE_OP
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), LE_OP):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), LE_OP):
 				var r:Bool = lv <= rv;
 				return new Literal(r, glslBoolString(r), BOOL);
-			case BinOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), LE_OP):
+			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), LE_OP):
 				var r:Bool = lv <= rv;
 				return new Literal(r, glslBoolString(r), BOOL);
 			//GE_OP
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), GE_OP):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), GE_OP):
 				var r:Bool = lv >= rv;
 				return new Literal(r, glslBoolString(r), BOOL);
-			case BinOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), GE_OP):
+			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), GE_OP):
 				var r:Bool = lv >= rv;
 				return new Literal(r, glslBoolString(r), BOOL);
 			//EQ_OP
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), EQ_OP):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), EQ_OP):
 				var r:Bool = lv == rv;
 				return new Literal(r, glslBoolString(r), BOOL);
-			case BinOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), EQ_OP):
+			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), EQ_OP):
 				var r:Bool = lv == rv;
 				return new Literal(r, glslBoolString(r), BOOL);
-			case BinOp(LiteralType(BOOL, lv), LiteralType(BOOL, rv), EQ_OP):
+			case BinaryOp(LiteralType(BOOL, lv), LiteralType(BOOL, rv), EQ_OP):
 				var r:Bool = lv == rv;
 				return new Literal(r, glslBoolString(r), BOOL);
 			//NE_OP
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), NE_OP):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), NE_OP):
 				var r:Bool = lv != rv;
 				return new Literal(r, glslBoolString(r), BOOL);
-			case BinOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), NE_OP):
+			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), NE_OP):
 				var r:Bool = lv != rv;
 				return new Literal(r, glslBoolString(r), BOOL);
 			//LEFT_OP
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), LEFT_OP):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), LEFT_OP):
 				var r:Int = Math.floor(lv << rv);
-				return new Literal(r, glslFloatInt(r), INT);
+				return new Literal(r, glslIntString(r), INT);
 			//RIGHT_OP
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), RIGHT_OP):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), RIGHT_OP):
 				var r:Int = Math.floor(lv >> rv);
-				return new Literal(r, glslFloatInt(r), INT);
+				return new Literal(r, glslIntString(r), INT);
 			//AMPERSAND
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), AMPERSAND):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), AMPERSAND):
 				var r:Int = Math.floor(lv & rv);
-				return new Literal(r, glslFloatInt(r), INT);
+				return new Literal(r, glslIntString(r), INT);
 			//CARET
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), CARET):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), CARET):
 				var r:Int = Math.floor(lv ^ rv);
-				return new Literal(r, glslFloatInt(r), INT);
+				return new Literal(r, glslIntString(r), INT);
 			//VERTICAL_BAR
-			case BinOp(LiteralType(INT, lv), LiteralType(INT, rv), VERTICAL_BAR):
+			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), VERTICAL_BAR):
 				var r:Int = Math.floor(lv | rv);
-				return new Literal(r, glslFloatInt(r), INT);
+				return new Literal(r, glslIntString(r), INT);
 			//AND_OP
-			case BinOp(LiteralType(BOOL, lv), LiteralType(BOOL, rv), AND_OP):
+			case BinaryOp(LiteralType(BOOL, lv), LiteralType(BOOL, rv), AND_OP):
 				var r:Bool = lv && rv;
 				return new Literal(r, glslBoolString(r), BOOL);
 			//XOR_OP
-			case BinOp(LiteralType(BOOL, lv), LiteralType(BOOL, rv), XOR_OP):
+			case BinaryOp(LiteralType(BOOL, lv), LiteralType(BOOL, rv), XOR_OP):
 				var r:Bool = !lv != !rv;
 				return new Literal(r, glslBoolString(r), BOOL);
 			//OR_OP
-			case BinOp(LiteralType(BOOL, lv), LiteralType(BOOL, rv), OR_OP):
+			case BinaryOp(LiteralType(BOOL, lv), LiteralType(BOOL, rv), OR_OP):
 				var r:Bool = lv || rv;
 				return new Literal(r, glslBoolString(r), BOOL);
 			default:
@@ -222,8 +236,8 @@ class Eval{
 
 		var argType:GLSLBasicType = arg;
 
-		// switch (UnOp(argType, unExpr.op, unExpr.isPrefix)) {
-		// 	case UnOp(INT, INC_OP, isPrefix):
+		// switch (UnaryOp(argType, unExpr.op, unExpr.isPrefix)) {
+		// 	case UnaryOp(INT, INC_OP, isPrefix):
 		// 		// alter arg?
 		// 		// return new Literal(r, glslBoolString(r), INT);
 
@@ -238,21 +252,21 @@ class Eval{
 	}
 
 	static function defineConst(declarator:Declarator){
-		trace('define const ${declarator.name}');
-		//#! need to check if the result has the correct type
-		variables.set(declarator.name, resolveExpression(declarator.initializer));
-		trace(variables);
+		var resolvedExpr = resolveExpression(declarator.initializer);
+		variables.set(declarator.name, resolvedExpr);
+		trace('defining const ${declarator.name} as $resolvedExpr');
+		return resolvedExpr;
 	}
 
 	//Utils
-	static function glslFloatString(f:Float){
+	static function glslFloatString(f:Float){ //enforce decimal point
 		var str = Std.string(f);
 		var rx = ~/\./g;
 		if(!rx.match(str)) str += '.0';
 		return str;
 	}
 
-	static function glslFloatInt(i:Int){
+	static function glslIntString(i:Int){ //enforce no decimal point
 		var str = Std.string(i);
 		var rx = ~/(\d+)\./g;
 		if(rx.match(str))str = rx.matched(1);
@@ -274,30 +288,42 @@ class Eval{
 	}
 }
 
-enum OpType{
-	BinOp(l:GLSLBasicType, r:GLSLBasicType, op:BinaryOperator);
-	UnOp(arg:GLSLBasicType, op:UnaryOperator, isPrefix:Bool);
+enum OperationType{
+	BinaryOp(l:GLSLBasicType, r:GLSLBasicType, op:BinaryOperator);
+	UnaryOp(arg:GLSLBasicType, op:UnaryOperator, isPrefix:Bool);
 }
  
 enum GLSLBasicType{
 	LiteralType(t:TypeClass, v:Dynamic);
-	FunctionCallType;
+	ConstructorType;
 }
 
 @:access(glslparser.Eval)
-abstract GLSLBasicExpr(Expression) to Expression{
+@:forward
+abstract GLSLBasicExpr(TypedExpression) to Expression{
+	public var typeName(get, never):String;
+
 	public inline function new(expr:Expression){
-		if(!isFullyresolved(expr))
+		if(!isFullyResolved(expr) || !Std.is(expr, TypedExpression))
 			Eval.error('cannot create GLSLBasicExpr; expression is not fully resolved. $expr');
 
-		this = expr;
+		this = cast expr;
 	}
 
-	static function isFullyresolved(expr:Expression):Bool{
+	function get_typeName():String{
+		if(this.typeClass != USER_TYPE)
+			return this.typeClass.getName().toLowerCase();
+		else return cast(this, Constructor).name;
+	}
+
+	static function isFullyResolved(expr:Expression):Bool{
 		switch (Type.getClass(expr)) {
 			case Literal: return true;
-			case FunctionCall: var _ = cast(expr, FunctionCall);
-				return _.constructor;
+			case Constructor: var _ = cast(expr, Constructor);
+				for(p in _.parameters){ //ensure parameters are resolved 
+					if(!isFullyResolved(p)) return false;
+				}
+				return true;
 		}
 
 		return false;
@@ -307,10 +333,10 @@ abstract GLSLBasicExpr(Expression) to Expression{
 		if(Type.getClass(this) == Literal){
 			var _ = cast(this, Literal<Dynamic>);
 			return LiteralType(_.typeClass, _.value);
-		}else if(Type.getClass(this) == FunctionCall){
-			var _ = cast(this, FunctionCall);
+		}else if(Type.getClass(this) == Constructor){
+			var _ = cast(this, Constructor);
 			Eval.error('FunctionCallType not supported yet');
-			return FunctionCallType;
+			return ConstructorType;
 		}
 
 		Eval.error('unrecognized GLSLBasicExpr: $this');
@@ -318,4 +344,14 @@ abstract GLSLBasicExpr(Expression) to Expression{
 	}
 
 	@:from static function fromExpression(expr:Expression) return new GLSLBasicExpr(expr);
+}
+
+class GLSLCompositeType {
+	var fields:Array<Dynamic>; //#! array of {name, type}
+
+	public function new(){}
+
+	public function accessField(name:String, swizzling:Bool = true){
+
+	}
 }

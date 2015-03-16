@@ -1,6 +1,6 @@
 /*
 	GLSL Abstract Syntax Tree
-	Design guided by Mozilla Parser AST API and Mesa GLSL Compiler AST
+	Loosely following Mozilla Parser AST API and Mesa GLSL Compiler AST
 
 	@author George Corney
 */
@@ -73,6 +73,10 @@ class Expression extends Node{
 	var parenWrap:Bool;
 }
 
+class TypedExpression extends Expression{
+	var typeClass:TypeClass;
+}
+
 class Identifier extends Expression{
 	var name:String;
 	function new(name:String) {
@@ -81,10 +85,9 @@ class Identifier extends Expression{
 	}
 }
 
-class Literal<T> extends Expression{
+class Literal<T> extends TypedExpression{
 	var value:T;
 	var raw:String;
-	var typeClass:TypeClass;
 	function new(value:T, raw:String, typeClass:TypeClass){
 		this.value = value;
 		this.raw = raw;
@@ -169,18 +172,22 @@ class ArrayElementSelectionExpression extends Expression{
 	}
 }
 
-class FunctionCall extends Expression{
+class FunctionCall extends TypedExpression{
 	var name:String;
 	var parameters:Array<Expression>;
-	var constructor:Bool;
-	function new(name, ?parameters, constructor:Bool = false){
+	function new(name:String, ?parameters:Array<Expression>){
 		this.name = name;
 		this.parameters = parameters != null ? parameters : [];
-		this.constructor = constructor;
 		super();
 	}
 }
 
+class Constructor extends FunctionCall{
+	function new(name:String, typeClass:TypeClass, ?parameters:Array<Expression>){
+		this.typeClass = typeClass;
+		super(name, parameters);
+	}
+}
 
 //Declarations
 class Declaration extends Expression{
@@ -452,7 +459,7 @@ enum TypeClass{
 	SAMPLER2D;
 	SAMPLERCUBE;
 	STRUCT;
-	TYPE_NAME;
+	USER_TYPE;
 }
 
 enum ParameterQualifier{

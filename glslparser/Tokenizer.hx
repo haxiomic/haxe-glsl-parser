@@ -122,6 +122,38 @@ class Tokenizer{
 			}
 		}
 
+		//identify type references
+		//this is somewhat of a hack but the spec requires type references to be identified before grammar parsing
+		for(j in 0...tokens.length){
+			var t = tokens[j];
+			if(t.type != IDENTIFIER) continue;
+			//record a new type if it's a type definition 
+			var previousTokenType = null;
+			var k = j - 1;
+			while(k >= 0 && previousTokenType == null){
+				var tt = tokens[k--].type;
+				if(skippableTypes.indexOf(tt) == -1) previousTokenType = tt;
+			}
+
+			if(previousTokenType == STRUCT){
+				userDefinedTypes.push(t.data);
+				continue;
+			}
+
+			if(userDefinedTypes.indexOf(t.data) != -1){
+				//check if next token is identifier or left paren
+				var nextTokenType = null;
+				var k = j+1;
+				while(k < tokens.length && nextTokenType == null){
+					var tt = tokens[k++].type;
+					if(skippableTypes.indexOf(tt) == -1) nextTokenType = tt;
+				}
+
+				if(nextTokenType == IDENTIFIER || nextTokenType == LEFT_PAREN || nextTokenType == LEFT_BRACKET)
+					t.type = TYPE_NAME;
+			}
+		}
+
 		return tokens;
 	}
 
@@ -234,19 +266,12 @@ class Tokenizer{
 		if(isEnd(mode)){
 			var tt:TokenType = null;
 			//in order of priority
-			//check if user define type
+			//check if it's a keyword
 			tt = literalKeywordMap.get(buf);
 			//check if it's a field selection
 			if(tt == null && previousTokenType() == DOT) tt = FIELD_SELECTION;
-			//try searching user defined types
-			if(tt == null && userDefinedTypes.indexOf(buf) != -1) tt = TYPE_NAME;
-
 			//otherwise it must be an identifier
-			if(tt == null){
-				tt = IDENTIFIER;
-				//record a new type if it's a type definition 
-				if(previousTokenType(0, true) == STRUCT) userDefinedTypes.push(buf);	
-			}
+			if(tt == null) tt = IDENTIFIER;
 
 			buildToken(tt);
 			mode = UNDETERMINED;
@@ -344,7 +369,7 @@ class Tokenizer{
 			var t:Token = null, i = 0;
 			while(n >= 0 && i < tokens.length){
 				t = tokens[-i + tokens.length - 1];
-				if(t.type != WHITESPACE && t.type != BLOCK_COMMENT && t.type != LINE_COMMENT) n--;
+				if(skippableTypes.indexOf(t.type) == -1) n--;
 				i++;
 			}
 			return t;
@@ -392,7 +417,6 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
                          \.\d               ^\d
     EXPONENT_PART;       [eE][+-]?\d        ^\d
 */
-
 	//single character patterns
 	static var operatorRegex = ~/[&<=>|*?!+%(){}.~:,;\/\-\^\[\]]/;
 
@@ -557,6 +581,8 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
 		'namespace'           => RESERVED_KEYWORD,
 		'using'               => RESERVED_KEYWORD
 	];
+
+	static var skippableTypes:Array<TokenType> = [WHITESPACE, BLOCK_COMMENT, LINE_COMMENT];
 }
 
 enum ScanMode{

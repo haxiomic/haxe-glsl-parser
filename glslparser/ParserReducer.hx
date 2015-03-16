@@ -10,27 +10,11 @@ package glslparser;
 import glslparser.Tokenizer.Token;
 import glslparser.AST;
 
-enum EMinorType{
-	Token(t:Token);
-	Node(n:Node);
-	EnumValue(e:EnumValue);
-	NodeArray(a:Array<Dynamic>);
-}
+typedef MinorType = Dynamic;
 
-abstract MinorType(EMinorType){
-	public inline function new(e:EMinorType) this = e;
-
-	public var v(get, never):Dynamic;
-	public var type(get, never):EMinorType;
-
-	inline function get_v() return this.getParameters()[0];
-
-	@:to inline function get_type():EMinorType return this;
-
-	@:from static inline function fromToken(t:Token) return new MinorType(Token(t));
-	@:from static inline function fromNode(n:Node) return new MinorType(Node(n));
-	@:from static inline function fromEnumValue(e:EnumValue) return new MinorType(EnumValue(e));
-	@:from static inline function fromNodeArray(a:Array<Dynamic>) return new MinorType(NodeArray(a));
+typedef ConstructorIdentifier = {
+	var name:String;
+	var typeClass:TypeClass;
 }
 
 @:access(glslparser.Parser)
@@ -68,24 +52,24 @@ class ParserReducer{
 			case 19: cast(n(1), FunctionCall).parameters.push(cast n(2)); return s(1); //function_call_header_with_parameters ::= function_call_header assignment_expression
 			case 20: cast(n(1), FunctionCall).parameters.push(cast n(3)); return s(1); //function_call_header_with_parameters ::= function_call_header_with_parameters COMMA assignment_expression
 			case 21: return s(1); //function_call_header ::= function_identifier LEFT_PAREN
-			case 22: return new FunctionCall(t(1).data, true); //function_identifier ::= constructor_identifier
-			case 23: return new FunctionCall(t(1).data, false); //function_identifier ::= IDENTIFIER
-			case 24: return s(1); //constructor_identifier ::= FLOAT
-			case 25: return s(1); //constructor_identifier ::= INT
-			case 26: return s(1); //constructor_identifier ::= BOOL
-			case 27: return s(1); //constructor_identifier ::= VEC2
-			case 28: return s(1); //constructor_identifier ::= VEC3
-			case 29: return s(1); //constructor_identifier ::= VEC4
-			case 30: return s(1); //constructor_identifier ::= BVEC2
-			case 31: return s(1); //constructor_identifier ::= BVEC3
-			case 32: return s(1); //constructor_identifier ::= BVEC4
-			case 33: return s(1); //constructor_identifier ::= IVEC2
-			case 34: return s(1); //constructor_identifier ::= IVEC3
-			case 35: return s(1); //constructor_identifier ::= IVEC4
-			case 36: return s(1); //constructor_identifier ::= MAT2
-			case 37: return s(1); //constructor_identifier ::= MAT3
-			case 38: return s(1); //constructor_identifier ::= MAT4
-			case 39: return s(1); //constructor_identifier ::= TYPE_NAME
+			case 22: return new Constructor(s(1).name, s(1).typeClass); //function_identifier ::= constructor_identifier
+			case 23: return new FunctionCall(t(1).data); //function_identifier ::= IDENTIFIER
+			case 24: return {typeClass: TypeClass.FLOAT, name: t(1).data}; //constructor_identifier ::= FLOAT
+			case 25: return {typeClass: TypeClass.INT, name: t(1).data}; //constructor_identifier ::= INT
+			case 26: return {typeClass: TypeClass.BOOL, name: t(1).data}; //constructor_identifier ::= BOOL
+			case 27: return {typeClass: TypeClass.VEC2, name: t(1).data}; //constructor_identifier ::= VEC2
+			case 28: return {typeClass: TypeClass.VEC3, name: t(1).data}; //constructor_identifier ::= VEC3
+			case 29: return {typeClass: TypeClass.VEC4, name: t(1).data}; //constructor_identifier ::= VEC4
+			case 30: return {typeClass: TypeClass.BVEC2, name: t(1).data}; //constructor_identifier ::= BVEC2
+			case 31: return {typeClass: TypeClass.BVEC3, name: t(1).data}; //constructor_identifier ::= BVEC3
+			case 32: return {typeClass: TypeClass.BVEC4, name: t(1).data}; //constructor_identifier ::= BVEC4
+			case 33: return {typeClass: TypeClass.IVEC2, name: t(1).data}; //constructor_identifier ::= IVEC2
+			case 34: return {typeClass: TypeClass.IVEC3, name: t(1).data}; //constructor_identifier ::= IVEC3
+			case 35: return {typeClass: TypeClass.IVEC4, name: t(1).data}; //constructor_identifier ::= IVEC4
+			case 36: return {typeClass: TypeClass.MAT2, name: t(1).data}; //constructor_identifier ::= MAT2
+			case 37: return {typeClass: TypeClass.MAT3, name: t(1).data}; //constructor_identifier ::= MAT3
+			case 38: return {typeClass: TypeClass.MAT4, name: t(1).data}; //constructor_identifier ::= MAT4
+			case 39: return {typeClass: TypeClass.USER_TYPE, name: t(1).data}; //constructor_identifier ::= TYPE_NAME
 			case 40: return s(1); //unary_expression ::= postfix_expression
 			case 41: return new UnaryExpression(UnaryOperator.INC_OP, e(2), true); //unary_expression ::= INC_OP unary_expression
 			case 42: return new UnaryExpression(UnaryOperator.DEC_OP, e(2), true); //unary_expression ::= DEC_OP unary_expression
@@ -162,7 +146,7 @@ class ParserReducer{
 						return fh; 
 			case 104: return new FunctionHeader(t(2).data, cast n(1)); //function_header ::= fully_specified_type IDENTIFIER LEFT_PAREN
 			case 105: return new ParameterDeclaration(t(2).data, cast n(1)); //parameter_declarator ::= type_specifier IDENTIFIER
-			case 106: return new ParameterDeclaration(t(2).data, cast n(1), null, null, e(3)); //parameter_declarator ::= type_specifier IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
+			case 106: return new ParameterDeclaration(t(2).data, cast n(1), null, null, e(4)); //parameter_declarator ::= type_specifier IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 107: var pd = cast(n(3), ParameterDeclaration); //parameter_declaration ::= type_qualifier parameter_qualifier parameter_declarator
 						pd.typeQualifier = cast ev(1);
 						pd.parameterQualifier = cast ev(2);
@@ -187,7 +171,7 @@ class ParserReducer{
 			case 118: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, null, false)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER
 			case 119: cast(n(1), VariableDeclaration).declarators.push(new ArrayDeclarator(t(3).data, e(5))); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 120: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, e(5), false)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER EQUAL initializer
-			case 121: return new VariableDeclaration(cast n(1), [new Declarator('', null, false)]); //single_declaration ::= fully_specified_type
+			case 121: return new VariableDeclaration(cast n(1), [new Declarator(null, null, false)]); //single_declaration ::= fully_specified_type
 			case 122: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, null, false)]); //single_declaration ::= fully_specified_type IDENTIFIER
 			case 123: return new VariableDeclaration(cast n(1), [new ArrayDeclarator(t(2).data, e(4))]); //single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 124: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, e(4), false)]); //single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer
@@ -221,12 +205,12 @@ class ParserReducer{
 			case 151: return new TypeSpecifier(TypeClass.SAMPLER2D, t(1).data); //type_specifier_no_prec ::= SAMPLER2D
 			case 152: return new TypeSpecifier(TypeClass.SAMPLERCUBE, t(1).data); //type_specifier_no_prec ::= SAMPLERCUBE
 			case 153: return s(1); //type_specifier_no_prec ::= struct_specifier
-			case 154: return new TypeSpecifier(TypeClass.TYPE_NAME, t(1).data); //type_specifier_no_prec ::= TYPE_NAME
+			case 154: return new TypeSpecifier(TypeClass.USER_TYPE, t(1).data); //type_specifier_no_prec ::= TYPE_NAME
 			case 155: return PrecisionQualifier.HIGH_PRECISION; //precision_qualifier ::= HIGH_PRECISION
 			case 156: return PrecisionQualifier.MEDIUM_PRECISION; //precision_qualifier ::= MEDIUM_PRECISION
 			case 157: return PrecisionQualifier.LOW_PRECISION; //precision_qualifier ::= LOW_PRECISION
 			case 158: return new StructSpecifier(t(2).data, cast a(4)); //struct_specifier ::= STRUCT IDENTIFIER LEFT_BRACE struct_declaration_list RIGHT_BRACE
-			case 159: return new StructSpecifier('', cast a(3)); //struct_specifier ::= STRUCT LEFT_BRACE struct_declaration_list RIGHT_BRACE
+			case 159: return new StructSpecifier(null, cast a(3)); //struct_specifier ::= STRUCT LEFT_BRACE struct_declaration_list RIGHT_BRACE
 			case 160: return [n(1)]; //struct_declaration_list ::= struct_declaration
 			case 161: a(1).push(n(2)); return s(1); //struct_declaration_list ::= struct_declaration_list struct_declaration
 			case 162: return new StructDeclaration(cast n(1), cast a(2)); //struct_declaration ::= type_specifier struct_declarator_list SEMICOLON
@@ -297,17 +281,17 @@ class ParserReducer{
 		return stack[i - j].minor;
 	}
 
-	//Convenience functions for casting s(n).v
+	//Convenience functions for casting minor
 	static inline function n(m:Int):Node 
-		return cast s(m).v;
+		return cast s(m);
 	static inline function t(m:Int):Token
-		return cast s(m).v;
+		return cast s(m);
 	static inline function e(m:Int):Expression
-		return cast(s(m).v, Expression);
+		return cast(s(m), Expression);
 	static inline function ev(m:Int):EnumValue
-		return s(m) != null ? cast s(m).v : null;
+		return s(m) != null ? cast s(m) : null;
 	static inline function a(m):Array<Dynamic>
-		return cast s(m).v;
+		return cast s(m);
 
 	static inline function get_i() return Parser.i;
 	static inline function get_stack() return Parser.stack;	
