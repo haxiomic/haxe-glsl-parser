@@ -16,12 +16,10 @@ class Node{
 }
 
 class TypeSpecifier extends Node{
-	var typeName:String;
 	var typeClass:TypeClass;
 	var qualifier:TypeQualifier;
 	var precision:PrecisionQualifier;
-	function new(typeClass:TypeClass, typeName:String, ?qualifier:TypeQualifier, ?precision:PrecisionQualifier){
-		this.typeName = typeName;
+	function new(typeClass:TypeClass, ?qualifier:TypeQualifier, ?precision:PrecisionQualifier){
 		this.typeClass = typeClass;
 		this.qualifier = qualifier;
 		this.precision = precision;
@@ -31,9 +29,11 @@ class TypeSpecifier extends Node{
 
 class StructSpecifier extends TypeSpecifier{
 	var structDeclarations:StructDeclarationList;
+	var name:String;
 	function new(name:String, structDeclarations:StructDeclarationList){
+		this.name = name;
 		this.structDeclarations = structDeclarations;
-		super(STRUCT, name);
+		super(STRUCT);
 	}
 }
 
@@ -73,7 +73,7 @@ class Expression extends Node{
 	var parenWrap:Bool;
 }
 
-class TypedExpression extends Expression{
+interface TypedExpression{
 	var typeClass:TypeClass;
 }
 
@@ -85,15 +85,27 @@ class Identifier extends Expression{
 	}
 }
 
-class Literal<T> extends TypedExpression{
-	var value:T;
+class Literal<T> extends Expression implements TypedExpression{
+	var value(default, set):T;
 	var raw:String;
-	function new(value:T, raw:String, typeClass:TypeClass){
-		this.value = value;
-		this.raw = raw;
+	var typeClass:TypeClass;
+
+	function new(value:T, typeClass:TypeClass){
 		this.typeClass = typeClass;
+		this.value = value;
 		super();
 	}
+
+	private function set_value(v:T):T{
+		switch(typeClass){
+			case INT: raw = Utils.glslIntString(cast v);
+			case FLOAT: raw = Utils.glslFloatString(cast v);
+			case BOOL: raw = Utils.glslBoolString(cast v);
+			default:
+		}
+		return value = v;
+	}
+
 }
 
 class BinaryExpression extends Expression{
@@ -172,7 +184,7 @@ class ArrayElementSelectionExpression extends Expression{
 	}
 }
 
-class FunctionCall extends TypedExpression{
+class FunctionCall extends Expression{
 	var name:String;
 	var parameters:Array<Expression>;
 	function new(name:String, ?parameters:Array<Expression>){
@@ -182,9 +194,14 @@ class FunctionCall extends TypedExpression{
 	}
 }
 
-class Constructor extends FunctionCall{
-	function new(name:String, typeClass:TypeClass, ?parameters:Array<Expression>){
+class Constructor extends FunctionCall implements TypedExpression{
+	var typeClass:TypeClass;
+	function new(typeClass:TypeClass, ?parameters:Array<Expression>){
 		this.typeClass = typeClass;
+		var name = switch (this.typeClass) {
+			case USER_TYPE(n): n;
+			case _: this.typeClass.getName().toLowerCase();
+		}
 		super(name, parameters);
 	}
 }
@@ -459,7 +476,7 @@ enum TypeClass{
 	SAMPLER2D;
 	SAMPLERCUBE;
 	STRUCT;
-	USER_TYPE;
+	USER_TYPE(name:String);
 }
 
 enum ParameterQualifier{
