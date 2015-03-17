@@ -16,11 +16,11 @@ class Node{
 }
 
 class TypeSpecifier extends Node{
-	var typeClass:TypeClass;
+	var dataType:DataType;
 	var qualifier:TypeQualifier;
 	var precision:PrecisionQualifier;
-	function new(typeClass:TypeClass, ?qualifier:TypeQualifier, ?precision:PrecisionQualifier){
-		this.typeClass = typeClass;
+	function new(dataType:DataType, ?qualifier:TypeQualifier, ?precision:PrecisionQualifier){
+		this.dataType = dataType;
 		this.qualifier = qualifier;
 		this.precision = precision;
 		super();
@@ -74,7 +74,7 @@ class Expression extends Node{
 }
 
 interface TypedExpression{
-	var typeClass:TypeClass;
+	var dataType:DataType;
 }
 
 class Identifier extends Expression{
@@ -88,16 +88,16 @@ class Identifier extends Expression{
 class Literal<T> extends Expression implements TypedExpression{
 	var value(default, set):T;
 	var raw:String;
-	var typeClass:TypeClass;
+	var dataType:DataType;
 
-	function new(value:T, typeClass:TypeClass){
-		this.typeClass = typeClass;
+	function new(value:T, dataType:DataType){
+		this.dataType = dataType;
 		this.value = value;
 		super();
 	}
 
 	private function set_value(v:T):T{
-		switch(typeClass){
+		switch(dataType){
 			case INT: raw = Utils.glslIntString(cast v);
 			case FLOAT: raw = Utils.glslFloatString(cast v);
 			case BOOL: raw = Utils.glslBoolString(cast v);
@@ -195,12 +195,12 @@ class FunctionCall extends Expression{
 }
 
 class Constructor extends FunctionCall implements TypedExpression{
-	var typeClass:TypeClass;
-	function new(typeClass:TypeClass, ?parameters:Array<Expression>){
-		this.typeClass = typeClass;
-		var name = switch (this.typeClass) {
+	var dataType:DataType;
+	function new(dataType:DataType, ?parameters:Array<Expression>){
+		this.dataType = dataType;
+		var name = switch (this.dataType) {
 			case USER_TYPE(n): n;
-			case _: this.typeClass.getName().toLowerCase();
+			case _: this.dataType.getName().toLowerCase();
 		}
 		super(name, parameters);
 	}
@@ -456,7 +456,7 @@ enum JumpMode{
 	DISCARD;
 }
 
-enum TypeClass{
+enum DataType{
 	VOID;
 	FLOAT;
 	INT;

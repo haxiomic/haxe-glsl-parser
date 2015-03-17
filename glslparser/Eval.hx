@@ -1,18 +1,18 @@
 /*
-	#! need to account for scoping!
-	#! create Constructor class
+	#Todo
+	- need to account for scoping!
+	- handle complex construction:
 
-	#Expressions
-	Literal
-	FunctionCall
+		mat2 m2x2 = mat2(
+		   1.1, 2.1, 
+		   1.2, 2.2
+		);
+		mat3 m3x3 = mat3(m2x2); // = mat3(
+		   // 1.1, 2.1, 0.0,   
+		   // 1.2, 2.2, 0.0,
+		   // 0.0, 0.0, 1.0)
+		mat2 mm2x2 = mat2(m3x3); // = m2x2
 
-	Identifier
-	BinaryExpression
-	UnaryExpression
-	SequenceExpression
-	ConditionalExpression
-	AssignmentExpression
-	FieldSelectionExpression
 */
 
 package glslparser;
@@ -31,15 +31,28 @@ class Eval {
 		'gl_MaxFragmentUniformVectors'    => new GLSLBasicExpr(new Literal<Int>(16, INT)),
 		'gl_MaxDrawBuffers'               => new GLSLBasicExpr(new Literal<Int>(1, INT))
 	];
-	static var builtInTypes:Map<TypeClass, GLSLCompositeType>;
+	static var builtInTypes:Map<DataType, GLSLBuiltInType> = [
+		VEC2  => new GLSLBuiltInType(FLOAT, 2),
+		VEC3  => new GLSLBuiltInType(FLOAT, 3),
+		VEC4  => new GLSLBuiltInType(FLOAT, 4),
+		BVEC2 => new GLSLBuiltInType(BOOL, 2),
+		BVEC3 => new GLSLBuiltInType(BOOL, 3),
+		BVEC4 => new GLSLBuiltInType(BOOL, 4),
+		IVEC2 => new GLSLBuiltInType(INT, 2),
+		IVEC3 => new GLSLBuiltInType(INT, 3),
+		IVEC4 => new GLSLBuiltInType(INT, 4),
+		MAT2  => new GLSLBuiltInType(MAT2, 2*2),
+		MAT3  => new GLSLBuiltInType(MAT3, 3*3),
+		MAT4  => new GLSLBuiltInType(MAT4, 4*4),
+	];
 
 	static var userDefinedConstants:Map<String, GLSLBasicExpr>;
-	static var userDefinedTypes:Map<TypeClass, GLSLCompositeType>;
+	static var userDefinedTypes:Map<DataType, GLSLStructType>;
 
 	static public function evaluateConstantExpressions(ast:Node):Void{
 		//init state machine
 		userDefinedConstants = new Map<String, GLSLBasicExpr>();
-		userDefinedTypes = new Map<TypeClass, GLSLCompositeType>();
+		userDefinedTypes = new Map<DataType, GLSLStructType>();
 
 		iterate(ast);
 	}
@@ -50,9 +63,9 @@ class Eval {
 		return null;
 	}
 
-	static function getType(typeClass:TypeClass){
-		if(userDefinedTypes.exists(typeClass)) return userDefinedTypes.get(typeClass);
-		if(builtInTypes.exists(typeClass)) return builtInTypes.get(typeClass);
+	static function getType(dataType:DataType){
+		if(userDefinedTypes.exists(dataType)) return userDefinedTypes.get(dataType);
+		// if(builtInTypes.exists(dataType)) return builtInTypes.get(dataType);
 		return null;
 	}
 
@@ -67,8 +80,8 @@ class Eval {
 				if(_.typeSpecifier.qualifier == CONST){
 					for(i in 0..._.declarators.length){
 						var initExpr = defineConst(_.declarators[i]);
-						if(!initExpr.typeClass.equals(_.typeSpecifier.typeClass))
-							error('type mismatch'); //#! needs more info, should we even be testing for this here, rather than in a separate validation phase?
+						if(!initExpr.dataType.equals(_.typeSpecifier.dataType))
+							warn('type mismatch'); //#! needs more info, should we even be testing for this here, rather than in a separate validation phase?
 					}
 				}
 
@@ -81,7 +94,7 @@ class Eval {
 
 
 			default:
-				trace('default case');
+				// trace('default case'); //#!
 		}
 
 	}
@@ -118,19 +131,38 @@ class Eval {
 			case ConditionalExpression: var _ = cast(expr, ConditionalExpression);
 
 			case AssignmentExpression: var _ = cast(expr, AssignmentExpression);
+				//#need to resolving the unary left expression as well as the right
 
 			case FieldSelectionExpression: var _ = cast(expr, FieldSelectionExpression);
 				try{
-					var e = cast(resolveExpression(_.left), Constructor);
-					var typeDefinition = userDefinedTypes.get(e.typeClass);
-					return typeDefinition.accessField(_.field.name, e.parameters);
+					var left = cast(resolveExpression(_.left), Constructor);
+					var typeDefinition = getType(left.dataType);
+					return typeDefinition.accessField(_.field.name, left.parameters);
 				}catch(error:Dynamic){
+					warn(error);
 					warn('could not access field ${_.field.name}'); //#! needs more info
+				}
+
+			case ArrayElementSelectionExpression: var _ = cast(expr, ArrayElementSelectionExpression);
+				try{			
+					var a = resolveExpression(_.arrayIndexExpression);
+					if(a.dataType != INT){
+						Eval.warn('array size must an integer expression');
+						return null;
+					}
+					var av = cast(a, Literal<Dynamic>);
+					//assume the left expression is a constructor since ES 1.0 does not allow array initialization
+					var left = cast(resolveExpression(_.left), Constructor);
+					var typeDefinition = builtInTypes.get(left.dataType); //array access is not possible on structs
+					return typeDefinition.accessIndex(av.value, left.parameters);
+				}catch(error:Dynamic){
+					warn(error);
+					warn('array access not possible'); //#! needs more info
 				}
 
 		}
 
-		error('cannot resolve expression $expr');
+		warn('cannot resolve expression $expr');
 		return null;
 	}
 
@@ -145,120 +177,89 @@ class Eval {
 		switch (BinaryOp(leftType, rightType, op)) {
 			//STAR
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), STAR):
-				var r:Int = Math.floor(lv * rv);
-				return new Literal<Int>(r, INT);
+				return new Literal<Int>(Math.floor(lv * rv), INT);
 			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), STAR):
-				var r:Float = lv * rv;
-				return new Literal<Float>(r, FLOAT);
+				return new Literal<Float>(lv * rv, FLOAT);
 			//SLASH
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), SLASH):
-				var r:Int = Math.floor(lv / rv);
-				return new Literal<Int>(r, INT);
+				return new Literal<Int>(Math.floor(lv / rv), INT);
 			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), SLASH):
-				var r:Float = lv / rv;
-				return new Literal<Float>(r, FLOAT);
+				return new Literal<Float>(lv / rv, FLOAT);
 			//PERCENT
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), PERCENT):
-				var r:Int = Math.floor(lv % rv);
-				return new Literal<Int>(r, INT);
+				return new Literal<Int>(Math.floor(lv % rv), INT);
 			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), PERCENT):
-				var r:Float = Math.floor(lv % rv);
-				return new Literal<Float>(r, FLOAT);
+				return new Literal<Float>(Math.floor(lv % rv), FLOAT);
 			//PLUS
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), PLUS):
-				var r:Int = Math.floor(lv + rv);
-				return new Literal<Int>(r, INT);
+				return new Literal<Int>(Math.floor(lv + rv), INT);
 			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), PLUS):
-				var r:Float = lv + rv;
-				return new Literal<Float>(r, FLOAT);
+				return new Literal<Float>(lv + rv, FLOAT);
 			//DASH
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), DASH):
-				var r:Int = Math.floor(lv - rv);
-				return new Literal<Int>(r, INT);
+				return new Literal<Int>(Math.floor(lv - rv), INT);
 			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), DASH):
-				var r:Float = lv - rv;
-				return new Literal<Float>(r, FLOAT);
+				return new Literal<Float>(lv - rv, FLOAT);
 			//LEFT_ANGLE
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), LEFT_ANGLE):
-				var r:Bool = lv < rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv < rv, BOOL);
 			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), LEFT_ANGLE):
-				var r:Bool = lv < rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv < rv, BOOL);
 			//RIGHT_ANGLE
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), RIGHT_ANGLE):
-				var r:Bool = lv > rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv > rv, BOOL);
 			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), RIGHT_ANGLE):
-				var r:Bool = lv > rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv > rv, BOOL);
 			//LE_OP
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), LE_OP):
-				var r:Bool = lv <= rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv <= rv, BOOL);
 			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), LE_OP):
-				var r:Bool = lv <= rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv <= rv, BOOL);
 			//GE_OP
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), GE_OP):
-				var r:Bool = lv >= rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv >= rv, BOOL);
 			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), GE_OP):
-				var r:Bool = lv >= rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv >= rv, BOOL);
 			//EQ_OP
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), EQ_OP):
-				var r:Bool = lv == rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv == rv, BOOL);
 			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), EQ_OP):
-				var r:Bool = lv == rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv == rv, BOOL);
 			case BinaryOp(LiteralType(BOOL, lv), LiteralType(BOOL, rv), EQ_OP):
-				var r:Bool = lv == rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv == rv, BOOL);
 			//NE_OP
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), NE_OP):
-				var r:Bool = lv != rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv != rv, BOOL);
 			case BinaryOp(LiteralType(FLOAT, lv), LiteralType(FLOAT, rv), NE_OP):
-				var r:Bool = lv != rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv != rv, BOOL);
 			//LEFT_OP
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), LEFT_OP):
-				var r:Int = Math.floor(lv << rv);
-				return new Literal<Int>(r, INT);
+				return new Literal<Int>(Math.floor(lv << rv), INT);
 			//RIGHT_OP
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), RIGHT_OP):
-				var r:Int = Math.floor(lv >> rv);
-				return new Literal<Int>(r, INT);
+				return new Literal<Int>(Math.floor(lv >> rv), INT);
 			//AMPERSAND
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), AMPERSAND):
-				var r:Int = Math.floor(lv & rv);
-				return new Literal<Int>(r, INT);
+				return new Literal<Int>(Math.floor(lv & rv), INT);
 			//CARET
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), CARET):
-				var r:Int = Math.floor(lv ^ rv);
-				return new Literal<Int>(r, INT);
+				return new Literal<Int>(Math.floor(lv ^ rv), INT);
 			//VERTICAL_BAR
 			case BinaryOp(LiteralType(INT, lv), LiteralType(INT, rv), VERTICAL_BAR):
-				var r:Int = Math.floor(lv | rv);
-				return new Literal<Int>(r, INT);
+				return new Literal<Int>(Math.floor(lv | rv), INT);
 			//AND_OP
 			case BinaryOp(LiteralType(BOOL, lv), LiteralType(BOOL, rv), AND_OP):
-				var r:Bool = lv && rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv && rv, BOOL);
 			//XOR_OP
 			case BinaryOp(LiteralType(BOOL, lv), LiteralType(BOOL, rv), XOR_OP):
-				var r:Bool = !lv != !rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(!lv != !rv, BOOL);
 			//OR_OP
 			case BinaryOp(LiteralType(BOOL, lv), LiteralType(BOOL, rv), OR_OP):
-				var r:Bool = lv || rv;
-				return new Literal<Bool>(r, BOOL);
+				return new Literal<Bool>(lv || rv, BOOL);
 			default:
 		}
 
-		error('could not resolve binary expression $left $op $rightType'); //#! needs improving
+		warn('could not resolve binary expression $left $op $rightType'); //#! needs improving
 		return null;
 	}
 
@@ -275,12 +276,12 @@ class Eval {
 
 		// }
 
-		error('could not resolve unary expression $unExpr'); //#! needs improving
+		warn('could not resolve unary expression $unExpr'); //#! needs improving
 		return null;
 	}
 
 	static function defineType(specifier:StructSpecifier){
-		userDefinedTypes.set(TypeClass.USER_TYPE(specifier.name), GLSLCompositeType.fromStructSpecifier(specifier));
+		userDefinedTypes.set(DataType.USER_TYPE(specifier.name), GLSLStructType.fromStructSpecifier(specifier));
 		// trace('defining user type ${specifier.name}');
 	}
 
@@ -308,13 +309,13 @@ enum OperationType{
 }
  
 enum GLSLBasicType{
-	LiteralType(t:TypeClass, v:Dynamic);
+	LiteralType(t:DataType, v:Dynamic);
 	ConstructorType;
 }
 
 @:access(glslparser.Eval)
 abstract GLSLBasicExpr(Expression) to Expression{
-	public var typeClass(get, never):TypeClass;
+	public var dataType(get, never):DataType;
 
 	public inline function new(expr:Expression){
 		if(!isFullyResolved(expr))
@@ -323,7 +324,7 @@ abstract GLSLBasicExpr(Expression) to Expression{
 		this = cast expr;
 	}
 
-	function get_typeClass():TypeClass return cast(this, TypedExpression).typeClass;
+	function get_dataType():DataType return cast(this, TypedExpression).dataType;
 
 	static function isFullyResolved(expr:Expression):Bool{
 		switch (Type.getClass(expr)) {
@@ -341,7 +342,7 @@ abstract GLSLBasicExpr(Expression) to Expression{
 	@:to function toGLSLBasicType():GLSLBasicType{
 		if(Type.getClass(this) == Literal){
 			var _ = cast(this, Literal<Dynamic>);
-			return LiteralType(_.typeClass, _.value);
+			return LiteralType(_.dataType, _.value);
 		}else if(Type.getClass(this) == Constructor){
 			var _ = cast(this, Constructor);
 			Eval.error('FunctionCallType not supported yet');
@@ -356,22 +357,26 @@ abstract GLSLBasicExpr(Expression) to Expression{
 }
 
 typedef GLSLTypeField = {
-	var typeClass:TypeClass;
+	var dataType:DataType;
 	var name:String;
 	@:optional var arraySize:Int;
 }
 
-@:access(glslparser.Eval)
-class GLSLCompositeType{
-	var fields:Array<GLSLTypeField>;
-	var supportsSwizzling:Bool;
 
-	public function new(fields:Array<GLSLTypeField>, supportsSwizzling:Bool = false){
+interface GLSLComplexType{
+	public function accessField(name:String, constructionParams:Array<Expression>):GLSLBasicExpr;
+}
+
+@:access(glslparser.Eval)
+class GLSLStructType implements GLSLComplexType{
+	var fields:Array<GLSLTypeField>;
+
+	public function new(fields:Array<GLSLTypeField>){
 		this.fields = fields;
-		this.supportsSwizzling = supportsSwizzling;
 	}
 
-	public function accessField(name:String, params:Array<Expression>){
+	public function accessField(name:String, constructionParams:Array<Expression>){
+		//structure field access
 		var paramIndex = -1;
 		for(i in 0...fields.length){
 			if(fields[i].name == name){
@@ -384,7 +389,13 @@ class GLSLCompositeType{
 			Eval.warn('could not access field name $name'); //#! needs more info
 			return null;
 		}
-		return params[paramIndex];
+
+		var paramExpr = Eval.resolveExpression(constructionParams[paramIndex]);
+
+		//enforce type
+		if(paramExpr.dataType != fields[paramIndex].dataType) Eval.warn('parameter type mismatch'); //#! needs more info
+
+		return paramExpr;
 	}
 
 	static public function fromStructSpecifier(specifier:StructSpecifier){
@@ -392,16 +403,16 @@ class GLSLCompositeType{
 		var fields = new Array<GLSLTypeField>();
 		for(i in 0...specifier.structDeclarations.length){
 			var d = specifier.structDeclarations[i];
-			var type = d.typeSpecifier.typeClass;
+			var type = d.typeSpecifier.dataType;
 			for(j in 0...d.declarators.length){
 				var dr = d.declarators[j];
 
-				var field:GLSLTypeField = {typeClass: type, name: dr.name};
+				var field:GLSLTypeField = {dataType: type, name: dr.name};
 
 				if(Type.getClass(dr) == StructArrayDeclarator){
 					//resolve array expression
 					var basicArrayExpr = Eval.resolveExpression(cast(dr, StructArrayDeclarator).arraySizeExpression);
-					if(!basicArrayExpr.typeClass.equals(TypeClass.INT))
+					if(!basicArrayExpr.dataType.equals(DataType.INT))
 						Eval.error('array size must an integer expression');
 
 					field.arraySize = cast(basicArrayExpr, Literal<Dynamic>).value;
@@ -411,10 +422,33 @@ class GLSLCompositeType{
 			}
 		}
 
-		return new GLSLCompositeType(fields);
+		return new GLSLStructType(fields);
 	}
 }
 
-class GLSLCompositeTypeInstance{}
+@:access(glslparser.Eval)
+class GLSLBuiltInType implements GLSLComplexType{
+	var fieldType:DataType;
+	var fieldCount:Int;
+	public function new(fieldType:DataType, fieldCount:Int){
+		this.fieldType = fieldType;
+		this.fieldCount = fieldCount;
+	}
 
-class GLSLBuiltInType extends GLSLCompositeType{} //#! maybe
+	public function accessField(name:String, constructionParams:Array<Expression>){
+		//{x, y, z, w}
+		//{r, g, b, a}
+		//{s, t, p, q}
+		//No more than 4 components can be selected.
+
+		//need to create a construction routine to handle filling the type from the construction params,
+		//must be able to deal with constructions like
+		//mat3 m3x3 = mat3(m2x2);
+		return null;
+	}
+
+	public function accessIndex(i:Int, params:Array<Expression>):GLSLBasicExpr{
+		//return rows for mat and fields for vec
+		return null;
+	}
+}

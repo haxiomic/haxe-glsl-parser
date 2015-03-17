@@ -14,7 +14,7 @@ typedef MinorType = Dynamic;
 
 typedef ConstructorIdentifier = {
 	var name:String;
-	var typeClass:TypeClass;
+	var dataType:DataType;
 }
 
 @:access(glslparser.Parser)
@@ -33,9 +33,9 @@ class ParserReducer{
 			case 0: result = n(1); return s(1); //root ::= translation_unit
 			case 1: return new Identifier(t(1).data);//variable_identifier ::= IDENTIFIER
 			case 2: return s(1); //primary_expression ::= variable_identifier
-			case 3: var l = new Literal<Int>(Std.parseInt(t(1).data), TypeClass.INT); l.raw = t(1).data; return l; //primary_expression ::= INTCONSTANT
-			case 4: var l = new Literal<Float>(Std.parseFloat(t(1).data), TypeClass.FLOAT); l.raw = t(1).data; return l; //primary_expression ::= FLOATCONSTANT
-			case 5: var l = new Literal<Bool>(t(1).data == 'true', TypeClass.BOOL); l.raw = t(1).data; return l; //primary_expression ::= BOOLCONSTANT
+			case 3: var l = new Literal<Int>(Std.parseInt(t(1).data), DataType.INT); l.raw = t(1).data; return l; //primary_expression ::= INTCONSTANT
+			case 4: var l = new Literal<Float>(Std.parseFloat(t(1).data), DataType.FLOAT); l.raw = t(1).data; return l; //primary_expression ::= FLOATCONSTANT
+			case 5: var l = new Literal<Bool>(t(1).data == 'true', DataType.BOOL); l.raw = t(1).data; return l; //primary_expression ::= BOOLCONSTANT
 			case 6: e(2).parenWrap = true; return s(2); //primary_expression ::= LEFT_PAREN expression RIGHT_PAREN
 			case 7: return s(1); //postfix_expression ::= primary_expression
 			case 8: return new ArrayElementSelectionExpression(e(1), e(3)); //postfix_expression ::= postfix_expression LEFT_BRACKET integer_expression RIGHT_BRACKET
@@ -54,22 +54,22 @@ class ParserReducer{
 			case 21: return s(1); //function_call_header ::= function_identifier LEFT_PAREN
 			case 22: return new Constructor(cast ev(1)); //function_identifier ::= constructor_identifier
 			case 23: return new FunctionCall(t(1).data); //function_identifier ::= IDENTIFIER
-			case 24: return TypeClass.FLOAT; //constructor_identifier ::= FLOAT
-			case 25: return TypeClass.INT; //constructor_identifier ::= INT
-			case 26: return TypeClass.BOOL; //constructor_identifier ::= BOOL
-			case 27: return TypeClass.VEC2; //constructor_identifier ::= VEC2
-			case 28: return TypeClass.VEC3; //constructor_identifier ::= VEC3
-			case 29: return TypeClass.VEC4; //constructor_identifier ::= VEC4
-			case 30: return TypeClass.BVEC2; //constructor_identifier ::= BVEC2
-			case 31: return TypeClass.BVEC3; //constructor_identifier ::= BVEC3
-			case 32: return TypeClass.BVEC4; //constructor_identifier ::= BVEC4
-			case 33: return TypeClass.IVEC2; //constructor_identifier ::= IVEC2
-			case 34: return TypeClass.IVEC3; //constructor_identifier ::= IVEC3
-			case 35: return TypeClass.IVEC4; //constructor_identifier ::= IVEC4
-			case 36: return TypeClass.MAT2; //constructor_identifier ::= MAT2
-			case 37: return TypeClass.MAT3; //constructor_identifier ::= MAT3
-			case 38: return TypeClass.MAT4; //constructor_identifier ::= MAT4
-			case 39: return TypeClass.USER_TYPE(t(1).data); //constructor_identifier ::= TYPE_NAME
+			case 24: return DataType.FLOAT; //constructor_identifier ::= FLOAT
+			case 25: return DataType.INT; //constructor_identifier ::= INT
+			case 26: return DataType.BOOL; //constructor_identifier ::= BOOL
+			case 27: return DataType.VEC2; //constructor_identifier ::= VEC2
+			case 28: return DataType.VEC3; //constructor_identifier ::= VEC3
+			case 29: return DataType.VEC4; //constructor_identifier ::= VEC4
+			case 30: return DataType.BVEC2; //constructor_identifier ::= BVEC2
+			case 31: return DataType.BVEC3; //constructor_identifier ::= BVEC3
+			case 32: return DataType.BVEC4; //constructor_identifier ::= BVEC4
+			case 33: return DataType.IVEC2; //constructor_identifier ::= IVEC2
+			case 34: return DataType.IVEC3; //constructor_identifier ::= IVEC3
+			case 35: return DataType.IVEC4; //constructor_identifier ::= IVEC4
+			case 36: return DataType.MAT2; //constructor_identifier ::= MAT2
+			case 37: return DataType.MAT3; //constructor_identifier ::= MAT3
+			case 38: return DataType.MAT4; //constructor_identifier ::= MAT4
+			case 39: return DataType.USER_TYPE(t(1).data); //constructor_identifier ::= TYPE_NAME
 			case 40: return s(1); //unary_expression ::= postfix_expression
 			case 41: return new UnaryExpression(UnaryOperator.INC_OP, e(2), true); //unary_expression ::= INC_OP unary_expression
 			case 42: return new UnaryExpression(UnaryOperator.DEC_OP, e(2), true); //unary_expression ::= DEC_OP unary_expression
@@ -186,26 +186,26 @@ class ParserReducer{
 			case 132: return TypeQualifier.UNIFORM; //type_qualifier ::= UNIFORM
 			case 133: return s(1); //type_specifier ::= type_specifier_no_prec
 			case 134: cast(n(1), TypeSpecifier).precision = cast ev(1); return s(1); //type_specifier ::= precision_qualifier type_specifier_no_prec
-			case 135: return new TypeSpecifier(TypeClass.VOID); //type_specifier_no_prec ::= VOID
-			case 136: return new TypeSpecifier(TypeClass.FLOAT); //type_specifier_no_prec ::= FLOAT
-			case 137: return new TypeSpecifier(TypeClass.INT); //type_specifier_no_prec ::= INT
-			case 138: return new TypeSpecifier(TypeClass.BOOL); //type_specifier_no_prec ::= BOOL
-			case 139: return new TypeSpecifier(TypeClass.VEC2); //type_specifier_no_prec ::= VEC2
-			case 140: return new TypeSpecifier(TypeClass.VEC3); //type_specifier_no_prec ::= VEC3
-			case 141: return new TypeSpecifier(TypeClass.VEC4); //type_specifier_no_prec ::= VEC4
-			case 142: return new TypeSpecifier(TypeClass.BVEC2); //type_specifier_no_prec ::= BVEC2
-			case 143: return new TypeSpecifier(TypeClass.BVEC3); //type_specifier_no_prec ::= BVEC3
-			case 144: return new TypeSpecifier(TypeClass.BVEC4); //type_specifier_no_prec ::= BVEC4
-			case 145: return new TypeSpecifier(TypeClass.IVEC2); //type_specifier_no_prec ::= IVEC2
-			case 146: return new TypeSpecifier(TypeClass.IVEC3); //type_specifier_no_prec ::= IVEC3
-			case 147: return new TypeSpecifier(TypeClass.IVEC4); //type_specifier_no_prec ::= IVEC4
-			case 148: return new TypeSpecifier(TypeClass.MAT2); //type_specifier_no_prec ::= MAT2
-			case 149: return new TypeSpecifier(TypeClass.MAT3); //type_specifier_no_prec ::= MAT3
-			case 150: return new TypeSpecifier(TypeClass.MAT4); //type_specifier_no_prec ::= MAT4
-			case 151: return new TypeSpecifier(TypeClass.SAMPLER2D); //type_specifier_no_prec ::= SAMPLER2D
-			case 152: return new TypeSpecifier(TypeClass.SAMPLERCUBE); //type_specifier_no_prec ::= SAMPLERCUBE
+			case 135: return new TypeSpecifier(DataType.VOID); //type_specifier_no_prec ::= VOID
+			case 136: return new TypeSpecifier(DataType.FLOAT); //type_specifier_no_prec ::= FLOAT
+			case 137: return new TypeSpecifier(DataType.INT); //type_specifier_no_prec ::= INT
+			case 138: return new TypeSpecifier(DataType.BOOL); //type_specifier_no_prec ::= BOOL
+			case 139: return new TypeSpecifier(DataType.VEC2); //type_specifier_no_prec ::= VEC2
+			case 140: return new TypeSpecifier(DataType.VEC3); //type_specifier_no_prec ::= VEC3
+			case 141: return new TypeSpecifier(DataType.VEC4); //type_specifier_no_prec ::= VEC4
+			case 142: return new TypeSpecifier(DataType.BVEC2); //type_specifier_no_prec ::= BVEC2
+			case 143: return new TypeSpecifier(DataType.BVEC3); //type_specifier_no_prec ::= BVEC3
+			case 144: return new TypeSpecifier(DataType.BVEC4); //type_specifier_no_prec ::= BVEC4
+			case 145: return new TypeSpecifier(DataType.IVEC2); //type_specifier_no_prec ::= IVEC2
+			case 146: return new TypeSpecifier(DataType.IVEC3); //type_specifier_no_prec ::= IVEC3
+			case 147: return new TypeSpecifier(DataType.IVEC4); //type_specifier_no_prec ::= IVEC4
+			case 148: return new TypeSpecifier(DataType.MAT2); //type_specifier_no_prec ::= MAT2
+			case 149: return new TypeSpecifier(DataType.MAT3); //type_specifier_no_prec ::= MAT3
+			case 150: return new TypeSpecifier(DataType.MAT4); //type_specifier_no_prec ::= MAT4
+			case 151: return new TypeSpecifier(DataType.SAMPLER2D); //type_specifier_no_prec ::= SAMPLER2D
+			case 152: return new TypeSpecifier(DataType.SAMPLERCUBE); //type_specifier_no_prec ::= SAMPLERCUBE
 			case 153: return s(1); //type_specifier_no_prec ::= struct_specifier
-			case 154: return new TypeSpecifier(TypeClass.USER_TYPE(t(1).data)); //type_specifier_no_prec ::= TYPE_NAME
+			case 154: return new TypeSpecifier(DataType.USER_TYPE(t(1).data)); //type_specifier_no_prec ::= TYPE_NAME
 			case 155: return PrecisionQualifier.HIGH_PRECISION; //precision_qualifier ::= HIGH_PRECISION
 			case 156: return PrecisionQualifier.MEDIUM_PRECISION; //precision_qualifier ::= MEDIUM_PRECISION
 			case 157: return PrecisionQualifier.LOW_PRECISION; //precision_qualifier ::= LOW_PRECISION

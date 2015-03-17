@@ -44,7 +44,7 @@ class Main{
 			var tokens = Tokenizer.tokenize(input);
 			var ast = Parser.parseTokens(tokens);
 
-			// Eval.evaluateConstantExpressions(ast);
+			Eval.evaluateConstantExpressions(ast);
 
 			displayAST(ast);
 
