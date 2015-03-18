@@ -7,49 +7,9 @@ Parser based on LALR parser from [The Lemon Parser Generator](http://www.hwaci.c
 
 Supports all platforms available to the [haxe](haxe.org) compiler (notably JavaScript, Java, C++ and Python)
 
-**Status:** parser is complete, preprocessor in development
+**Status:** parser is complete, preprocessor, validator in development. Although the project can be used for AST generation, it is still under heavy development.
 
 ###[Demo](http://haxiomic.github.io/haxe-glsl-parser/)
-
-###AST Nodes (defined in AST.hx)
-```
-- TypeSpecifier
-- StructSpecifier
-- StructDeclaration
-- StructDeclarator
-- StructArrayDeclarator
-- Expression
-- Identifier
-- Literal
-- BinaryExpression
-- UnaryExpression
-- SequenceExpression
-- ConditionalExpression
-- AssignmentExpression
-- FieldSelectionExpression
-- ArrayElementSelectionExpression
-- FunctionCall
-- FunctionHeader
-- Declaration
-- PrecisionDeclaration
-- VariableDeclaration
-- Declarator
-- ArrayDeclarator
-- ParameterDeclaration
-- FunctionDefinition
-- FunctionPrototype
-- Statement
-- CompoundStatement
-- DeclarationStatement
-- ExpressionStatement
-- IterationStatement
-- WhileStatement
-- DoWhileStatement
-- ForStatement
-- IfStatement
-- JumpStatement
-- ReturnStatement
-```
 
 ------
 ##FAQ

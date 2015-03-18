@@ -4,6 +4,7 @@ import glslparser.Eval;
 import glslparser.Parser;
 import glslparser.Tokenizer;
 import Editor;
+import js.Browser;
 import js.html.Element;
 
 class Main{
@@ -14,15 +15,15 @@ class Main{
 	var inputChanged:Bool = false;
 
 	function new(){
-		jsonContainer =  js.Browser.document.getElementById('json-container');
-		messagesElement =  js.Browser.document.getElementById('messages');
-		warningsElement =  js.Browser.document.getElementById('warnings');
-		successElement =  js.Browser.document.getElementById('success');
+		jsonContainer =  Browser.document.getElementById('json-container');
+		messagesElement =  Browser.document.getElementById('messages');
+		warningsElement =  Browser.document.getElementById('warnings');
+		successElement =  Browser.document.getElementById('success');
 
 		//load input if there is any
 		var savedInput = loadInput();
 		if(savedInput != null) Editor.setValue(savedInput, 1);
-		else Editor.setValue('uniform float time;\nvoid main( void ){\n\tint i = 3;\n}', 1);
+		else Editor.setValue('uniform float time;\n\nvoid main( void ){\n\tgl_FragColor = vec4(sin(time), 0.4, 0.8, 1.0);\n}', 1);
 
 		Editor.on("change", function(e:Dynamic){
 			inputChanged = true;
@@ -52,7 +53,7 @@ class Main{
 			showErrors(Parser.warnings.concat(Tokenizer.warnings));
 		}catch(e:Dynamic){
 			showErrors([e]);
-			
+
 			jsonContainer.innerHTML = '';
 		}
 
@@ -62,6 +63,7 @@ class Main{
 	function displayAST(ast:Dynamic){
 		// var jsonString = haxe.Json.stringify(ast);
 		jsonContainer.innerHTML = '';
+		
 		untyped jsonContainer.appendChild(
 			renderjson
 			.set_show_to_level(3)
@@ -73,10 +75,10 @@ class Main{
 
 	function showErrors(warnings:Array<String>){
 		if(warnings.length > 0){
-			var ul = js.Browser.document.createElement('ul');
+			var ul = Browser.document.createElement('ul');
 
 			for(w in warnings){
-				var li = js.Browser.document.createElement('li');
+				var li = Browser.document.createElement('li');
 				li.innerHTML = w;
 				ul.appendChild(li);
 			}
@@ -96,15 +98,15 @@ class Main{
 			messagesElement.className = 'success';
 		}
 
-		untyped js.Browser.window.fitMessageContent();
+		untyped Browser.window.fitMessageContent();
 	}
 
 	function saveInput(input:String){
-		js.Browser.getLocalStorage().setItem('glsl-input', input);
+		Browser.getLocalStorage().setItem('glsl-input', input);
 	}
 
 	function loadInput(){
-		return js.Browser.getLocalStorage().getItem('glsl-input');
+		return Browser.getLocalStorage().getItem('glsl-input');
 	}
 
 	static function main() new Main();

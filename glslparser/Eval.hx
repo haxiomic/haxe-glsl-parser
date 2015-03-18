@@ -13,6 +13,9 @@
 		   // 0.0, 0.0, 1.0)
 		mat2 mm2x2 = mat2(m3x3); // = m2x2
 
+	- handle basic conversion in constructors, constructs seem to be completely type flexible!
+	- Arrays: const should be stored as VariableDefinition which includes array behavior
+	- a VariableDefintion encapsulates a GLSLPrimitiveExpr
 */
 
 package glslparser;
@@ -20,16 +23,16 @@ package glslparser;
 import glslparser.AST;
 import haxe.macro.Expr;
 
-class Eval {
-	static var builtInConstants:Map<String, GLSLBasicExpr> = [
-		'gl_MaxVertexAttribs'             => new GLSLBasicExpr(new Literal<Int>(8, INT)),
-		'gl_MaxVertexUniformVectors'      => new GLSLBasicExpr(new Literal<Int>(128, INT)),
-		'gl_MaxVaryingVectors'            => new GLSLBasicExpr(new Literal<Int>(8, INT)),
-		'gl_MaxVertexTextureImageUnits'   => new GLSLBasicExpr(new Literal<Int>(0, INT)),
-		'gl_MaxCombinedTextureImageUnits' => new GLSLBasicExpr(new Literal<Int>(8, INT)),
-		'gl_MaxTextureImageUnits'         => new GLSLBasicExpr(new Literal<Int>(8, INT)),
-		'gl_MaxFragmentUniformVectors'    => new GLSLBasicExpr(new Literal<Int>(16, INT)),
-		'gl_MaxDrawBuffers'               => new GLSLBasicExpr(new Literal<Int>(1, INT))
+class Eval{
+	static var builtInConstants:Map<String, GLSLPrimitiveExpr> = [
+		'gl_MaxVertexAttribs'             => new GLSLPrimitiveExpr(new Literal<Int>(8, INT)),
+		'gl_MaxVertexUniformVectors'      => new GLSLPrimitiveExpr(new Literal<Int>(128, INT)),
+		'gl_MaxVaryingVectors'            => new GLSLPrimitiveExpr(new Literal<Int>(8, INT)),
+		'gl_MaxVertexTextureImageUnits'   => new GLSLPrimitiveExpr(new Literal<Int>(0, INT)),
+		'gl_MaxCombinedTextureImageUnits' => new GLSLPrimitiveExpr(new Literal<Int>(8, INT)),
+		'gl_MaxTextureImageUnits'         => new GLSLPrimitiveExpr(new Literal<Int>(8, INT)),
+		'gl_MaxFragmentUniformVectors'    => new GLSLPrimitiveExpr(new Literal<Int>(16, INT)),
+		'gl_MaxDrawBuffers'               => new GLSLPrimitiveExpr(new Literal<Int>(1, INT))
 	];
 	static var builtInTypes:Map<DataType, GLSLBuiltInType> = [
 		VEC2  => new GLSLBuiltInType(FLOAT, 2),
@@ -46,12 +49,12 @@ class Eval {
 		MAT4  => new GLSLBuiltInType(MAT4, 4*4),
 	];
 
-	static var userDefinedConstants:Map<String, GLSLBasicExpr>;
+	static var userDefinedConstants:Map<String, GLSLPrimitiveExpr>;
 	static var userDefinedTypes:Map<DataType, GLSLStructType>;
 
 	static public function evaluateConstantExpressions(ast:Node):Void{
 		//init state machine
-		userDefinedConstants = new Map<String, GLSLBasicExpr>();
+		userDefinedConstants = new Map<String, GLSLPrimitiveExpr>();
 		userDefinedTypes = new Map<DataType, GLSLStructType>();
 
 		iterate(ast);
@@ -100,7 +103,7 @@ class Eval {
 	}
 
 	//collapses constant expression down to singular expression
-	static function resolveExpression(expr:Expression):GLSLBasicExpr{
+	static function resolveExpression(expr:Expression):GLSLPrimitiveExpr{
 		switch (Type.getClass(expr)) {
 			//fully resolved expressions
 			case Literal: var _ = cast(expr, Literal<Dynamic>);
@@ -134,31 +137,32 @@ class Eval {
 				//#need to resolving the unary left expression as well as the right
 
 			case FieldSelectionExpression: var _ = cast(expr, FieldSelectionExpression);
-				try{
-					var left = cast(resolveExpression(_.left), Constructor);
-					var typeDefinition = getType(left.dataType);
-					return typeDefinition.accessField(_.field.name, left.parameters);
-				}catch(error:Dynamic){
-					warn(error);
-					warn('could not access field ${_.field.name}'); //#! needs more info
-				}
+				// try{
+				// 	var left = cast(resolveExpression(_.left), Constructor);
+				// 	var typeDefinition = getType(left.dataType);
+				// 	return typeDefinition.accessField(_.field.name, left.parameters);
+				// }catch(error:Dynamic){
+				// 	warn(error);
+				// 	warn('could not access field ${_.field.name}'); //#! needs more info
+				// }
 
 			case ArrayElementSelectionExpression: var _ = cast(expr, ArrayElementSelectionExpression);
-				try{			
-					var a = resolveExpression(_.arrayIndexExpression);
-					if(a.dataType != INT){
-						Eval.warn('array size must an integer expression');
-						return null;
-					}
-					var av = cast(a, Literal<Dynamic>);
-					//assume the left expression is a constructor since ES 1.0 does not allow array initialization
-					var left = cast(resolveExpression(_.left), Constructor);
-					var typeDefinition = builtInTypes.get(left.dataType); //array access is not possible on structs
-					return typeDefinition.accessIndex(av.value, left.parameters);
-				}catch(error:Dynamic){
-					warn(error);
-					warn('array access not possible'); //#! needs more info
-				}
+				//in general this can act on any variable including consts but in glsl es it's restricted to complex types
+				// try{
+				// 	var a = resolveExpression(_.arrayIndexExpression);
+				// 	if(a.dataType != INT){
+				// 		Eval.warn('array size must an integer expression');
+				// 		return null;
+				// 	}
+				// 	var av = cast(a, Literal<Dynamic>);
+				// 	//assume the left expression is a constructor since ES 1.0 does not allow array initialization
+				// 	var left = cast(resolveExpression(_.left), Constructor);
+				// 	var typeDefinition = builtInTypes.get(left.dataType); //array access is not possible on structs
+				// 	return typeDefinition.accessIndex(av.value, left.parameters);
+				// }catch(error:Dynamic){
+				// 	warn(error);
+				// 	warn('array access not possible'); //#! needs more info
+				// }
 
 		}
 
@@ -166,7 +170,7 @@ class Eval {
 		return null;
 	}
 
-	static function resolveBinaryExpression(binExpr:BinaryExpression):GLSLBasicExpr{
+	static function resolveBinaryExpression(binExpr:BinaryExpression):GLSLPrimitiveExpr{
 		var left = resolveExpression(binExpr.left);
 		var right = resolveExpression(binExpr.right);
 		var op = binExpr.op;
@@ -263,7 +267,7 @@ class Eval {
 		return null;
 	}
 
-	static function resolveUnaryExpression(unExpr:UnaryExpression):GLSLBasicExpr{
+	static function resolveUnaryExpression(unExpr:UnaryExpression):GLSLPrimitiveExpr{
 		var arg = resolveExpression(unExpr.arg);
 		var op = unExpr.op;
 
@@ -313,13 +317,16 @@ enum GLSLBasicType{
 	ConstructorType;
 }
 
+
+//A primitive expression is an expression that can be no resolved no further
+//eg: an int, bool, float or a complex type constructor
 @:access(glslparser.Eval)
-abstract GLSLBasicExpr(Expression) to Expression{
+abstract GLSLPrimitiveExpr(Expression) to Expression{
 	public var dataType(get, never):DataType;
 
 	public inline function new(expr:Expression){
 		if(!isFullyResolved(expr))
-			Eval.error('cannot create GLSLBasicExpr; expression is not fully resolved. $expr');
+			Eval.error('cannot create GLSLPrimitiveExpr; expression is not fully resolved. $expr');
 
 		this = cast expr;
 	}
@@ -349,72 +356,62 @@ abstract GLSLBasicExpr(Expression) to Expression{
 			return ConstructorType;
 		}
 
-		Eval.error('unrecognized GLSLBasicExpr: $this');
+		Eval.error('unrecognized GLSLPrimitiveExpr: $this');
 		return null;
 	}
 
-	@:from static function fromExpression(expr:Expression) return new GLSLBasicExpr(expr);
+	@:from static function fromExpression(expr:Expression) return new GLSLPrimitiveExpr(expr);
 }
 
-typedef GLSLTypeField = {
+typedef GLSLFieldDefinition = {
 	var dataType:DataType;
 	var name:String;
 	@:optional var arraySize:Int;
 }
 
+typedef GLSLFieldInstance = {
+	var dataType:DataType;
+	var value:GLSLPrimitiveExpr;
+	@:optional var arraySize:Int;
+}
 
-interface GLSLComplexType{
-	public function accessField(name:String, constructionParams:Array<Expression>):GLSLBasicExpr;
+interface GLSLFieldAccess{
+	public function accessField(name:String):GLSLPrimitiveExpr;
+}
+
+interface GLSLArrayAccess{
+	public function accessIndex(i:Int):GLSLPrimitiveExpr;
 }
 
 @:access(glslparser.Eval)
-class GLSLStructType implements GLSLComplexType{
-	var fields:Array<GLSLTypeField>;
+class GLSLStructType{
+	public var fields:Array<GLSLFieldDefinition>;
 
-	public function new(fields:Array<GLSLTypeField>){
+	public function new(fields:Array<GLSLFieldDefinition>){
 		this.fields = fields;
 	}
 
-	public function accessField(name:String, constructionParams:Array<Expression>){
-		//structure field access
-		var paramIndex = -1;
-		for(i in 0...fields.length){
-			if(fields[i].name == name){
-				paramIndex = i;
-				break;
-			}
-		}
-
-		if(paramIndex == -1){
-			Eval.warn('could not access field name $name'); //#! needs more info
-			return null;
-		}
-
-		var paramExpr = Eval.resolveExpression(constructionParams[paramIndex]);
-
-		//enforce type
-		if(paramExpr.dataType != fields[paramIndex].dataType) Eval.warn('parameter type mismatch'); //#! needs more info
-
-		return paramExpr;
+	public function createInstance(?constructionParams:Array<Expression>):GLSLStructInstance{
+		return new GLSLStructInstance(this, constructionParams);
 	}
 
 	static public function fromStructSpecifier(specifier:StructSpecifier){
 		//convert declarations to fields
-		var fields = new Array<GLSLTypeField>();
+		var fields = new Array<GLSLFieldDefinition>();
 		for(i in 0...specifier.structDeclarations.length){
 			var d = specifier.structDeclarations[i];
 			var type = d.typeSpecifier.dataType;
 			for(j in 0...d.declarators.length){
 				var dr = d.declarators[j];
 
-				var field:GLSLTypeField = {dataType: type, name: dr.name};
+				var field:GLSLFieldDefinition = {dataType: type, name: dr.name};
 
 				if(Type.getClass(dr) == StructArrayDeclarator){
 					//resolve array expression
 					var basicArrayExpr = Eval.resolveExpression(cast(dr, StructArrayDeclarator).arraySizeExpression);
 					if(!basicArrayExpr.dataType.equals(DataType.INT))
 						Eval.error('array size must an integer expression');
-
+						
 					field.arraySize = cast(basicArrayExpr, Literal<Dynamic>).value;
 				}
 
@@ -426,16 +423,54 @@ class GLSLStructType implements GLSLComplexType{
 	}
 }
 
+class GLSLBuiltInType {
+	var fieldsType:DataType;
+	var fieldsCount:Int;
+
+	public function new(fieldsType:DataType, fieldsCount:Int){
+		this.fieldsType = fieldsType;
+		this.fieldsCount = fieldsCount;
+	}
+}
+
+
+
 @:access(glslparser.Eval)
-class GLSLBuiltInType implements GLSLComplexType{
-	var fieldType:DataType;
-	var fieldCount:Int;
-	public function new(fieldType:DataType, fieldCount:Int){
-		this.fieldType = fieldType;
-		this.fieldCount = fieldCount;
+class GLSLStructInstance implements GLSLFieldAccess{
+	var type:GLSLStructType;
+	var fields:Map<String, GLSLFieldInstance>;
+
+	public function new(type:GLSLStructType, ?constructionParams:Array<Expression>){
+		this.type = type;
+
+		//create fields
+		for(i in 0...type.fields.length){
+			var f = type.fields[i];
+			fields.set(f.name, {
+				dataType: f.dataType,
+				arraySize: f.arraySize,
+				value: null
+			});
+		}
+
+		if(constructionParams != null)
+			construct(constructionParams);
 	}
 
-	public function accessField(name:String, constructionParams:Array<Expression>){
+	public function construct(constructionParams:Array<Expression>){
+		//fuzzy typing
+		//what happens if not all parameters are set?
+	}
+	
+	public function accessField(name:String){
+		return fields.get(name).value;
+	}
+}
+
+
+@:access(glslparser.Eval)
+class GLSLBuiltInInstance implements GLSLFieldAccess implements GLSLArrayAccess{
+	public function accessField(string:String){
 		//{x, y, z, w}
 		//{r, g, b, a}
 		//{s, t, p, q}
@@ -447,7 +482,7 @@ class GLSLBuiltInType implements GLSLComplexType{
 		return null;
 	}
 
-	public function accessIndex(i:Int, params:Array<Expression>):GLSLBasicExpr{
+	public function accessIndex(i:Int):GLSLPrimitiveExpr{
 		//return rows for mat and fields for vec
 		return null;
 	}
