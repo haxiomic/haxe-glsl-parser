@@ -9,7 +9,8 @@ HTML=templates/html
 BUILDHXML=	-js $(BIN)/$(OUTJS)\
 			"\n"-main $(MAIN)\
 			"\n"-cp $(SOURCE)\
-			"\n"-cp ../../../
+			"\n"-cp ../../../\
+			"\n"-D analyzer\
 
 all: clean build.hxml output-directory copy-template
 	haxe build.hxml

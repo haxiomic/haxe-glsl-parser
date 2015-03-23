@@ -274,7 +274,7 @@ class ParserReducer{
 
 	//Access rule symbols from left to right
 	//s(1) gives the left most symbol
-	static inline function s(n:Int){
+	static function s(n:Int){
 		if(n <= 0) return null;
 		//nrhs is the number of symbols in rule
 		var j = Parser.ruleInfo[ruleno].nrhs - n;

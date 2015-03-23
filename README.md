@@ -9,6 +9,8 @@ Supports all platforms available to the [haxe](haxe.org) compiler (notably JavaS
 
 **Status:** parser is complete, preprocessor, validator in development. Although the project can be used for AST generation, it is still under heavy development.
 
+Feel free to contact me at haxiomic@gmail.com if you have any questions
+
 ###[Demo](http://haxiomic.github.io/haxe-glsl-parser/)
 
 ------

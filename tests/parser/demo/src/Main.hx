@@ -3,15 +3,15 @@ package;
 import glslparser.Eval;
 import glslparser.Parser;
 import glslparser.Tokenizer;
-import Editor;
 import js.Browser;
-import js.html.Element;
+import js.html.DOMElement;
+
 
 class Main{
-	var jsonContainer:Element;
-	var messagesElement:Element;
-	var warningsElement:Element;
-	var successElement:Element;
+	var jsonContainer:DOMElement;
+	var messagesElement:DOMElement;
+	var warningsElement:DOMElement;
+	var successElement:DOMElement;
 	var inputChanged:Bool = false;
 
 	function new(){
@@ -25,16 +25,15 @@ class Main{
 		if(savedInput != null) Editor.setValue(savedInput, 1);
 		else Editor.setValue('uniform float time;\n\nvoid main( void ){\n\tgl_FragColor = vec4(sin(time), 0.4, 0.8, 1.0);\n}', 1);
 
+		//listen for changes and parse when required
 		Editor.on("change", function(e:Dynamic){
 			inputChanged = true;
 		});
 
 		var reparseTimer = new haxe.Timer(500);
-
 		reparseTimer.run = function(){
 			if(inputChanged) parseAndEvaluate();
 		}
-
 		parseAndEvaluate();
 	}
 
@@ -44,8 +43,6 @@ class Main{
 		try{
 			var tokens = Tokenizer.tokenize(input);
 			var ast = Parser.parseTokens(tokens);
-
-			Eval.evaluateConstantExpressions(ast);
 
 			displayAST(ast);
 

@@ -7,6 +7,8 @@
 
 package glslparser;
 
+import Type.ValueType.TClass;
+
 @:publicFields
 class Node{
 	var nodeTypeName:String;
@@ -101,7 +103,7 @@ class Literal<T> extends Expression implements TypedExpression{
 			case INT: raw = Utils.glslIntString(cast v);
 			case FLOAT: raw = Utils.glslFloatString(cast v);
 			case BOOL: raw = Utils.glslBoolString(cast v);
-			default:
+			default: raw = '';
 		}
 		return value = v;
 	}
@@ -491,4 +493,90 @@ enum TypeQualifier{
 	VARYING;
 	INVARIANT_VARYING;
 	UNIFORM;
+}
+
+
+enum TypeEnum{
+	TypeSpecifierNode(n:TypeSpecifier);
+	StructSpecifierNode(n:StructSpecifier);
+	StructDeclarationNode(n:StructDeclaration);
+	StructDeclaratorNode(n:StructDeclarator);
+	StructArrayDeclaratorNode(n:StructArrayDeclarator);
+	ExpressionNode(n:Expression);
+	IdentifierNode(n:Identifier);
+	LiteralNode(n:Literal<Dynamic>);
+	BinaryExpressionNode(n:BinaryExpression);
+	UnaryExpressionNode(n:UnaryExpression);
+	SequenceExpressionNode(n:SequenceExpression);
+	ConditionalExpressionNode(n:ConditionalExpression);
+	AssignmentExpressionNode(n:AssignmentExpression);
+	FieldSelectionExpressionNode(n:FieldSelectionExpression);
+	ArrayElementSelectionExpressionNode(n:ArrayElementSelectionExpression);
+	FunctionCallNode(n:FunctionCall);
+	ConstructorNode(n:Constructor);
+	DeclarationNode(n:Declaration);
+	PrecisionDeclarationNode(n:PrecisionDeclaration);
+	VariableDeclarationNode(n:VariableDeclaration);
+	DeclaratorNode(n:Declarator);
+	ArrayDeclaratorNode(n:ArrayDeclarator);
+	ParameterDeclarationNode(n:ParameterDeclaration);
+	FunctionDefinitionNode(n:FunctionDefinition);
+	FunctionPrototypeNode(n:FunctionPrototype);
+	FunctionHeaderNode(n:FunctionHeader);
+	StatementNode(n:Statement);
+	CompoundStatementNode(n:CompoundStatement);
+	DeclarationStatementNode(n:DeclarationStatement);
+	ExpressionStatementNode(n:ExpressionStatement);
+	IterationStatementNode(n:IterationStatement);
+	WhileStatementNode(n:WhileStatement);
+	DoWhileStatementNode(n:DoWhileStatement);
+	ForStatementNode(n:ForStatement);
+	IfStatementNode(n:IfStatement);
+	JumpStatementNode(n:JumpStatement);
+	ReturnStatementNode(n:ReturnStatement);
+}
+
+class TypeEnumHelper{
+	static public function toTypeEnum(n:Node){
+		return switch (Type.typeof(n)) {
+			case TClass(TypeSpecifier)                   : TypeSpecifierNode(untyped n);
+			case TClass(StructSpecifier)                 : StructSpecifierNode(untyped n);
+			case TClass(StructDeclaration)               : StructDeclarationNode(untyped n);
+			case TClass(StructDeclarator)                : StructDeclaratorNode(untyped n);
+			case TClass(StructArrayDeclarator)           : StructArrayDeclaratorNode(untyped n);
+			case TClass(Expression)                      : ExpressionNode(untyped n);
+			case TClass(Identifier)                      : IdentifierNode(untyped n);
+			case TClass(Literal)                         : LiteralNode(untyped n);
+			case TClass(BinaryExpression)                : BinaryExpressionNode(untyped n);
+			case TClass(UnaryExpression)                 : UnaryExpressionNode(untyped n);
+			case TClass(SequenceExpression)              : SequenceExpressionNode(untyped n);
+			case TClass(ConditionalExpression)           : ConditionalExpressionNode(untyped n);
+			case TClass(AssignmentExpression)            : AssignmentExpressionNode(untyped n);
+			case TClass(FieldSelectionExpression)        : FieldSelectionExpressionNode(untyped n);
+			case TClass(ArrayElementSelectionExpression) : ArrayElementSelectionExpressionNode(untyped n);
+			case TClass(FunctionCall)                    : FunctionCallNode(untyped n);
+			case TClass(Constructor)                     : ConstructorNode(untyped n);
+			case TClass(Declaration)                     : DeclarationNode(untyped n);
+			case TClass(PrecisionDeclaration)            : PrecisionDeclarationNode(untyped n);
+			case TClass(VariableDeclaration)             : VariableDeclarationNode(untyped n);
+			case TClass(Declarator)                      : DeclaratorNode(untyped n);
+			case TClass(ArrayDeclarator)                 : ArrayDeclaratorNode(untyped n);
+			case TClass(ParameterDeclaration)            : ParameterDeclarationNode(untyped n);
+			case TClass(FunctionDefinition)              : FunctionDefinitionNode(untyped n);
+			case TClass(FunctionPrototype)               : FunctionPrototypeNode(untyped n);
+			case TClass(FunctionHeader)                  : FunctionHeaderNode(untyped n);
+			case TClass(Statement)                       : StatementNode(untyped n);
+			case TClass(CompoundStatement)               : CompoundStatementNode(untyped n);
+			case TClass(DeclarationStatement)            : DeclarationStatementNode(untyped n);
+			case TClass(ExpressionStatement)             : ExpressionStatementNode(untyped n);
+			case TClass(IterationStatement)              : IterationStatementNode(untyped n);
+			case TClass(WhileStatement)                  : WhileStatementNode(untyped n);
+			case TClass(DoWhileStatement)                : DoWhileStatementNode(untyped n);
+			case TClass(ForStatement)                    : ForStatementNode(untyped n);
+			case TClass(IfStatement)                     : IfStatementNode(untyped n);
+			case TClass(JumpStatement)                   : JumpStatementNode(untyped n);
+			case TClass(ReturnStatement)                 : ReturnStatementNode(untyped n);
+			default: throw 'unrecognized node $n'; null;
+		}
+	}
 }
