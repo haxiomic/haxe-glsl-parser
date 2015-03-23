@@ -3,7 +3,7 @@
 
 	- Eval's purpose is to evaluate an expression and return a Primitive
 	- Eval should never modify the ast
-	- For now, Eval supports only constant expressions
+	- For now, Eval supports only constant expressions in the global scope
 
 	@author George Corney
 
@@ -30,6 +30,18 @@ import glslparser.AST;
 using AST.TypeEnumHelper;
 
 class Eval{
+	static public var builtInVariables:Map<String, GLSLVariableDeclaration> = [
+		'gl_MaxVertexAttribs'             => createBuiltInConst('gl_MaxVertexAttribs', 8),
+		'gl_MaxVertexUniformVectors'      => createBuiltInConst('gl_MaxVertexUniformVectors', 128),
+		'gl_MaxVaryingVectors'            => createBuiltInConst('gl_MaxVaryingVectors', 8),
+		'gl_MaxVertexTextureImageUnits'   => createBuiltInConst('gl_MaxVertexTextureImageUnits', 0),
+		'gl_MaxCombinedTextureImageUnits' => createBuiltInConst('gl_MaxCombinedTextureImageUnits', 8),
+		'gl_MaxTextureImageUnits'         => createBuiltInConst('gl_MaxTextureImageUnits', 8),
+		'gl_MaxFragmentUniformVectors'    => createBuiltInConst('gl_MaxFragmentUniformVectors', 16),
+		'gl_MaxDrawBuffers'               => createBuiltInConst('gl_MaxDrawBuffers', 1)
+	];
+
+	static public var userDefinedVariables:Map<String, GLSLVariableDeclaration> = new Map<String, GLSLVariableDeclaration>();
 	static public var userDefinedTypes:Map<DataType, GLSLStructDefinition> = new Map<DataType, GLSLStructDefinition>();
 
 	static public var warnings:Array<String> = new Array<String>();
@@ -64,6 +76,25 @@ class Eval{
 		warnings = new Array<String>();
 	}
 
+	static function createBuiltInConst(name:String, value:Dynamic):GLSLVariableDeclaration{
+		var dataType:DataType = null;
+		switch (Type.typeof(value)) {
+			case Type.ValueType.TInt: dataType = INT;
+			case Type.ValueType.TFloat: dataType = FLOAT;
+			case Type.ValueType.TBool: dataType = BOOL;
+			default:
+		}
+		var inst:GLSLPrimitiveInstance = LiteralInstance(value, dataType);
+		return {
+			name: name,
+			value: inst,
+			dataType: dataType,
+			qualifier: TypeQualifier.CONST,
+			precision: PrecisionQualifier.MEDIUM_PRECISION,
+			invariant: false
+		}
+	}
+
 	//Error Reporting
 	static function warn(msg){
 		warnings.push('Eval warning: $msg');
@@ -77,6 +108,16 @@ class Eval{
 enum GLSLPrimitiveInstance{
 	LiteralInstance(v:Dynamic, t:DataType);
 	// ComplexInstance(instance:GLSLInstance);
+}
+
+typedef GLSLVariableDeclaration = {
+	var name:String;
+	var value:GLSLPrimitiveInstance;
+	var dataType:DataType;
+	var qualifier:TypeQualifier;
+	var precision:PrecisionQualifier;
+	var invariant:Bool;
+	@:optional var arraySize:Int;
 }
 
 //Definitions
