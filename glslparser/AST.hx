@@ -41,7 +41,6 @@ class StructSpecifier extends TypeSpecifier{
 
 typedef StructDeclarationList = Array<StructDeclaration>;
 
-
 class StructDeclaration extends Node{ //#! extend Declaration? Is global meaningful here?
 	var typeSpecifier:TypeSpecifier;
 	var declarators:StructDeclaratorList;
@@ -56,17 +55,11 @@ typedef StructDeclaratorList = Array<StructDeclarator>;
 
 class StructDeclarator extends Node{
 	var name:String;
-	function new(name:String){
-		this.name = name;
-		super();
-	}
-}
-
-class StructArrayDeclarator extends StructDeclarator{
 	var arraySizeExpression:Expression;
-	function new(name:String, arraySizeExpression:Expression){
+	function new(name:String, ?arraySizeExpression:Expression){
+		this.name = name;
 		this.arraySizeExpression = arraySizeExpression;
-		super(name);
+		super();
 	}
 }
 
@@ -237,21 +230,15 @@ class VariableDeclaration extends Declaration{
 
 class Declarator extends Node{
 	var name:String;
-	var invariant:Bool;
 	var initializer:Expression;
-	function new(name:String, ?initializer:Expression, invariant:Bool = false){
+	var arraySizeExpression:Expression;
+	var invariant:Bool;
+	function new(name:String, ?initializer:Expression, ?arraySizeExpression:Expression, invariant:Bool = false){
 		this.name = name;
 		this.initializer = initializer;
+		this.arraySizeExpression = arraySizeExpression;
 		this.invariant = invariant;
 		super();
-	}
-}
-
-class ArrayDeclarator extends Declarator{
-	var arraySizeExpression:Expression;
-	function new(name:String, arraySizeExpression:Expression){
-		this.arraySizeExpression = arraySizeExpression;
-		super(name, null, false);
 	}
 }
 
@@ -501,7 +488,6 @@ enum TypeEnum{
 	StructSpecifierNode(n:StructSpecifier);
 	StructDeclarationNode(n:StructDeclaration);
 	StructDeclaratorNode(n:StructDeclarator);
-	StructArrayDeclaratorNode(n:StructArrayDeclarator);
 	ExpressionNode(n:Expression);
 	IdentifierNode(n:Identifier);
 	LiteralNode(n:Literal<Dynamic>);
@@ -518,7 +504,6 @@ enum TypeEnum{
 	PrecisionDeclarationNode(n:PrecisionDeclaration);
 	VariableDeclarationNode(n:VariableDeclaration);
 	DeclaratorNode(n:Declarator);
-	ArrayDeclaratorNode(n:ArrayDeclarator);
 	ParameterDeclarationNode(n:ParameterDeclaration);
 	FunctionDefinitionNode(n:FunctionDefinition);
 	FunctionPrototypeNode(n:FunctionPrototype);
@@ -543,7 +528,6 @@ class TypeEnumHelper{
 			case TClass(StructSpecifier)                 : StructSpecifierNode(untyped n);
 			case TClass(StructDeclaration)               : StructDeclarationNode(untyped n);
 			case TClass(StructDeclarator)                : StructDeclaratorNode(untyped n);
-			case TClass(StructArrayDeclarator)           : StructArrayDeclaratorNode(untyped n);
 			case TClass(Expression)                      : ExpressionNode(untyped n);
 			case TClass(Identifier)                      : IdentifierNode(untyped n);
 			case TClass(Literal)                         : LiteralNode(untyped n);
@@ -560,7 +544,6 @@ class TypeEnumHelper{
 			case TClass(PrecisionDeclaration)            : PrecisionDeclarationNode(untyped n);
 			case TClass(VariableDeclaration)             : VariableDeclarationNode(untyped n);
 			case TClass(Declarator)                      : DeclaratorNode(untyped n);
-			case TClass(ArrayDeclarator)                 : ArrayDeclaratorNode(untyped n);
 			case TClass(ParameterDeclaration)            : ParameterDeclarationNode(untyped n);
 			case TClass(FunctionDefinition)              : FunctionDefinitionNode(untyped n);
 			case TClass(FunctionPrototype)               : FunctionPrototypeNode(untyped n);

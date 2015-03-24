@@ -168,14 +168,14 @@ class ParserReducer{
 			case 115: return new ParameterDeclaration(null, cast n(1)); //parameter_type_specifier ::= type_specifier
 			case 116: return new ParameterDeclaration(null, cast n(1), null, null, e(3));//parameter_type_specifier ::= type_specifier LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 117: return s(1); //init_declarator_list ::= single_declaration
-			case 118: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, null, false)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER
-			case 119: cast(n(1), VariableDeclaration).declarators.push(new ArrayDeclarator(t(3).data, e(5))); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
-			case 120: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, e(5), false)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER EQUAL initializer
-			case 121: return new VariableDeclaration(cast n(1), [new Declarator(null, null, false)]); //single_declaration ::= fully_specified_type
-			case 122: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, null, false)]); //single_declaration ::= fully_specified_type IDENTIFIER
-			case 123: return new VariableDeclaration(cast n(1), [new ArrayDeclarator(t(2).data, e(4))]); //single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
-			case 124: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, e(4), false)]); //single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer
-			case 125: return new VariableDeclaration(null, [new Declarator(t(2).data, null, true)]); //single_declaration ::= INVARIANT IDENTIFIER
+			case 118: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, null, null, false)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER
+			case 119: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, null, e(5), false)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
+			case 120: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, e(5), null, false)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER EQUAL initializer
+			case 121: return new VariableDeclaration(cast n(1), [new Declarator(null, null, null, false)]); //single_declaration ::= fully_specified_type
+			case 122: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, null, null, false)]); //single_declaration ::= fully_specified_type IDENTIFIER
+			case 123: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, null, e(4), false)]); //single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
+			case 124: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, e(4), null, false)]); //single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer
+			case 125: return new VariableDeclaration(null, [new Declarator(t(2).data, null, null, true)]); //single_declaration ::= INVARIANT IDENTIFIER
 			case 126: return s(1); //fully_specified_type ::= type_specifier
 			case 127: cast(n(2), TypeSpecifier).qualifier = cast ev(1); //fully_specified_type ::= type_qualifier type_specifier
 						return s(2);
@@ -217,7 +217,7 @@ class ParserReducer{
 			case 163: return [n(1)]; //struct_declarator_list ::= struct_declarator
 			case 164: a(1).push(n(3)); return s(1); //struct_declarator_list ::= struct_declarator_list COMMA struct_declarator
 			case 165: return new StructDeclarator(t(1).data); //struct_declarator ::= IDENTIFIER
-			case 166: return new StructArrayDeclarator(t(1).data, e(3)); //struct_declarator ::= IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
+			case 166: return new StructDeclarator(t(1).data, e(3)); //struct_declarator ::= IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 167: return s(1); //initializer ::= assignment_expression
 			case 168: return new DeclarationStatement(cast n(1)); //declaration_statement ::= declaration
 			case 169: return s(1); /*#! scope change? */ //statement_no_new_scope ::= compound_statement_with_scope
@@ -241,7 +241,7 @@ class ParserReducer{
 			case 187: return [n(1), n(3)]; //selection_rest_statement ::= statement_with_scope ELSE statement_with_scope
 			case 188: return [n(1), null]; //selection_rest_statement ::= statement_with_scope
 			case 189: return s(1); //condition ::= expression
-			case 190: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, e(4), false)]); //condition ::= fully_specified_type IDENTIFIER EQUAL initializer
+			case 190: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, e(4), null, false)]); //condition ::= fully_specified_type IDENTIFIER EQUAL initializer
 			case 191: return new WhileStatement(e(3), cast n(5)); //iteration_statement ::= WHILE LEFT_PAREN condition RIGHT_PAREN statement_no_new_scope
 			case 192: return new DoWhileStatement(e(5), cast n(2)); //iteration_statement ::= DO statement_with_scope WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON
 			case 193: return new ForStatement(cast n(3), a(4)[0], a(4)[1], cast n(6)); //iteration_statement ::= FOR LEFT_PAREN for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope
