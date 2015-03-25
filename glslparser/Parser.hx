@@ -1,7 +1,9 @@
 /*
 	LALR parser based on lemon parser generator
+	Lemon was written by D. Richard Hipp and is maintained as part of the SQLite project
 	http://www.hwaci.com/sw/lemon/
-
+	
+	haxe port
 	@author George Corney
 */
 

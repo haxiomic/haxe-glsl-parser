@@ -43,14 +43,19 @@ class Main{
 		try{
 			var tokens = Tokenizer.tokenize(input);
 			var ast = Parser.parseTokens(tokens);
-
 			displayAST(ast);
 
-			saveInput(input);
+			
+			var globals = Extract.extractGlobalVariables(ast);
+			trace('Extracted globals:\n$globals');
+			trace('x = ', globals.variables.get('x').value);
+
 			showErrors(Parser.warnings.concat(Tokenizer.warnings));
+
+			saveInput(input);
+
 		}catch(e:Dynamic){
 			showErrors([e]);
-
 			jsonContainer.innerHTML = '';
 		}
 

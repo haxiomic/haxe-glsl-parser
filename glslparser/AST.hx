@@ -11,9 +11,18 @@ import Type.ValueType.TClass;
 
 @:publicFields
 class Node{
-	var nodeTypeName:String;
+	var nodeName:String;
 	function new(){
-		this.nodeTypeName = Type.getClassName(Type.getClass(this)).split('.').pop();
+		this.nodeName = Type.getClassName(Type.getClass(this)).split('.').pop();
+	}
+}
+
+class Root extends Node{
+	//#! potentially store preprocessor details like version
+	var declarations:TranslationUnit;
+	public function new(declarations:TranslationUnit){
+		this.declarations = declarations;
+		super();
 	}
 }
 
@@ -484,6 +493,7 @@ enum TypeQualifier{
 
 
 enum TypeEnum{
+	RootNode(n:Root);
 	TypeSpecifierNode(n:TypeSpecifier);
 	StructSpecifierNode(n:StructSpecifier);
 	StructDeclarationNode(n:StructDeclaration);
@@ -524,6 +534,7 @@ enum TypeEnum{
 class TypeEnumHelper{
 	static public function toTypeEnum(n:Node){
 		return switch (Type.typeof(n)) {
+			case TClass(Root)                            : RootNode(untyped n);
 			case TClass(TypeSpecifier)                   : TypeSpecifierNode(untyped n);
 			case TClass(StructSpecifier)                 : StructSpecifierNode(untyped n);
 			case TClass(StructDeclaration)               : StructDeclarationNode(untyped n);
@@ -559,7 +570,7 @@ class TypeEnumHelper{
 			case TClass(IfStatement)                     : IfStatementNode(untyped n);
 			case TClass(JumpStatement)                   : JumpStatementNode(untyped n);
 			case TClass(ReturnStatement)                 : ReturnStatementNode(untyped n);
-			default: throw 'unrecognized node $n'; null;
+			default: null; //unrecognized node
 		}
 	}
 }

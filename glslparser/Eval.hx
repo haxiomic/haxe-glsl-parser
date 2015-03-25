@@ -1,11 +1,11 @@
 /*
 	GLSL Eval
-	s
 	- For now, Eval supports only constant expressions in the global scope
 
 	@author George Corney
 
 	#Todo
+	- .match(pattern) doesn't seem to be working?
 	- built in types
 	- handle complex construction:
 
@@ -21,6 +21,8 @@
 
 	- handle basic conversion in constructors, constructs seem to be completely type flexible!
 	- Arrays: const should be stored as VariableDefinition which includes array behavior
+
+	- should support reserved operations but emit a warning
 */
 
 package glslparser;
@@ -41,8 +43,8 @@ class Eval{
 	];
 	static public var builtInTypes:Map<DataType, GLSLTypeDef> = new Map<DataType, GLSLTypeDef>();
 
-	static public var userDefinedVariables:Map<String, GLSLVariable> = new Map<String, GLSLVariable>();
 	static public var userDefinedTypes:Map<DataType, GLSLTypeDef> = new Map<DataType, GLSLTypeDef>();
+	static public var userDefinedVariables:Map<String, GLSLVariable> = new Map<String, GLSLVariable>();
 
 	static public var warnings:Array<String> = new Array<String>();
 
@@ -95,7 +97,7 @@ class Eval{
 			case AssignmentExpressionNode(n):
 			case FieldSelectionExpressionNode(n):
 			case ArrayElementSelectionExpressionNode(n):
-			default:
+			case null | _:
 		}
 
 		warn('cannot resolve expression $expr');
@@ -110,14 +112,30 @@ class Eval{
 
 	static public function evaluateVariableDeclaration(declaration:VariableDeclaration):Array<GLSLVariable>{
 		var declared:Array<GLSLVariable> = [];
+
+		//if TypeSpecifier is Struct Definition, evaluate it
+		//#! should we check if it's already defined?
+		switch declaration.typeSpecifier.toTypeEnum() {
+			case StructSpecifierNode(n): evalulateStructSpecifier(n);
+			default:
+		}
+
 		for(dr in declaration.declarators){
+			//dr may potentially have no name (case of only a struct declaration)
+			//in this case, skip it
+			if(dr.name == null || dr.name == '') continue;
+
 			var variable:GLSLVariable = {
 				name: dr.name,
-				value: evaluateConstantExpr(dr.initializer),
 				dataType: declaration.typeSpecifier.dataType,
 				qualifier: declaration.typeSpecifier.qualifier,
 				precision: declaration.typeSpecifier.precision,
 				invariant: dr.invariant
+			}
+
+			//set value if there's an initializer
+			if(dr.initializer != null){
+				variable.value = evaluateConstantExpr(dr.initializer);
 			}
 
 			//add array size if necessary
@@ -134,6 +152,7 @@ class Eval{
 			userDefinedVariables.set(dr.name, variable);
 			declared.push(variable);
 		}
+
 		return declared;
 	}
 
@@ -142,7 +161,7 @@ class Eval{
 		switch expr.toTypeEnum(){
 			case IdentifierNode(n):
 				var v = Eval.getVariable(n.name);
-				if(!v.qualifier.match(CONST)){
+				if(!v.qualifier.equals(CONST)){
 					return v.value = value;
 				}else{
 					Eval.warn('trying to change the value of a constant variable $v');
@@ -195,6 +214,7 @@ class Eval{
 
 	//Error Reporting
 	static function warn(msg){
+		trace('Eval warning: $msg');//#!
 		warnings.push('Eval warning: $msg');
 	}
 
@@ -381,7 +401,7 @@ typedef GLSLFieldDef = {
 
 typedef GLSLVariable = {
 	> GLSLFieldDef,
-	var value:GLSLPrimitiveInstance;
+	@:optional var value:GLSLPrimitiveInstance;
 	var invariant:Bool;
 }
 
