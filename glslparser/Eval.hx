@@ -5,6 +5,7 @@
 	@author George Corney
 
 	#Todo
+	- stance on type checking?
 	- .match(pattern) doesn't seem to be working?
 	- built in types
 	- handle complex construction:
@@ -54,6 +55,7 @@ class Eval{
 		warnings = [];
 	}
 
+	//#! should be: evaluateExpr(expr, constant:Bool = false)
 	static public function evaluateConstantExpr(expr:Expression):GLSLPrimitiveInstance{
 		switch expr.toTypeEnum() {
 			case LiteralNode(n): 
@@ -389,6 +391,7 @@ class Operations{
 enum GLSLPrimitiveInstance{
 	LiteralInstance(v:Dynamic, t:DataType);
 	ComplexInstance(instance:GLSLInstance, t:DataType);
+	// ArrayInstance, for future use
 }
 
 typedef GLSLFieldDef = {

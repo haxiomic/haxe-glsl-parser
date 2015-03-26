@@ -48,7 +48,7 @@ class Main{
 			
 			var globals = Extract.extractGlobalVariables(ast);
 			trace('Extracted globals:\n$globals');
-			trace('x = ', globals.variables.get('x').value);
+			trace('x = ' + globals.variables.get('x').value);
 
 			showErrors(Parser.warnings.concat(Tokenizer.warnings));
 
