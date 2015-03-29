@@ -19,7 +19,6 @@ typedef ConstructorIdentifier = {
 
 @:access(glslparser.Parser)
 class ParserReducer{
-	static public var result:Root;
 
 	static var i(get, null):Int;
 	static var stack(get, null):Parser.Stack;
@@ -30,7 +29,7 @@ class ParserReducer{
 		ParserReducer.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
 
 		switch(ruleno){
-			case 0: result = new Root(cast a(1)); return result; //root ::= translation_unit
+			case 0: return new Root(cast a(1)); //root ::= translation_unit
 			case 1: return new Identifier(t(1).data);//variable_identifier ::= IDENTIFIER
 			case 2: return s(1); //primary_expression ::= variable_identifier
 			case 3: var l = new Literal<Int>(Std.parseInt(t(1).data), DataType.INT); l.raw = t(1).data; return l; //primary_expression ::= INTCONSTANT
@@ -268,7 +267,6 @@ class ParserReducer{
 	}
 
 	static public function reset(){
-		result = null;
 		ruleno = -1;
 	}
 

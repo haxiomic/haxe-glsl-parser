@@ -45,12 +45,14 @@ class Main{
 			var ast = Parser.parseTokens(tokens);
 			displayAST(ast);
 
-			
 			var globals = Extract.extractGlobalVariables(ast);
 			trace('Extracted globals:\n$globals');
 			trace('x = ' + globals.variables.get('x').value);
 
-			showErrors(Parser.warnings.concat(Tokenizer.warnings));
+			var warnings = Parser.warnings;
+			warnings = warnings.concat(Tokenizer.warnings);
+			warnings = warnings.concat(globals.warnings);
+			showErrors(warnings);
 
 			saveInput(input);
 

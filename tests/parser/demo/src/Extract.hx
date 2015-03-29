@@ -10,7 +10,8 @@ class Extract{
 
 	static public function extractGlobalVariables(ast:Root):{
 			types: Map<DataType, GLSLTypeDef>,
-			variables: Map<String, GLSLVariable>
+			variables: Map<String, GLSLVariable>,
+			warnings: Array<String>
 		}{
 		Eval.reset();
 
@@ -21,7 +22,7 @@ class Extract{
 
 				case VariableDeclarationNode(n):
 					var v = Eval.evaluateVariableDeclaration(n);
-					trace(v);
+					trace('VariableDeclarationNode($n)');
 
 				default:
 					trace('default ${node.nodeName}');
@@ -33,6 +34,7 @@ class Extract{
 		//copy Eval state
 		var userDefinedTypes = new Map<DataType, GLSLTypeDef>();
 		var userDefinedVariables = new Map<String, GLSLVariable>();
+		var warnings = Eval.warnings.copy();
 
 		for(key in Eval.userDefinedTypes.keys()){
 			userDefinedTypes.set(key, Eval.userDefinedTypes.get(key));
@@ -44,7 +46,8 @@ class Extract{
 
 		return {
 			types: userDefinedTypes,
-			variables: userDefinedVariables
+			variables: userDefinedVariables,
+			warnings: warnings
 		};
 	}
 

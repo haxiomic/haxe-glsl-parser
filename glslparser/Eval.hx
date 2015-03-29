@@ -1,11 +1,15 @@
 /*
 	GLSL Eval
-	- For now, Eval supports only constant expressions in the global scope
+	- For now, Eval supports only constant expressions
 
 	@author George Corney
 
 	#Todo
 	- stance on type checking?
+		Yes, it should absolutely type check - in fact, it should auto cast where possible,
+		but explicitly warn (or even throw if error sensitivity is high). This is become some
+		implementations auto cast whereas other's do not
+	- should allow use of, but warn on reserved operations and symbols
 	- .match(pattern) doesn't seem to be working?
 	- built in types
 	- handle complex construction:
@@ -22,7 +26,7 @@
 
 	- handle basic conversion in constructors, constructs seem to be completely type flexible!
 	- Arrays: const should be stored as VariableDefinition which includes array behavior
-
+	- Scoping
 	- should support reserved operations but emit a warning
 */
 
@@ -55,8 +59,9 @@ class Eval{
 		warnings = [];
 	}
 
-	//#! should be: evaluateExpr(expr, constant:Bool = false)
+	//#! should be: evaluateExpr(expr, constant:Bool = false) ?
 	static public function evaluateConstantExpr(expr:Expression):GLSLPrimitiveInstance{
+		trace('evaluateConstantExpr $expr');
 		switch expr.toTypeEnum() {
 			case LiteralNode(n): 
 				return LiteralInstance(n.value, n.dataType);
@@ -76,9 +81,9 @@ class Eval{
 
 				if(v != null){
 					switch v.qualifier {
-						case TypeQualifier.CONST: 
+						case TypeQualifier.CONST:
 							return v.value;
-						default:
+						case null, _:
 							warn('using non-constant variable ${v.name} in constant expression'); 
 							return v.value;
 					}
@@ -91,7 +96,26 @@ class Eval{
 				if(result != null) return result;
 
 			case UnaryExpressionNode(n):
-				var result = Operations.unaryFunctions.get(n.op)(n.arg, n.isPrefix);
+				var arg:Dynamic = null;
+				switch n.op {
+					case INC_OP, DEC_OP:
+						arg = switch n.arg.toTypeEnum(){
+							case IdentifierNode(n): 
+								if(!getVariable(n.name).qualifier.equals(TypeQualifier.CONST)){
+									warn('using non-constant variable ${n.name} in constant expression'); 
+								}
+								GLSLAccessor.IdentifierNode(n);
+							//#! the following need const expr checking
+							// case FieldSelectionExpressionNode(n): GLSLAccessor.FieldSelectionExpressionNode(n);
+							// case ArrayElementSelectionExpressionNode(n): GLSLAccessor.ArrayElementSelectionExpressionNode(n);
+							case null, _:
+								warn('invalid expression $n.arg for unary operator');
+								null;
+						}
+					default:
+						arg = evaluateConstantExpr(n.arg);
+				}
+				var result = Operations.unaryFunctions.get(n.op)(arg, n.isPrefix);
 				if(result != null) return result;
 
 			case SequenceExpressionNode(n):
@@ -99,7 +123,7 @@ class Eval{
 			case AssignmentExpressionNode(n):
 			case FieldSelectionExpressionNode(n):
 			case ArrayElementSelectionExpressionNode(n):
-			case null | _:
+			case null, _:
 		}
 
 		warn('cannot resolve expression $expr');
@@ -115,11 +139,11 @@ class Eval{
 	static public function evaluateVariableDeclaration(declaration:VariableDeclaration):Array<GLSLVariable>{
 		var declared:Array<GLSLVariable> = [];
 
-		//if TypeSpecifier is Struct Definition, evaluate it
+		//if TypeSpecifier is StructDefinition, evaluate it
 		//#! should we check if it's already defined?
 		switch declaration.typeSpecifier.toTypeEnum() {
 			case StructSpecifierNode(n): evalulateStructSpecifier(n);
-			default:
+			case null, _:
 		}
 
 		for(dr in declaration.declarators){
@@ -146,7 +170,7 @@ class Eval{
 				switch arraySizePrimitive {
 					case LiteralInstance(v, INT):
 						variable.arraySize = v;
-					default:
+					case null, _:
 						error('array size must an integer expression');
 				}
 			}
@@ -158,11 +182,11 @@ class Eval{
 		return declared;
 	}
 
-	static function setValue(expr:Expression, value:GLSLPrimitiveInstance){
+	static function setValue(primAccess:GLSLAccessor, value:GLSLPrimitiveInstance){
 		//change value in memory if possible
-		switch expr.toTypeEnum(){
+		switch primAccess{
 			case IdentifierNode(n):
-				var v = Eval.getVariable(n.name);
+				var v = getVariable(n.name);
 				if(!v.qualifier.equals(CONST)){
 					return v.value = value;
 				}else{
@@ -173,10 +197,26 @@ class Eval{
 				//#!
 			case ArrayElementSelectionExpressionNode(n):
 				//#!
-			default:
-				Eval.error('cannot alter value of $expr');
+			case null, _:
 		}
 
+		Eval.error('cannot alter value of $primAccess');
+		return null;
+	}
+
+	static function getValue(primAccess:GLSLAccessor):GLSLPrimitiveInstance{
+		switch primAccess{
+			case IdentifierNode(n):
+				var v:GLSLVariable = getVariable(n.name);
+				return v.value;
+			case FieldSelectionExpressionNode(n):
+				//#!
+			case ArrayElementSelectionExpressionNode(n):
+				//#!
+			case null, _:
+		}
+
+		Eval.error('cannot get the value of $primAccess');
 		return null;
 	}
 
@@ -201,7 +241,7 @@ class Eval{
 			case Type.ValueType.TInt: dataType = INT;
 			case Type.ValueType.TFloat: dataType = FLOAT;
 			case Type.ValueType.TBool: dataType = BOOL;
-			default:
+			case null, _:
 		}
 		var inst:GLSLPrimitiveInstance = LiteralInstance(value, dataType);
 		return {
@@ -252,7 +292,7 @@ class Operations{
 	*/
 	];
 
-	static var unaryFunctions:Map<UnaryOperator, Expression->Bool->GLSLPrimitiveInstance> = [
+	static var unaryFunctions:Map<UnaryOperator, Dynamic->Bool->GLSLPrimitiveInstance> = [
 		INC_OP => increment,
 		DEC_OP => decrement,
 		PLUS => plus,
@@ -319,9 +359,9 @@ class Operations{
 	}
 
 	//Unary Operators
-	static function increment(argExpr:Expression, isPrefix:Bool){
+	static function increment(primAccess:GLSLAccessor, isPrefix:Bool){
 		//perform increment on primitive
-		var argPrim = Eval.evaluateConstantExpr(argExpr);
+		var argPrim = Eval.getValue(primAccess);
 		var primBefore = argPrim;
 		var result:GLSLPrimitiveInstance = null;
 		switch(argPrim){
@@ -329,18 +369,18 @@ class Operations{
 				result = LiteralInstance(v+1, INT);
 			case LiteralInstance(v, FLOAT):
 				result = LiteralInstance(v+1, FLOAT);
-			default:
+			case null, _:
 				result = null;
 		}
 
-		Eval.setValue(argExpr, result);
+		Eval.setValue(primAccess, result);
 
 		return isPrefix ? result : primBefore;
 	}
 
-	static function decrement(argExpr:Expression, isPrefix:Bool){
+	static function decrement(primAccess:GLSLAccessor, isPrefix:Bool){
 		//perform decrement on primitive
-		var argPrim = Eval.evaluateConstantExpr(argExpr);
+		var argPrim = Eval.getValue(primAccess);
 		var primBefore = argPrim;
 		var result:GLSLPrimitiveInstance = null;
 		switch(argPrim){
@@ -348,41 +388,39 @@ class Operations{
 				result = LiteralInstance(v-1, INT);
 			case LiteralInstance(v, FLOAT):
 				result = LiteralInstance(v-1, FLOAT);
-			default:
+			case null, _:
 				result = null;
 		}
 
-		Eval.setValue(argExpr, result);
+		Eval.setValue(primAccess, result);
 
 		return isPrefix ? result : primBefore;	
 	}
 
-	static function plus(argExpr:Expression, isPrefix:Bool){
-		var arg = Eval.evaluateConstantExpr(argExpr);
-		switch({arg: arg, isPrefix: isPrefix}){
+	static function plus(argPrim:GLSLPrimitiveInstance, isPrefix:Bool){
+		switch({arg: argPrim, isPrefix: isPrefix}){
 			case {arg: LiteralInstance(_, INT), isPrefix: true} 	|
 				 {arg: LiteralInstance(_, FLOAT), isPrefix: true}	|
 				 {arg: ComplexInstance(_, _), isPrefix: true}:
-				return arg;
+				return argPrim;
 			case {arg: _, isPrefix: true}:
-				Eval.error('operation +$arg not supported');
+				Eval.error('operation +$argPrim not supported');
 			case {arg: _, isPrefix: false}:
-				Eval.error('operation $arg+ not supported');
+				Eval.error('operation $argPrim+ not supported');
 		}
 		return null;
 	}
 
-	static function minus(argExpr:Expression, isPrefix:Bool){
-		var arg = Eval.evaluateConstantExpr(argExpr);
-		switch({arg: arg, isPrefix: isPrefix}){
+	static function minus(argPrim:GLSLPrimitiveInstance, isPrefix:Bool){
+		switch({arg: argPrim, isPrefix: isPrefix}){
 			case {arg: LiteralInstance(v, INT), isPrefix: true}:
 				return LiteralInstance(-v, INT);
 			case {arg: LiteralInstance(v, FLOAT), isPrefix: true}:
 				return LiteralInstance(-v, FLOAT);
 			case {arg: _, isPrefix: true}:
-				Eval.error('operation -$arg not supported');
+				Eval.error('operation -$argPrim not supported');
 			case {arg: _, isPrefix: false}:
-				Eval.error('operation $arg- not supported');
+				Eval.error('operation $argPrim- not supported');
 		}
 		return null;
 	}
@@ -392,6 +430,12 @@ enum GLSLPrimitiveInstance{
 	LiteralInstance(v:Dynamic, t:DataType);
 	ComplexInstance(instance:GLSLInstance, t:DataType);
 	// ArrayInstance, for future use
+}
+
+enum GLSLAccessor{
+	IdentifierNode(n:Identifier);
+	FieldSelectionExpressionNode(n:FieldSelectionExpression);
+	ArrayElementSelectionExpressionNode(n:ArrayElementSelectionExpression);
 }
 
 typedef GLSLFieldDef = {
@@ -453,13 +497,13 @@ class GLSLStructDefinition implements GLSLTypeDef{
 							switch arraySizePrimitive {
 								case LiteralInstance(v, INT):
 									field.arraySize = v;
-								default:
+								case null, _:
 									Eval.error('array size must an integer expression');
 							}
 						}
 
 						fields.push(field);
-					default:
+					case null, _:
 				}
 
 			}
@@ -486,8 +530,8 @@ typedef GLSLFieldInstance = {
 }
 
 interface GLSLInstance{
-	//#! type?
-	//#! performOperation()?
+	//#! .type? / .definition?
+	//#! .performOperation()?
 }
 
 @:access(glslparser.Eval)

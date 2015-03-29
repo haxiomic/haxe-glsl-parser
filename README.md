@@ -23,7 +23,7 @@ Feel free to contact me at haxiomic@gmail.com if you have any questions
 ------
 ##FAQ
 
-####Can the parser be extended to handle other versions of glsl?
-Yes, first generate new parser tables with [lemon](http://www.hwaci.com/sw/lemon/), then update the node-building code to handle the new rules, finally extend the evaluator to handle any nodes
+####Extending the parser to handle other versions of glsl
+First generate new parser tables with [lemon](http://www.hwaci.com/sw/lemon/), then update the node-building code to handle the new rules, finally extend the evaluator to handle any additional nodes.
 
-To generate new tables, first obtain the BNR language grammar (khronos provides this in the specification pdf), then convert it to the lemon grammar format using */tools/grammar-converter/* and run lemon on the new grammar. Lemon will generate a C based parser from which the parsing tables can be copied (it's fairly straight forward) into ParserData.hx. Once this is complete, ParserReducer.hx must be updated to generate nodes corresponding to the new language rules.
+To generate new tables you need a BNR language grammar (khronos provides this in the specification pdf). It can be converted to the lemon grammar format using */tools/grammar-converter/*. With the grammar, lemon will generate a C based parser, from which the parsing tables can be copied (it's fairly straight forward) into ParserData.hx.

@@ -20,6 +20,8 @@ class Parser{
 	static var stack:Stack;
 	static var errorCount:Int;
 
+	static var currentNode:MinorType;
+
 	static public var warnings:Array<String>;
 
 	static public function parse(input:String){
@@ -29,12 +31,13 @@ class Parser{
 	static public function parseTokens(tokens:Array<Token>){
 		//init
 		i = 0;
-		errorCount = 0;
 		stack = [{
 			stateno: 0,
 			major: 0,
 			minor: null
 		}];
+		errorCount = 0;
+		currentNode = null;
 		warnings = [];
 		ParserReducer.reset();
 
@@ -48,7 +51,7 @@ class Parser{
 		//eof step
 		parseStep(0, lastToken);//using the lastToken for the EOF step allows better error reporting if it fails
 
-		return ParserReducer.result;
+		return currentNode;
 	}
 
 	//for each token, major = tokenId
@@ -161,6 +164,7 @@ class Parser{
 
 		//new node generated after reducing with this rule
 		var newNode = ParserReducer.reduce(ruleno); //trigger custom reduce behavior
+		currentNode = newNode;
 
 		goto = ruleInfo[ruleno].lhs;
 		size = ruleInfo[ruleno].nrhs;
