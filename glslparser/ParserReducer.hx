@@ -108,7 +108,7 @@ class ParserReducer{
 			case 76: return s(1); //logical_or_expression ::= logical_xor_expression
 			case 77: return new BinaryExpression(BinaryOperator.OR_OP, cast n(1), cast n(3)); //logical_or_expression ::= logical_or_expression OR_OP logical_xor_expression
 			case 78: return s(1); //conditional_expression ::= logical_or_expression
-			case 79: return new ConditionalExpression(cast n(1), cast n(2), cast n(3)); //conditional_expression ::= logical_or_expression QUESTION expression COLON assignment_expression
+			case 79: return new ConditionalExpression(cast n(1), cast n(3), cast n(5)); //conditional_expression ::= logical_or_expression QUESTION expression COLON assignment_expression
 			case 80: return s(1); //assignment_expression ::= conditional_expression
 			case 81: return new AssignmentExpression(cast ev(2), cast n(1), cast n(3)); //assignment_expression ::= unary_expression assignment_operator assignment_expression
 			case 82: return AssignmentOperator.EQUAL; //assignment_operator ::= EQUAL

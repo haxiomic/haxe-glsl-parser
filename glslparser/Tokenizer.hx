@@ -126,6 +126,7 @@ class Tokenizer{
 		//this is somewhat of a hack but the spec requires type references to be identified before grammar parsing
 		for(j in 0...tokens.length){
 			var t = tokens[j];
+
 			if(t.type != IDENTIFIER) continue;
 			//record a new type if it's a type definition 
 			var previousTokenType = null;
@@ -356,6 +357,7 @@ class Tokenizer{
 		}
 		if(verbose) trace('building token $type ($buf)');
 		tokens.push(token);
+		if(type == RESERVED_KEYWORD) warn('using reserved keyword $buf');
 	}
 
 	//Utils

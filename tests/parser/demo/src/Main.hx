@@ -40,19 +40,27 @@ class Main{
 	function parseAndEvaluate(){
 		var input = Editor.getValue();
 
+		var warnings = [];
+
 		try{
 			var tokens = Tokenizer.tokenize(input);
+			warnings = warnings.concat(Tokenizer.warnings);
+			
 			var ast = Parser.parseTokens(tokens);
+			warnings = warnings.concat(Parser.warnings);
+
 			displayAST(ast);
 
 			var globals = Extract.extractGlobalVariables(ast);
-			trace('Extracted globals:\n$globals');
-			trace('x = ' + globals.variables.get('x').value);
-
-			var warnings = Parser.warnings;
-			warnings = warnings.concat(Tokenizer.warnings);
 			warnings = warnings.concat(globals.warnings);
-			showErrors(warnings);
+			trace('Extracted globals:\n$globals');
+			//print value of x
+			var x = globals.variables.get('x');
+			if(x != null){
+				trace('x = ' + x.value);
+			}else{
+				trace('(x is not defined)');
+			}
 
 			saveInput(input);
 
@@ -60,6 +68,8 @@ class Main{
 			showErrors([e]);
 			jsonContainer.innerHTML = '';
 		}
+
+		showErrors(warnings);	
 
 		inputChanged = false;
 	}

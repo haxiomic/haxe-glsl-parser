@@ -44,7 +44,7 @@ class StructSpecifier extends TypeSpecifier{
 	function new(name:String, structDeclarations:StructDeclarationList){
 		this.name = name;
 		this.structDeclarations = structDeclarations;
-		super(STRUCT);
+		super(USER_TYPE(name));
 	}
 }
 
@@ -473,7 +473,6 @@ enum DataType{
 	MAT4;
 	SAMPLER2D;
 	SAMPLERCUBE;
-	STRUCT;
 	USER_TYPE(name:String);
 }
 

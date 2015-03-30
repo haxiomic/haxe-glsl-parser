@@ -4,11 +4,20 @@
 
 	@author George Corney
 
-	#Todo
+	#Notes
+	- could we do away with GLSLAccesss and use GLSLVariable instead?
+		Sure, but how do we deal with array access?
+		Perhaps arrays are arrays of variables?
+	- setValue, getValue should take not of constant:Bool
+	- generally, Eval should be as error tolerant as possible, but warn as much as possible
 	- stance on type checking?
 		Yes, it should absolutely type check - in fact, it should auto cast where possible,
 		but explicitly warn (or even throw if error sensitivity is high). This is become some
 		implementations auto cast whereas other's do not
+
+	#Todo
+	- ++ -- should take GLSLVariable instead
+	- better errors and warnings
 	- should allow use of, but warn on reserved operations and symbols
 	- .match(pattern) doesn't seem to be working?
 	- built in types
@@ -34,34 +43,35 @@ package glslparser;
 
 import glslparser.AST;
 using AST.TypeEnumHelper;
+using Eval.GLSLPrimitiveInstanceHelper;
+using Eval.DataTypeHelper;
 
 class Eval{
 	static public var builtInVariables:Map<String, GLSLVariable> = [
-		'gl_MaxVertexAttribs'             => createBuiltInConst('gl_MaxVertexAttribs', 8),
-		'gl_MaxVertexUniformVectors'      => createBuiltInConst('gl_MaxVertexUniformVectors', 128),
-		'gl_MaxVaryingVectors'            => createBuiltInConst('gl_MaxVaryingVectors', 8),
-		'gl_MaxVertexTextureImageUnits'   => createBuiltInConst('gl_MaxVertexTextureImageUnits', 0),
-		'gl_MaxCombinedTextureImageUnits' => createBuiltInConst('gl_MaxCombinedTextureImageUnits', 8),
-		'gl_MaxTextureImageUnits'         => createBuiltInConst('gl_MaxTextureImageUnits', 8),
-		'gl_MaxFragmentUniformVectors'    => createBuiltInConst('gl_MaxFragmentUniformVectors', 16),
-		'gl_MaxDrawBuffers'               => createBuiltInConst('gl_MaxDrawBuffers', 1)
+		'gl_MaxVertexAttribs'             => createConst('gl_MaxVertexAttribs'             , 8),
+		'gl_MaxVertexUniformVectors'      => createConst('gl_MaxVertexUniformVectors'      , 128),
+		'gl_MaxVaryingVectors'            => createConst('gl_MaxVaryingVectors'            , 8),
+		'gl_MaxVertexTextureImageUnits'   => createConst('gl_MaxVertexTextureImageUnits'   , 0),
+		'gl_MaxCombinedTextureImageUnits' => createConst('gl_MaxCombinedTextureImageUnits' , 8),
+		'gl_MaxTextureImageUnits'         => createConst('gl_MaxTextureImageUnits'         , 8),
+		'gl_MaxFragmentUniformVectors'    => createConst('gl_MaxFragmentUniformVectors'    , 16),
+		'gl_MaxDrawBuffers'               => createConst('gl_MaxDrawBuffers'               , 1)
 	];
 	static public var builtInTypes:Map<DataType, GLSLTypeDef> = new Map<DataType, GLSLTypeDef>();
 
-	static public var userDefinedTypes:Map<DataType, GLSLTypeDef> = new Map<DataType, GLSLTypeDef>();
+	static public var userDefinedTypes:Map<DataType, GLSLStructDefinition> = new Map<DataType, GLSLStructDefinition>();
 	static public var userDefinedVariables:Map<String, GLSLVariable> = new Map<String, GLSLVariable>();
 
 	static public var warnings:Array<String> = new Array<String>();
 
 	static public function reset(){
 		userDefinedVariables = new Map<String, GLSLVariable>();
-		userDefinedTypes = new Map<DataType, GLSLTypeDef>();
+		userDefinedTypes = new Map<DataType, GLSLStructDefinition>();
 		warnings = [];
 	}
 
-	//#! should be: evaluateExpr(expr, constant:Bool = false) ?
-	static public function evaluateConstantExpr(expr:Expression):GLSLPrimitiveInstance{
-		trace('evaluateConstantExpr $expr');
+	static public function evaluateExpr(expr:Expression, constant:Bool = false):GLSLPrimitiveInstance{
+		trace('evaluateExpr '+(constant ? 'constant' : '')+' $expr');
 		switch expr.toTypeEnum() {
 			case LiteralNode(n): 
 				return LiteralInstance(n.value, n.dataType);
@@ -72,7 +82,7 @@ class Eval{
 			 	if(type != null){
 					var constructionParams:Array<GLSLPrimitiveInstance> = [];
 					for(i in 0...n.parameters.length)
-						constructionParams[i] = evaluateConstantExpr(n.parameters[i]);
+						constructionParams[i] = evaluateExpr(n.parameters[i], constant);
 					return ComplexInstance(type.createInstance(constructionParams), n.dataType);
 				}
 
@@ -80,49 +90,78 @@ class Eval{
 				var v:GLSLVariable = getVariable(n.name);
 
 				if(v != null){
-					switch v.qualifier {
-						case TypeQualifier.CONST:
-							return v.value;
-						case null, _:
-							warn('using non-constant variable ${v.name} in constant expression'); 
-							return v.value;
-					}
+					if(constant && !v.qualifier.equals(TypeQualifier.CONST))
+						warn('using non-constant variable ${v.name} in constant expression'); 
+
+					return v.value;		
+				}else{
+					warn('no variable named \'${n.name}\' has been defined');
+					return null;
 				}
 
 			case BinaryExpressionNode(n):
-				var lprim = evaluateConstantExpr(n.left);
-				var rprim = evaluateConstantExpr(n.right);
+				var lprim = evaluateExpr(n.left, constant);
+				var rprim = evaluateExpr(n.right, constant);
 				var result = Operations.binaryFunctions.get(n.op)(lprim, rprim);
 				if(result != null) return result;
 
 			case UnaryExpressionNode(n):
 				var arg:Dynamic = null;
+
+				//evaluating the argument ensures it's a constant expression if required
+				var argPrim = evaluateExpr(n.arg, constant);
+				if(argPrim == null){
+					warn('cannot perform unary expression on null');
+					return null;
+				}
+				//convert arg to operator function parameter
 				switch n.op {
 					case INC_OP, DEC_OP:
 						arg = switch n.arg.toTypeEnum(){
-							case IdentifierNode(n): 
-								if(!getVariable(n.name).qualifier.equals(TypeQualifier.CONST)){
-									warn('using non-constant variable ${n.name} in constant expression'); 
-								}
-								GLSLAccessor.IdentifierNode(n);
-							//#! the following need const expr checking
-							// case FieldSelectionExpressionNode(n): GLSLAccessor.FieldSelectionExpressionNode(n);
-							// case ArrayElementSelectionExpressionNode(n): GLSLAccessor.ArrayElementSelectionExpressionNode(n);
+							case IdentifierNode(n): GLSLAccessor.IdentifierNode(n, constant);
+							case FieldSelectionExpressionNode(n): GLSLAccessor.FieldSelectionExpressionNode(n, constant);
+							case ArrayElementSelectionExpressionNode(n): GLSLAccessor.ArrayElementSelectionExpressionNode(n, constant);
 							case null, _:
 								warn('invalid expression $n.arg for unary operator');
 								null;
 						}
 					default:
-						arg = evaluateConstantExpr(n.arg);
+						arg = argPrim;
 				}
 				var result = Operations.unaryFunctions.get(n.op)(arg, n.isPrefix);
 				if(result != null) return result;
 
-			case SequenceExpressionNode(n):
+			case SequenceExpressionNode(n): //#!
+				warn('Eval doesn\'t yet support sequence expressions');
+
 			case ConditionalExpressionNode(n):
-			case AssignmentExpressionNode(n):
+				var testResult = evaluateExpr(n.test, constant);
+				switch testResult {
+					case LiteralInstance(v, BOOL):
+						return v ? evaluateExpr(n.consequent, constant) : evaluateExpr(n.alternate, constant);
+					case null, _:
+						warn('conditional expression test must evaluate to boolean value');
+						return null;
+				}
+
+			case AssignmentExpressionNode(n): //#!
+				warn('Eval doesn\'t yet support assignment expressions');
+
 			case FieldSelectionExpressionNode(n):
-			case ArrayElementSelectionExpressionNode(n):
+				var leftPrim = evaluateExpr(n.left, constant);
+				switch(leftPrim){
+					case ComplexInstance(v, _):
+						return v.accessField(n.field.name);
+					case null, _:
+						warn('field access cannot be performed on $leftPrim');
+						return null;
+				}
+
+			case ArrayElementSelectionExpressionNode(n): //#!
+				warn('Eval doesn\'t yet support array element selection');
+
+			case FunctionCallNode(n): //#!
+				warn('Eval doesn\'t yet support function calls');
 			case null, _:
 		}
 
@@ -138,6 +177,18 @@ class Eval{
 
 	static public function evaluateVariableDeclaration(declaration:VariableDeclaration):Array<GLSLVariable>{
 		var declared:Array<GLSLVariable> = [];
+
+		//Invariance (4.6.1), feels like a little bit of a hack to have it as a variable declaration, but that what
+		//the spec seems to suggest
+		if(declaration.typeSpecifier == null){
+			for(dr in declaration.declarators){
+				var variable = getVariable(dr.name);
+				//set invariant
+				variable.invariant = dr.invariant;
+				declared.push(variable);
+			}
+			return declared;
+		}
 
 		//if TypeSpecifier is StructDefinition, evaluate it
 		//#! should we check if it's already defined?
@@ -156,17 +207,30 @@ class Eval{
 				dataType: declaration.typeSpecifier.dataType,
 				qualifier: declaration.typeSpecifier.qualifier,
 				precision: declaration.typeSpecifier.precision,
-				invariant: dr.invariant
+				invariant: dr.invariant,
+				value: null
 			}
+
+			var isConstant = declaration.typeSpecifier.qualifier.equals(TypeQualifier.CONST);
 
 			//set value if there's an initializer
 			if(dr.initializer != null){
-				variable.value = evaluateConstantExpr(dr.initializer);
+				var value = evaluateExpr(dr.initializer, isConstant);
+				//check data types match
+				if(!value.getDataType().equals(variable.dataType)){
+					warn('type mismatch between variable of type ${variable.dataType} and value of type ${value.getDataType()}');
+				}
+				variable.value = value;
+			}else{
+				if(isConstant) warn('variables with qualifier \'const\' must be initialized');
+
+				//#! initialize to 0 or false
+				variable.value = variable.dataType.construct(null);
 			}
 
 			//add array size if necessary
 			if(dr.arraySizeExpression != null){
-				var arraySizePrimitive = Eval.evaluateConstantExpr(dr.arraySizeExpression);
+				var arraySizePrimitive = evaluateExpr(dr.arraySizeExpression, true);
 				switch arraySizePrimitive {
 					case LiteralInstance(v, INT):
 						variable.arraySize = v;
@@ -185,38 +249,43 @@ class Eval{
 	static function setValue(primAccess:GLSLAccessor, value:GLSLPrimitiveInstance){
 		//change value in memory if possible
 		switch primAccess{
-			case IdentifierNode(n):
-				var v = getVariable(n.name);
-				if(!v.qualifier.equals(CONST)){
-					return v.value = value;
-				}else{
-					Eval.warn('trying to change the value of a constant variable $v');
+			case IdentifierNode(n, _):
+				var variable = getVariable(n.name);
+				if(variable.qualifier.equals(CONST)){
+					warn('trying to change the value of a constant variable $variable');
 				}
 
-			case FieldSelectionExpressionNode(n):
+				//check data types match
+				if(!value.getDataType().equals(variable.dataType)){
+					warn('type mismatch between variable of type ${variable.dataType} and value of type ${value.getDataType()}');
+				}
+
+				return variable.value = value;
+
+			case FieldSelectionExpressionNode(n, _):
 				//#!
-			case ArrayElementSelectionExpressionNode(n):
+			case ArrayElementSelectionExpressionNode(n, _):
 				//#!
 			case null, _:
 		}
 
-		Eval.error('cannot alter value of $primAccess');
+		error('cannot alter value of $primAccess');
 		return null;
 	}
 
 	static function getValue(primAccess:GLSLAccessor):GLSLPrimitiveInstance{
 		switch primAccess{
-			case IdentifierNode(n):
+			case IdentifierNode(n, constant):
 				var v:GLSLVariable = getVariable(n.name);
 				return v.value;
-			case FieldSelectionExpressionNode(n):
+			case FieldSelectionExpressionNode(n, constant):
 				//#!
-			case ArrayElementSelectionExpressionNode(n):
+			case ArrayElementSelectionExpressionNode(n, constant):
 				//#!
 			case null, _:
 		}
 
-		Eval.error('cannot get the value of $primAccess');
+		error('cannot get the value of $primAccess');
 		return null;
 	}
 
@@ -228,14 +297,16 @@ class Eval{
 
 	static function getType(dataType:DataType){
 		var type:GLSLTypeDef = null;
-		if(dataType.match(USER_TYPE(_)))
+		if(dataType.match(USER_TYPE(_))){
 			type = userDefinedTypes.get(dataType);
-		else
+		}else{
 			type = builtInTypes.get(dataType);
+		}
 		return type;
 	}
 
-	static function createBuiltInConst(name:String, value:Dynamic):GLSLVariable{
+	static function createConst(name:String, value:Dynamic, ?precision:PrecisionQualifier):GLSLVariable{
+		if(precision == null) precision = PrecisionQualifier.MEDIUM_PRECISION;
 		var dataType:DataType = null;
 		switch (Type.typeof(value)) {
 			case Type.ValueType.TInt: dataType = INT;
@@ -249,7 +320,7 @@ class Eval{
 			value: inst,
 			dataType: dataType,
 			qualifier: TypeQualifier.CONST,
-			precision: PrecisionQualifier.MEDIUM_PRECISION,
+			precision: precision,
 			invariant: false
 		}
 	}
@@ -302,6 +373,9 @@ class Operations{
 		TILDE;
 	*/
 	];
+
+	// #! todo
+	// static var assignmentFunctions
 
 	//Binary Operations
 	static function multiply(lhs:GLSLPrimitiveInstance, rhs:GLSLPrimitiveInstance):GLSLPrimitiveInstance{
@@ -426,6 +500,49 @@ class Operations{
 	}
 }
 
+class GLSLPrimitiveInstanceHelper{
+	static public function getDataType(p:GLSLPrimitiveInstance):DataType{
+		return switch p {
+			case LiteralInstance(_, t): t;
+			case ComplexInstance(_, t): t;
+			default: null;
+		}
+	}
+}
+
+@:access(glslparser.Eval)
+class DataTypeHelper{
+	static public function construct(dataType:DataType, ?value:Dynamic):GLSLPrimitiveInstance{
+		switch dataType{
+			case INT, FLOAT:
+				return LiteralInstance((value != null ? value : 0), dataType);
+			case BOOL:
+				return LiteralInstance((value != null ? value : false), dataType);
+			case USER_TYPE(n):
+				var typeDefinition = Eval.userDefinedTypes.get(dataType);
+
+				var constructionParams:Array<GLSLPrimitiveInstance>;
+				if(value != null){
+					constructionParams = value;
+				}else{
+					//create empty fields
+					constructionParams = [];
+					for(i in 0...typeDefinition.fields.length){
+						var f = typeDefinition.fields[i];
+						constructionParams.push(construct(f.dataType, null));
+					}
+				}
+
+				return ComplexInstance(typeDefinition.createInstance(constructionParams), dataType);
+
+			//#! support for other types
+			case null, _:
+				Eval.error('cannot construct type $dataType');
+		}
+		return null;
+	}
+}
+
 enum GLSLPrimitiveInstance{
 	LiteralInstance(v:Dynamic, t:DataType);
 	ComplexInstance(instance:GLSLInstance, t:DataType);
@@ -433,12 +550,12 @@ enum GLSLPrimitiveInstance{
 }
 
 enum GLSLAccessor{
-	IdentifierNode(n:Identifier);
-	FieldSelectionExpressionNode(n:FieldSelectionExpression);
-	ArrayElementSelectionExpressionNode(n:ArrayElementSelectionExpression);
+	IdentifierNode(n:Identifier, constant:Bool);
+	FieldSelectionExpressionNode(n:FieldSelectionExpression, constant:Bool);
+	ArrayElementSelectionExpressionNode(n:ArrayElementSelectionExpression, constant:Bool);
 }
 
-typedef GLSLFieldDef = {
+typedef GLSLVariableDef = {
 	var name:String;
 	var dataType:DataType;
 	var qualifier:TypeQualifier;
@@ -447,8 +564,8 @@ typedef GLSLFieldDef = {
 };
 
 typedef GLSLVariable = {
-	> GLSLFieldDef,
-	@:optional var value:GLSLPrimitiveInstance;
+	> GLSLVariableDef,
+	var value:GLSLPrimitiveInstance;
 	var invariant:Bool;
 }
 
@@ -459,9 +576,9 @@ interface GLSLTypeDef{
 @:access(glslparser.Eval)
 class GLSLStructDefinition implements GLSLTypeDef{
 	public var name:String;
-	public var fields:Array<GLSLFieldDef>;
+	public var fields:Array<GLSLVariableDef>;
 
-	public function new(name:String, fields:Array<GLSLFieldDef>){
+	public function new(name:String, fields:Array<GLSLVariableDef>){
 		this.name = name;
 		this.fields = fields;
 	}
@@ -472,7 +589,7 @@ class GLSLStructDefinition implements GLSLTypeDef{
 
 	static public function fromStructSpecifier(specifier:StructSpecifier){
 		//convert declarations to fields
-		var fields = new Array<GLSLFieldDef>();
+		var fields = new Array<GLSLVariableDef>();
 
 		//create field definitions in order
 		for(i in 0...specifier.structDeclarations.length){
@@ -484,7 +601,7 @@ class GLSLStructDefinition implements GLSLTypeDef{
 				//create field def and push
 				switch d.declarators[j].toTypeEnum() {
 					case StructDeclaratorNode(n):
-						var field:GLSLFieldDef = {
+						var field:GLSLVariableDef = {
 							name: n.name,
 							dataType: typeSpec.dataType, 
 							qualifier: typeSpec.qualifier,
@@ -493,7 +610,7 @@ class GLSLStructDefinition implements GLSLTypeDef{
 
 						//add array size if necessary
 						if(n.arraySizeExpression != null){
-							var arraySizePrimitive = Eval.evaluateConstantExpr(n.arraySizeExpression);
+							var arraySizePrimitive = Eval.evaluateExpr(n.arraySizeExpression, true);
 							switch arraySizePrimitive {
 								case LiteralInstance(v, INT):
 									field.arraySize = v;
@@ -515,7 +632,9 @@ class GLSLStructDefinition implements GLSLTypeDef{
 
 
 //Instances
-interface GLSLFieldAccess{
+interface GLSLInstance{
+	//#! .type? / .definition?
+	//#! .performOperation()?
 	public function accessField(name:String):GLSLPrimitiveInstance;
 }
 
@@ -523,35 +642,30 @@ interface GLSLArrayAccess{
 	public function accessIndex(i:Int):GLSLPrimitiveInstance;
 }
 
-typedef GLSLFieldInstance = {
-	var dataType:DataType;
-	var value:GLSLPrimitiveInstance;
-	@:optional var arraySize:Int;
-}
-
-interface GLSLInstance{
-	//#! .type? / .definition?
-	//#! .performOperation()?
-}
-
 @:access(glslparser.Eval)
-class GLSLStructInstance implements GLSLInstance implements GLSLFieldAccess{
+class GLSLStructInstance implements GLSLInstance{
 	var type:GLSLStructDefinition;
-	var fields:Map<String, GLSLFieldInstance>;
+	var fields:Map<String, GLSLVariable>;
 
 	public function new(type:GLSLStructDefinition, ?constructionParams:Array<GLSLPrimitiveInstance>){
 		this.type = type;
 
-		fields =  new Map<String, GLSLFieldInstance>();
+		fields = new Map<String, GLSLVariable>();
 
 		//create fields
 		for(i in 0...type.fields.length){
 			var f = type.fields[i];
-			var fieldInst = {
+
+			var fieldInst:GLSLVariable = {
+				name: f.name,
 				dataType: f.dataType,
+				qualifier: f.qualifier,
+				precision: f.precision,
 				arraySize: f.arraySize,
-				value: null
+				value: null,
+				invariant: false
 			};
+
 			fields.set(f.name, fieldInst);
 		}
 
@@ -565,26 +679,20 @@ class GLSLStructInstance implements GLSLInstance implements GLSLFieldAccess{
 			Eval.error('number of constructor parameters does not match the number of structure fields');
 			return;
 		}
-		//what happens if not all parameters are set?
+
 		for(i in 0...constructionParams.length){
 			var c = constructionParams[i];
 			var f = fields.get(fieldName(i));
 
-			//get param dataType
-			var dataType:DataType = null;
-			switch c {
-				case LiteralInstance(_, t) | ComplexInstance(_, t): dataType = t;
+			if(!c.getDataType().equals(f.dataType)){
+				Eval.warn('structure constructor arguments types do not match structure field\'s');
 			}
 
-			if(dataType.equals(f.dataType)){
-				f.value = c;
-			}else{
-				Eval.error('structure constructor arguments do not match structure fields');
-			}
+			f.value = c;
 		}
 	}
 	
-	public function accessField(name:String){
+	public function accessField(name:String):GLSLPrimitiveInstance{
 		return fields.get(name).value;
 	}
 

@@ -22,10 +22,9 @@ class Extract{
 
 				case VariableDeclarationNode(n):
 					var v = Eval.evaluateVariableDeclaration(n);
-					trace('VariableDeclarationNode($n)');
-
+					
 				default:
-					trace('default ${node.nodeName}');
+					trace('Extract default ${node.nodeName}');
 			}
 		}
 
