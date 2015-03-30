@@ -65,11 +65,11 @@ class Main{
 			saveInput(input);
 
 		}catch(e:Dynamic){
-			showErrors([e]);
+			warnings = warnings.concat([e]);
 			jsonContainer.innerHTML = '';
-		}
+		}	
 
-		showErrors(warnings);	
+		showErrors(warnings);
 
 		inputChanged = false;
 	}
