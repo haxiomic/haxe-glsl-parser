@@ -16,6 +16,7 @@
 		implementations auto cast whereas other's do not
 
 	#Todo
+	- INVARIANT_VARYING should be replaced
 	- ++ -- should take GLSLVariable instead
 	- better errors and warnings
 	- should allow use of, but warn on reserved operations and symbols
@@ -32,7 +33,7 @@
 		   // 1.2, 2.2, 0.0,
 		   // 0.0, 0.0, 1.0)
 		mat2 mm2x2 = mat2(m3x3); // = m2x2
-
+	- basic type .len?
 	- handle basic conversion in constructors, constructs seem to be completely type flexible!
 	- Arrays: const should be stored as VariableDefinition which includes array behavior
 	- Scoping
@@ -178,20 +179,7 @@ class Eval{
 	static public function evaluateVariableDeclaration(declaration:VariableDeclaration):Array<GLSLVariable>{
 		var declared:Array<GLSLVariable> = [];
 
-		//Invariance (4.6.1), feels like a little bit of a hack to have it as a variable declaration, but that what
-		//the spec seems to suggest
-		if(declaration.typeSpecifier == null){
-			for(dr in declaration.declarators){
-				var variable = getVariable(dr.name);
-				//set invariant
-				variable.invariant = dr.invariant;
-				declared.push(variable);
-			}
-			return declared;
-		}
-
 		//if TypeSpecifier is StructDefinition, evaluate it
-		//#! should we check if it's already defined?
 		switch declaration.typeSpecifier.toTypeEnum() {
 			case StructSpecifierNode(n): evalulateStructSpecifier(n);
 			case null, _:
@@ -202,12 +190,24 @@ class Eval{
 			//in this case, skip it
 			if(dr.name == null || dr.name == '') continue;
 
-			var variable:GLSLVariable = {
+			var variable:GLSLVariable;
+
+			if((variable = getVariable(dr.name)) != null){//variable already exists
+				if(declaration.typeSpecifier.invariant){//if invariant qualifier is set, it's not a considered redeclaration
+					variable.invariant = true;
+					declared.push(variable);
+					continue;
+				}
+				warn('redeclaration of variable \'${dr.name}\' not allowed');
+				continue;
+			}
+
+			variable = {
 				name: dr.name,
 				dataType: declaration.typeSpecifier.dataType,
 				qualifier: declaration.typeSpecifier.qualifier,
 				precision: declaration.typeSpecifier.precision,
-				invariant: dr.invariant,
+				invariant: declaration.typeSpecifier.invariant,
 				value: null
 			}
 
@@ -223,8 +223,7 @@ class Eval{
 				variable.value = value;
 			}else{
 				if(isConstant) warn('variables with qualifier \'const\' must be initialized');
-
-				//#! initialize to 0 or false
+				//initialize to 0 state or false
 				variable.value = variable.dataType.construct(null);
 			}
 

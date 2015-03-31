@@ -1,6 +1,8 @@
 #Todo
-- Warn on using reserved rules and operations
 ------
+- Investigate INVARIANT_VARYING
+- Replace GLSLAccessor with GLSLVariable
+- Start on preprocessor
 - Since array lengths are required CPU size, **we need to evaluate constant expressions**
 
 - A constant expression includes all basic types and user define types! So ```uniform vec2 x[NewThing(3).len];``` is valid as is something awful like. The result should be a basic type

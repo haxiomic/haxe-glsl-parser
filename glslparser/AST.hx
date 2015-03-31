@@ -30,10 +30,12 @@ class TypeSpecifier extends Node{
 	var dataType:DataType;
 	var qualifier:TypeQualifier;
 	var precision:PrecisionQualifier;
-	function new(dataType:DataType, ?qualifier:TypeQualifier, ?precision:PrecisionQualifier){
+	var invariant:Bool;
+	function new(dataType:DataType, ?qualifier:TypeQualifier, ?precision:PrecisionQualifier, invariant:Bool = false){
 		this.dataType = dataType;
 		this.qualifier = qualifier;
 		this.precision = precision;
+		this.invariant = invariant;
 		super();
 	}
 }
@@ -241,12 +243,10 @@ class Declarator extends Node{
 	var name:String;
 	var initializer:Expression;
 	var arraySizeExpression:Expression;
-	var invariant:Bool;
-	function new(name:String, ?initializer:Expression, ?arraySizeExpression:Expression, invariant:Bool = false){
+	function new(name:String, ?initializer:Expression, ?arraySizeExpression:Expression){
 		this.name = name;
 		this.initializer = initializer;
 		this.arraySizeExpression = arraySizeExpression;
-		this.invariant = invariant;
 		super();
 	}
 }
