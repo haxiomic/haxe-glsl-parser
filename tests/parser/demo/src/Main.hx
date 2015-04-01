@@ -1,6 +1,5 @@
 package;
 
-import glslparser.Eval;
 import glslparser.Parser;
 import glslparser.Tokenizer;
 import js.Browser;

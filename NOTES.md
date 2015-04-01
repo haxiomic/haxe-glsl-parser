@@ -1,6 +1,6 @@
 #Todo
 ------
-- Move Eval.hx
+- Error reporting needs redoing from the top - line numbers and positions should be non-optional for tokens
 - Rename ParserReducer to TreeBuilder ? with reduceRule or rule function?
 - Rename ParserDebugData?
 - Replace GLSLAccessor with GLSLVariable

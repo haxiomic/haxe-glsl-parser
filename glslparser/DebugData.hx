@@ -1,6 +1,6 @@
 package glslparser;
 
-class ParserDebugData{
+class DebugData{
 	static public function ruleString(ruleno:Int){
 		return ruleMap.get(ruleno);
 	}

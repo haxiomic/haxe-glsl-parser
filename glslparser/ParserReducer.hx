@@ -209,12 +209,11 @@ class ParserReducer{
 			case 125: return new VariableDeclaration(new TypeSpecifier(null, null, null, true), [new Declarator(t(2).data, null, null)]); //single_declaration ::= INVARIANT IDENTIFIER
 			case 126: return s(1); //fully_specified_type ::= type_specifier
 			case 127: var ts = cast(n(2), TypeSpecifier); //fully_specified_type ::= type_qualifier type_specifier
-						switch (ev(1)) {
-							case Instructions.SET_INVARIANT_VARYING:
-								ts.qualifier = TypeQualifier.VARYING;
-								ts.invariant = true;
-							default:
-								ts.qualifier = cast ev(1);
+						if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
+							ts.qualifier = TypeQualifier.VARYING;
+							ts.invariant = true;
+						}else{
+							ts.qualifier = cast ev(1);
 						}
 						return s(2);
 			case 128: return TypeQualifier.CONST; //type_qualifier ::= CONST
@@ -304,7 +303,7 @@ class ParserReducer{
 			case 209: return new FunctionDefinition(cast n(1), cast n(2)); //function_definition ::= function_prototype compound_statement_no_new_scope
 		}
 
-		Parser.warn('unhandled reduce rule, ($ruleno, ${ParserDebugData.ruleName(ruleno)})');
+		Parser.warn('unhandled reduce rule, ($ruleno, ${DebugData.ruleName(ruleno)})');
 		return null;
 	}
 
