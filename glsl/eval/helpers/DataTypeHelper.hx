@@ -1,9 +1,9 @@
-package glslparser.eval.helpers;
+package glsl.eval.helpers;
 
-import glslparser.AST;
-import glslparser.eval.Eval;
+import glsl.SyntaxTree;
+import glsl.eval.Eval;
 
-@:access(glslparser.eval.Eval)
+@:access(glsl.eval.Eval)
 class DataTypeHelper{
 
 	static public function construct(dataType:DataType, ?value:Dynamic):GLSLInstance{
@@ -29,7 +29,7 @@ class DataTypeHelper{
 
 				return CompositeInstance(typeDefinition.createInstance(constructionParams), dataType);
 
-			//#! support for other types
+			//@! support for other types
 			case null, _:
 				Eval.error('cannot construct type $dataType');
 		}

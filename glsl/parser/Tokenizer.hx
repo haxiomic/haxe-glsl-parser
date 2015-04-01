@@ -7,7 +7,7 @@
 	* Scan and read ahead technique
 */
 
-package glslparser;
+package glsl.parser;
 
 typedef Token = {
 	var type:TokenType;

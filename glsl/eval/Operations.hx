@@ -1,12 +1,12 @@
-package glslparser.eval;
+package glsl.eval;
 
-import glslparser.AST;
-import glslparser.eval.Eval;
+import glsl.SyntaxTree;
+import glsl.eval.Eval;
 
-using glslparser.eval.helpers.GLSLInstanceHelper;
+using glsl.eval.helpers.GLSLInstanceHelper;
 
 @:publicFields
-@:access(glslparser.eval.Eval)
+@:access(glsl.eval.Eval)
 class Operations{
 
 	static var binaryFunctions:Map<BinaryOperator, GLSLInstance->GLSLInstance->GLSLInstance> = [
@@ -15,7 +15,7 @@ class Operations{
 		PERCENT => modulo,
 		PLUS => add,
 		DASH => subtract
-	/*	#! todo
+	/*	@! todo
 		LEFT_OP;
 		RIGHT_OP;
 		LEFT_ANGLE;
@@ -39,16 +39,16 @@ class Operations{
 		PLUS => plus,
 		DASH => minus,
 		BANG => not
-	/*	#! todo
+	/*	@! todo
 		TILDE;
 	*/
 	];
 
-	// #! todo
+	// @! todo
 	
 	static var assignmentFunctions:Map<AssignmentOperator, Variable->GLSLInstance->GLSLInstance> = [
 		EQUAL => assign
-	/*	#! todo
+	/*	@! todo
 		MUL_ASSIGN => assignMultiply,
 		DIV_ASSIGN => assignDivide,
 		MOD_ASSIGN => assignModulo,
@@ -207,7 +207,7 @@ class Operations{
 
 	//Assignment
 	static function assign(variable:Variable, value:GLSLInstance){
-		//#! try variable conversion if possible?
+		//@! try variable conversion if possible?
 		if(!variable.dataType.equals(value.getDataType())){
 			Eval.error('type mismatch, cannot assign ${value} to variable ${variable.name} with type ${variable.dataType}');
 		}

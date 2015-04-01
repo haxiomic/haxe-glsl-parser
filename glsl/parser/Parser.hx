@@ -7,12 +7,12 @@
 	@author George Corney
 */
 
-package glslparser;
+package glsl.parser;
 
-import glslparser.Tokenizer.Token;
-import glslparser.Tokenizer.TokenType;
+import glsl.parser.Tokenizer.Token;
+import glsl.parser.Tokenizer.TokenType;
 
-import glslparser.TreeBuilder.MinorType;
+import glsl.parser.TreeBuilder.MinorType;
 
 class Parser{
 	//state machine variables
@@ -24,7 +24,7 @@ class Parser{
 
 	static public var warnings:Array<String>;
 
-	static public function parse(input:String){
+	static public function parseString(input:String){
 		return parseTokens(Tokenizer.tokenize(input));
 	}
 
@@ -73,7 +73,7 @@ class Parser{
 				//syntax error
 				assert( act == errorAction );
 				if(errorsSymbol){
-					//#! error recovery code if the error symbol in the grammar is supported
+					//@! error recovery code if the error symbol in the grammar is supported
 				}else{
 					if(errorCount <= 0){
 						syntaxError(major, minor);
@@ -186,7 +186,7 @@ class Parser{
 
 	static function syntaxError(major:Int, minor:MinorType){
 		warn('syntax error, $minor');
-	}//#! needs improving
+	}//@! needs improving
 
 	static function parseFailed(minor:MinorType){
 		error('parse failed, $minor');

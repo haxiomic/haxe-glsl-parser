@@ -5,10 +5,10 @@
 	@author George Corney
 */
 
-package glslparser;
+package glsl.parser;
 
-import glslparser.Tokenizer.Token;
-import glslparser.AST;
+import glsl.parser.Tokenizer.Token;
+import glsl.SyntaxTree;
 
 typedef MinorType = Dynamic;
 
@@ -21,7 +21,7 @@ enum Instructions{
 	SET_INVARIANT_VARYING;
 }
 
-@:access(glslparser.Parser)
+@:access(glsl.parser.Parser)
 class TreeBuilder{
 
 	static var i(get, null):Int;
@@ -260,8 +260,8 @@ class TreeBuilder{
 
 			/* Statements */
 			case 168: return new DeclarationStatement(cast n(1)); //declaration_statement ::= declaration
-			case 169: return s(1); /*#! scope change? */ //statement_no_new_scope ::= compound_statement_with_scope
-			case 170: return s(1); /*#! scope change? */ //statement_no_new_scope ::= simple_statement
+			case 169: return s(1); /*@! scope change? */ //statement_no_new_scope ::= compound_statement_with_scope
+			case 170: return s(1); /*@! scope change? */ //statement_no_new_scope ::= simple_statement
 			case 171: return s(1); //simple_statement ::= declaration_statement
 			case 172: return s(1); //simple_statement ::= expression_statement
 			case 173: return s(1); //simple_statement ::= selection_statement
@@ -269,8 +269,8 @@ class TreeBuilder{
 			case 175: return s(1); //simple_statement ::= jump_statement
 			case 176: return new CompoundStatement([], true); //compound_statement_with_scope ::= LEFT_BRACE RIGHT_BRACE
 			case 177: return new CompoundStatement(cast a(2), true); //compound_statement_with_scope ::= LEFT_BRACE statement_list RIGHT_BRACE
-			case 178: return s(1); /*#! scope change? */ //statement_with_scope ::= compound_statement_no_new_scope
-			case 179: return s(1); /*#! scope change? */ //statement_with_scope ::= simple_statement
+			case 178: return s(1); /*@! scope change? */ //statement_with_scope ::= compound_statement_no_new_scope
+			case 179: return s(1); /*@! scope change? */ //statement_with_scope ::= simple_statement
 			case 180: return new CompoundStatement([], false); //compound_statement_no_new_scope ::= LEFT_BRACE RIGHT_BRACE
 			case 181: return new CompoundStatement(cast a(2), false); //compound_statement_no_new_scope ::= LEFT_BRACE statement_list RIGHT_BRACE
 			case 182: return [n(1)]; //statement_list ::= statement_no_new_scope

@@ -5,7 +5,7 @@
 	@author George Corney
 */
 
-package glslparser;
+package glsl;
 
 import Type.ValueType.TClass;
 
@@ -18,7 +18,7 @@ class Node{
 }
 
 class Root extends Node{
-	//#! potentially store preprocessor details like version
+	//@! potentially store preprocessor details like version
 	var declarations:TranslationUnit;
 	public function new(declarations:TranslationUnit){
 		this.declarations = declarations;
@@ -52,7 +52,7 @@ class StructSpecifier extends TypeSpecifier{
 
 typedef StructDeclarationList = Array<StructDeclaration>;
 
-class StructDeclaration extends Node{ //#! extend Declaration? Is global meaningful here?
+class StructDeclaration extends Node{ //@! extend Declaration? Is global meaningful here?
 	var typeSpecifier:TypeSpecifier;
 	var declarators:StructDeclaratorList;
 	function new(typeSpecifier:TypeSpecifier, declarators:StructDeclaratorList){
@@ -104,9 +104,9 @@ class Primitive<T> extends Expression implements TypedExpression{
 
 	private function set_value(v:T):T{
 		switch(dataType){
-			case INT: raw = Utils.glslIntString(cast v);
-			case FLOAT: raw = Utils.glslFloatString(cast v);
-			case BOOL: raw = Utils.glslBoolString(cast v);
+			case INT: raw = glsl.printer.Utils.glslIntString(cast v);
+			case FLOAT: raw = glsl.printer.Utils.glslFloatString(cast v);
+			case BOOL: raw = glsl.printer.Utils.glslBoolString(cast v);
 			default: raw = '';
 		}
 		return value = v;

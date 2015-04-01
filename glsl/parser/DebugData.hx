@@ -1,4 +1,4 @@
-package glslparser;
+package glsl.parser;
 
 class DebugData{
 	static public function ruleString(ruleno:Int){

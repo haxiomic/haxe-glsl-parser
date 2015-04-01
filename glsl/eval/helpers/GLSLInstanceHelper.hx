@@ -1,7 +1,7 @@
-package glslparser.eval.helpers;
+package glsl.eval.helpers;
 
-import glslparser.AST;
-import glslparser.eval.Eval;
+import glsl.SyntaxTree;
+import glsl.eval.Eval;
 
 class GLSLInstanceHelper{
 

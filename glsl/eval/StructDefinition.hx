@@ -1,11 +1,11 @@
-package glslparser.eval;
+package glsl.eval;
 
-import glslparser.AST;
-import glslparser.eval.Eval;
+import glsl.SyntaxTree;
+import glsl.eval.Eval;
 
-using AST.TypeEnumHelper;
+using SyntaxTree.TypeEnumHelper;
 
-@:access(glslparser.eval.Eval)
+@:access(glsl.eval.Eval)
 class StructDefinition implements ITypeDefinition{
 	public var name:String;
 	public var fields:Array<VariableDefinition>;

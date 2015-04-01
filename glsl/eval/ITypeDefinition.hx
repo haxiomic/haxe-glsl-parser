@@ -1,6 +1,6 @@
-package glslparser.eval;
+package glsl.eval;
 
-import glslparser.eval.Eval;
+import glsl.eval.Eval;
 
 interface ITypeDefinition{
 	public function createInstance(?constructionParams:Array<GLSLInstance>):ICompositeInstance;

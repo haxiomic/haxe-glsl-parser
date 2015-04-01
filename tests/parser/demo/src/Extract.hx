@@ -1,10 +1,10 @@
 package;
 
-import glslparser.AST;
-import glslparser.eval.Eval;
-import glslparser.eval.ITypeDefinition;
+import glsl.SyntaxTree;
+import glsl.eval.Eval;
+import glsl.eval.ITypeDefinition;
 
-using glslparser.AST.TypeEnumHelper;
+using glsl.SyntaxTree.TypeEnumHelper;
 
 class Extract{
 

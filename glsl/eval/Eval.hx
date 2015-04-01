@@ -40,14 +40,14 @@
 	- should support reserved operations but emit a warning
 */
 
-package glslparser.eval;
+package glsl.eval;
 
-import glslparser.AST;
-import glslparser.eval.StructDefinition;
+import glsl.SyntaxTree;
+import glsl.eval.StructDefinition;
 
-using AST.TypeEnumHelper;
-using glslparser.eval.helpers.GLSLInstanceHelper;
-using glslparser.eval.helpers.DataTypeHelper;
+using SyntaxTree.TypeEnumHelper;
+using glsl.eval.helpers.GLSLInstanceHelper;
+using glsl.eval.helpers.DataTypeHelper;
 
 class Eval{
 	static public var builtInVariables:Map<String, Variable> = [
@@ -166,10 +166,10 @@ class Eval{
 						return null;
 				}
 
-			case ArrayElementSelectionExpressionNode(n): //#!
+			case ArrayElementSelectionExpressionNode(n): //@!
 				warn('Eval doesn\'t yet support array element selection');
 
-			case FunctionCallNode(n): //#!
+			case FunctionCallNode(n): //@!
 				warn('Eval doesn\'t yet support function calls');
 			case null, _:
 		}
@@ -270,7 +270,7 @@ class Eval{
 						warn('field access cannot be performed on $leftInst');
 				}
 
-			// case ArrayElementSelectionExpressionNode(n): //#!
+			// case ArrayElementSelectionExpressionNode(n): //@!
 
 			case null, _:
 		}
@@ -322,7 +322,7 @@ class Eval{
 
 	//Error Reporting
 	static function warn(msg){
-		trace('Eval warning: $msg');//#!
+		trace('Eval warning: $msg');//@!
 		warnings.push('Eval warning: $msg');
 	}
 

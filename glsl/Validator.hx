@@ -2,7 +2,7 @@
 	TODO
 */
 
-package glslparser;
+package glsl;
 
 
 class Validator{

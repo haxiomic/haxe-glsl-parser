@@ -1,7 +1,7 @@
 package;
 
-import glslparser.Parser;
-import glslparser.Tokenizer;
+import glsl.parser.Parser;
+import glsl.parser.Tokenizer;
 import js.Browser;
 import js.html.DOMElement;
 

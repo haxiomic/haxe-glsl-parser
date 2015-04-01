@@ -1,4 +1,4 @@
-import glslparser.Tokenizer;
+import glsl.parser.Tokenizer;
 
 class Main{
 

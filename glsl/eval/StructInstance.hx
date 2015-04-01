@@ -1,10 +1,10 @@
-package glslparser.eval;
+package glsl.eval;
 
-import glslparser.eval.Eval;
+import glsl.eval.Eval;
 
-using glslparser.eval.helpers.GLSLInstanceHelper;
+using glsl.eval.helpers.GLSLInstanceHelper;
 
-@:access(glslparser.eval.Eval)
+@:access(glsl.eval.Eval)
 class StructInstance implements ICompositeInstance{
 	var typeDefinition:StructDefinition;
 	var fields:Map<String, Variable>;

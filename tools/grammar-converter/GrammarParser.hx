@@ -4,7 +4,7 @@ import GrammarTokenizer.TokenType;
 /* 
 	#Notes
 	- Rules are tried in reverse order
-	- What is the best way to build the AST?
+	- What is the best way to build the SyntaxTree?
 		- Extend grammar language to include Node generation instructions
 		- A second parse over the big array of results
 		- A series of buildNodeX(x) functions
@@ -39,7 +39,7 @@ import GrammarTokenizer.TokenType;
 		TOKEN
 */
 /* 
-	Example AST (generated from the above grammar)
+	Example SyntaxTree (generated from the above grammar)
 
 	[
 		{
@@ -178,14 +178,14 @@ class GrammarParser
 		return null;
 	}
 
-	static function rule():NodeRuleDeclaration{//#! should return RuleDeclaration{name: '...', rules:RuleSequenceList: [...]}
+	static function rule():NodeRuleDeclaration{//@! should return RuleDeclaration{name: '...', rules:RuleSequenceList: [...]}
 		//RULE_DECL NEWLINE rule_sequence_list
 		var r;
 		if(r = trySequence([Token(RULE_DECL), Token(NEWLINE), Rule(rule_sequence_list)])) return buildResult_rule(r, 0);
 		return null;
 	}
 
-	static function rule_sequence_list():Array<Array<NodeRuleElement>>{//#! should return RuleSequenceList::Array<Array<NodeRuleElement>>
+	static function rule_sequence_list():Array<Array<NodeRuleElement>>{//@! should return RuleSequenceList::Array<Array<NodeRuleElement>>
 		//rule_sequence || rule_sequence rule_sequence_list
 		var r;
 		if(r = trySequence([Rule(rule_sequence), Rule(rule_sequence_list)])) return buildResult_rule_sequence_list(r, 1);
@@ -193,7 +193,7 @@ class GrammarParser
 		return null;
 	}
 
-	static function rule_sequence():Array<NodeRuleElement>{//#! should return RuleSequence::Array<NodeRuleElement>
+	static function rule_sequence():Array<NodeRuleElement>{//@! should return RuleSequence::Array<NodeRuleElement>
 		//EMPTY NEWLINE || rule_element_list NEWLINE
 		var r;
 		if(r = trySequence([Rule(rule_element_list), Token(NEWLINE)])) return buildResult_rule_sequence(r, 1);
@@ -201,7 +201,7 @@ class GrammarParser
 		return null;
 	}
 
-	static function rule_element_list():Array<NodeRuleElement>{//#! should return Array<NodeRuleElement>
+	static function rule_element_list():Array<NodeRuleElement>{//@! should return Array<NodeRuleElement>
 		//rule_element || rule_element rule_element_list
 		var r;
 		if(r = trySequence([Rule(rule_element), Rule(rule_element_list)])) return buildResult_rule_element_list(r, 1);
@@ -209,7 +209,7 @@ class GrammarParser
 		return null;
 	}
 
-	static function rule_element():NodeRuleElement{//#! should return NodeRuleElement{type: Rule || Token, name: '...'}
+	static function rule_element():NodeRuleElement{//@! should return NodeRuleElement{type: Rule || Token, name: '...'}
 		//RULE or TOKEN
 		var r;
 		if(r = trySequence([Token(TOKEN)])) return buildResult_rule_element(r, 1);
@@ -219,7 +219,7 @@ class GrammarParser
 
 /* --------- Build node functions --------- */
 	//for each rule there is a build result function
-	//buildResult_* converts raw trySequence result into formatted result for use in AST
+	//buildResult_* converts raw trySequence result into formatted result for use in SyntaxTree
 
 	static function buildResult_rule(r:SequenceResults, sequenceIndex:Int):NodeRuleDeclaration{
 		var name:String = r[0].data;

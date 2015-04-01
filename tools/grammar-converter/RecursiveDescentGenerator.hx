@@ -1,5 +1,5 @@
 /*	
-	#! Unfinished
+	@! Unfinished
 	Generates rule functions correctly but buildResults / (node construction) functions are left incomplete
 */
 
@@ -46,7 +46,7 @@ class ParserGenerator{
 	static function generateRuleFunction(ruleDecl:NodeRuleDeclaration):String{
 		var fnHeader = 'static function rule_${ruleDecl.name}(){\n';
 		
-		var contentRules = '\ttrace("trying rule: ${ruleDecl.name}");\n';//#! debug
+		var contentRules = '\ttrace("trying rule: ${ruleDecl.name}");\n';//@! debug
 
 		var includesRuleEmptyType = false;
 		var i = ruleDecl.rules.length;
@@ -75,7 +75,7 @@ class ParserGenerator{
 			contentRules += ruleTryStatement;
 		}
 
-		contentRules += '\ttrace("failed ${ruleDecl.name}");\n';//#! debug
+		contentRules += '\ttrace("failed ${ruleDecl.name}");\n';//@! debug
 
 
 		var fnEnd = includesRuleEmptyType ? '}' : '\treturn null;\n}';
@@ -84,12 +84,12 @@ class ParserGenerator{
 	}
 
 	static function generateBuildResultStub(ruleDecl:NodeRuleDeclaration):String{
-		//#! ? default node could be type: SomeType, data: r.data
+		//@! ? default node could be type: SomeType, data: r.data
 		//(where each node keeps track of the data which is the concatenated string of the results)
 
 		var fnHeader = 'static function buildResult_${ruleDecl.name}(r:SequenceResults, sequenceIndex:Int){\n';
 
-		var contentStart = '\ttrace("building result for ${ruleDecl.name}");\n';//#! debug
+		var contentStart = '\ttrace("building result for ${ruleDecl.name}");\n';//@! debug
 
 		//default switch
 		var switchStart = '\tswitch (sequenceIndex) {\n';

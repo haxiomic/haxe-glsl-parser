@@ -1,4 +1,4 @@
-package glslparser;
+package glsl.printer;
 
 class Utils{
 
