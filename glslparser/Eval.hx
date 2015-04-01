@@ -17,7 +17,6 @@
 
 	#Todo
 	- move Eval to eval/Eval, split up classes
-	- ++ -- should take GLSLVariable instead
 	- new operator approach with search?
 	- better errors and warnings
 	- should allow use of, but warn on reserved operations and symbols
@@ -118,13 +117,22 @@ class Eval{
 					warn('cannot perform unary expression on null');
 					return null;
 				}
-				//convert arg to operator function parameter
+				//INC_OP and DEC_OP require GLSLVariables
 				switch n.op {
 					case INC_OP, DEC_OP:
 						arg = switch n.arg.toTypeEnum(){
-							case IdentifierNode(n): GLSLAccessor.IdentifierNode(n, constant);
-							case FieldSelectionExpressionNode(n): GLSLAccessor.FieldSelectionExpressionNode(n, constant);
-							case ArrayElementSelectionExpressionNode(n): GLSLAccessor.ArrayElementSelectionExpressionNode(n, constant);
+							case IdentifierNode(n):
+								getVariable(n.name);
+							case FieldSelectionExpressionNode(n):
+								var leftPrim = evaluateExpr(n.left, constant);
+								switch leftPrim {
+									case ComplexInstance(v, _):
+										v.accessField(n.field.name);
+									case null, _:
+										warn('field access cannot be performed on $leftPrim');
+										null;
+								}
+							// case ArrayElementSelectionExpressionNode(n): //#!
 							case null, _:
 								warn('invalid expression $n.arg for unary operator');
 								null;
@@ -153,9 +161,9 @@ class Eval{
 
 			case FieldSelectionExpressionNode(n):
 				var leftPrim = evaluateExpr(n.left, constant);
-				switch(leftPrim){
+				switch leftPrim {
 					case ComplexInstance(v, _):
-						return v.accessField(n.field.name);
+						return v.accessField(n.field.name).value;
 					case null, _:
 						warn('field access cannot be performed on $leftPrim');
 						return null;
@@ -247,49 +255,6 @@ class Eval{
 		}
 
 		return declared;
-	}
-
-	static function setValue(primAccess:GLSLAccessor, value:GLSLPrimitiveInstance){
-		//change value in memory if possible
-		switch primAccess{
-			case IdentifierNode(n, _):
-				var variable = getVariable(n.name);
-				if(variable.qualifier.equals(CONST)){
-					warn('trying to change the value of a constant variable $variable');
-				}
-
-				//check data types match
-				if(!value.getDataType().equals(variable.dataType)){
-					warn('type mismatch between variable of type ${variable.dataType} and value of type ${value.getDataType()}');
-				}
-
-				return variable.value = value;
-
-			case FieldSelectionExpressionNode(n, _):
-				//#!
-			case ArrayElementSelectionExpressionNode(n, _):
-				//#!
-			case null, _:
-		}
-
-		error('cannot alter value of $primAccess');
-		return null;
-	}
-
-	static function getValue(primAccess:GLSLAccessor):GLSLPrimitiveInstance{
-		switch primAccess{
-			case IdentifierNode(n, constant):
-				var v:GLSLVariable = getVariable(n.name);
-				return v.value;
-			case FieldSelectionExpressionNode(n, constant):
-				//#!
-			case ArrayElementSelectionExpressionNode(n, constant):
-				//#!
-			case null, _:
-		}
-
-		error('cannot get the value of $primAccess');
-		return null;
 	}
 
 	static function getVariable(name:String){
@@ -436,9 +401,9 @@ class Operations{
 	}
 
 	//Unary Operators
-	static function increment(primAccess:GLSLAccessor, isPrefix:Bool){
+	static function increment(variable:GLSLVariable, isPrefix:Bool){
 		//perform increment on primitive
-		var argPrim = Eval.getValue(primAccess);
+		var argPrim = variable.value;
 		var primBefore = argPrim;
 		var result:GLSLPrimitiveInstance = null;
 		switch(argPrim){
@@ -450,14 +415,14 @@ class Operations{
 				result = null;
 		}
 
-		Eval.setValue(primAccess, result);
+		variable.value = result;
 
 		return isPrefix ? result : primBefore;
 	}
 
-	static function decrement(primAccess:GLSLAccessor, isPrefix:Bool){
+	static function decrement(variable:GLSLVariable, isPrefix:Bool){
 		//perform decrement on primitive
-		var argPrim = Eval.getValue(primAccess);
+		var argPrim = variable.value;
 		var primBefore = argPrim;
 		var result:GLSLPrimitiveInstance = null;
 		switch(argPrim){
@@ -469,7 +434,7 @@ class Operations{
 				result = null;
 		}
 
-		Eval.setValue(primAccess, result);
+		variable.value = result;
 
 		return isPrefix ? result : primBefore;	
 	}
@@ -552,25 +517,18 @@ enum GLSLPrimitiveInstance{
 	// ArrayInstance, for future use
 }
 
-enum GLSLAccessor{
-	IdentifierNode(n:Identifier, constant:Bool);
-	FieldSelectionExpressionNode(n:FieldSelectionExpression, constant:Bool);
-	ArrayElementSelectionExpressionNode(n:ArrayElementSelectionExpression, constant:Bool);
-}
-
 typedef GLSLVariableDef = {
 	var name:String;
 	var dataType:DataType;
 	var qualifier:TypeQualifier;
 	var precision:PrecisionQualifier;
+	var invariant:Bool;
 	@:optional var arraySize:Int;
 };
 
 typedef GLSLVariable = {
 	> GLSLVariableDef,
-	var value:GLSLPrimitiveInstance;
-	var invariant:Bool;
-}
+	var value:GLSLPrimitiveInstance;}
 
 interface GLSLTypeDef{
 	public function createInstance(?constructionParams:Array<GLSLPrimitiveInstance>):GLSLInstance;
@@ -608,7 +566,8 @@ class GLSLStructDefinition implements GLSLTypeDef{
 							name: n.name,
 							dataType: typeSpec.dataType, 
 							qualifier: typeSpec.qualifier,
-							precision: typeSpec.precision
+							precision: typeSpec.precision,
+							invariant: typeSpec.invariant
 						};
 
 						//add array size if necessary
@@ -638,7 +597,7 @@ class GLSLStructDefinition implements GLSLTypeDef{
 interface GLSLInstance{
 	//#! .type? / .definition?
 	//#! .performOperation()?
-	public function accessField(name:String):GLSLPrimitiveInstance;
+	public function accessField(name:String):GLSLVariable;
 }
 
 interface GLSLArrayAccess{
@@ -664,9 +623,9 @@ class GLSLStructInstance implements GLSLInstance{
 				dataType: f.dataType,
 				qualifier: f.qualifier,
 				precision: f.precision,
+				invariant: f.invariant,
 				arraySize: f.arraySize,
 				value: null,
-				invariant: false
 			};
 
 			fields.set(f.name, fieldInst);
@@ -695,8 +654,8 @@ class GLSLStructInstance implements GLSLInstance{
 		}
 	}
 	
-	public function accessField(name:String):GLSLPrimitiveInstance{
-		return fields.get(name).value;
+	public function accessField(name:String):GLSLVariable{
+		return fields.get(name);
 	}
 
 	inline function fieldName(i:Int):String{

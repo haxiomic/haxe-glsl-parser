@@ -53,13 +53,10 @@ class Main{
 
 			var globals = Extract.extractGlobalVariables(ast);
 			warnings = warnings.concat(globals.warnings);
-			trace('Extracted globals:\n$globals');
-			//print value of x
-			var x = globals.variables.get('x');
-			if(x != null){
-				trace('x = ' + x.value);
-			}else{
-				trace('(x is not defined)');
+			// trace('Extracted globals:\n$globals');
+			//print variable values
+			for(v in globals.variables){
+				trace('${v.name} = ${v.value}');
 			}
 
 			saveInput(input);
