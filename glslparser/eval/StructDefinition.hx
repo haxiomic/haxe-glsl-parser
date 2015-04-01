@@ -6,22 +6,22 @@ import glslparser.eval.Eval;
 using AST.TypeEnumHelper;
 
 @:access(glslparser.eval.Eval)
-class GLSLStructDefinition implements IGLSLTypeDefinition{
+class StructDefinition implements ITypeDefinition{
 	public var name:String;
-	public var fields:Array<GLSLVariableDefinition>;
+	public var fields:Array<VariableDefinition>;
 
-	public function new(name:String, fields:Array<GLSLVariableDefinition>){
+	public function new(name:String, fields:Array<VariableDefinition>){
 		this.name = name;
 		this.fields = fields;
 	}
 
-	public function createInstance(?constructionParams:Array<GLSLInstance>):GLSLStructInstance{
-		return new GLSLStructInstance(this, constructionParams);
+	public function createInstance(?constructionParams:Array<GLSLInstance>):StructInstance{
+		return new StructInstance(this, constructionParams);
 	}
 
 	static public function fromStructSpecifier(specifier:StructSpecifier){
 		//convert declarations to fields
-		var fields = new Array<GLSLVariableDefinition>();
+		var fields = new Array<VariableDefinition>();
 
 		//create field definitions in order
 		for(i in 0...specifier.structDeclarations.length){
@@ -33,7 +33,7 @@ class GLSLStructDefinition implements IGLSLTypeDefinition{
 				//create field def and push
 				switch d.declarators[j].toTypeEnum() {
 					case StructDeclaratorNode(n):
-						var field:GLSLVariableDefinition = {
+						var field:VariableDefinition = {
 							name: n.name,
 							dataType: typeSpec.dataType, 
 							qualifier: typeSpec.qualifier,
@@ -59,6 +59,6 @@ class GLSLStructDefinition implements IGLSLTypeDefinition{
 			}
 		}
 
-		return new GLSLStructDefinition(specifier.name, fields);
+		return new StructDefinition(specifier.name, fields);
 	}
 }

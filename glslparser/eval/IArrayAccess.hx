@@ -2,6 +2,6 @@ package glslparser.eval;
 
 import glslparser.eval.Eval;
 
-interface IGLSLArrayAccess{
+interface IArrayAccess{
 	public function accessIndex(i:Int):GLSLInstance;
 }

@@ -5,20 +5,20 @@ import glslparser.eval.Eval;
 using glslparser.eval.helpers.GLSLInstanceHelper;
 
 @:access(glslparser.eval.Eval)
-class GLSLStructInstance implements IGLSLComplexInstance{
-	var typeDefinition:GLSLStructDefinition;
-	var fields:Map<String, GLSLVariable>;
+class StructInstance implements ICompositeInstance{
+	var typeDefinition:StructDefinition;
+	var fields:Map<String, Variable>;
 
-	public function new(typeDefinition:GLSLStructDefinition, ?constructionParams:Array<GLSLInstance>){
+	public function new(typeDefinition:StructDefinition, ?constructionParams:Array<GLSLInstance>){
 		this.typeDefinition = typeDefinition;
 
-		fields = new Map<String, GLSLVariable>();
+		fields = new Map<String, Variable>();
 
 		//create fields
 		for(i in 0...typeDefinition.fields.length){
 			var f = typeDefinition.fields[i];
 
-			var field:GLSLVariable = {
+			var field:Variable = {
 				name: f.name,
 				dataType: f.dataType,
 				qualifier: f.qualifier,
@@ -54,7 +54,7 @@ class GLSLStructInstance implements IGLSLComplexInstance{
 		}
 	}
 	
-	public function accessField(name:String):GLSLVariable{
+	public function accessField(name:String):Variable{
 		return fields.get(name);
 	}
 

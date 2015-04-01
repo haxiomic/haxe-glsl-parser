@@ -7,7 +7,7 @@ using glslparser.eval.helpers.GLSLInstanceHelper;
 
 @:publicFields
 @:access(glslparser.eval.Eval)
-class GLSLOperations{
+class Operations{
 
 	static var binaryFunctions:Map<BinaryOperator, GLSLInstance->GLSLInstance->GLSLInstance> = [
 		STAR => multiply,
@@ -46,7 +46,7 @@ class GLSLOperations{
 
 	// #! todo
 	
-	static var assignmentFunctions:Map<AssignmentOperator, GLSLVariable->GLSLInstance->GLSLInstance> = [
+	static var assignmentFunctions:Map<AssignmentOperator, Variable->GLSLInstance->GLSLInstance> = [
 		EQUAL => assign
 	/*	#! todo
 		MUL_ASSIGN => assignMultiply,
@@ -127,7 +127,7 @@ class GLSLOperations{
 	}
 
 	//Unary Operators
-	static function increment(variable:GLSLVariable, isPrefix:Bool){
+	static function increment(variable:Variable, isPrefix:Bool){
 		//perform increment on primitive
 		var argInst = variable.value;
 		var primBefore = argInst;
@@ -146,7 +146,7 @@ class GLSLOperations{
 		return isPrefix ? result : primBefore;
 	}
 
-	static function decrement(variable:GLSLVariable, isPrefix:Bool){
+	static function decrement(variable:Variable, isPrefix:Bool){
 		//perform decrement on primitive
 		var argInst = variable.value;
 		var primBefore = argInst;
@@ -169,7 +169,7 @@ class GLSLOperations{
 		switch {arg: argInst, isPrefix: isPrefix} {
 			case {arg: PrimitiveInstance(_, INT), isPrefix: true} 	|
 				 {arg: PrimitiveInstance(_, FLOAT), isPrefix: true}	|
-				 {arg: ComplexInstance(_, _), isPrefix: true}:
+				 {arg: CompositeInstance(_, _), isPrefix: true}:
 				return argInst;
 			case {arg: _, isPrefix: true}:
 				Eval.error('operation +$argInst not supported');
@@ -206,8 +206,8 @@ class GLSLOperations{
 	}
 
 	//Assignment
-	static function assign(variable:GLSLVariable, value:GLSLInstance){
-		//#! try variable conversion
+	static function assign(variable:Variable, value:GLSLInstance){
+		//#! try variable conversion if possible?
 		if(!variable.dataType.equals(value.getDataType())){
 			Eval.error('type mismatch, cannot assign ${value} to variable ${variable.name} with type ${variable.dataType}');
 		}

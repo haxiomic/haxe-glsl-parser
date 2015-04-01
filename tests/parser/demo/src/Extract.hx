@@ -2,15 +2,15 @@ package;
 
 import glslparser.AST;
 import glslparser.eval.Eval;
-import glslparser.eval.IGLSLTypeDefinition;
+import glslparser.eval.ITypeDefinition;
 
 using glslparser.AST.TypeEnumHelper;
 
 class Extract{
 
 	static public function extractGlobalVariables(ast:Root):{
-			types: Map<DataType, IGLSLTypeDefinition>,
-			variables: Map<String, GLSLVariable>,
+			types: Map<DataType, ITypeDefinition>,
+			variables: Map<String, Variable>,
 			warnings: Array<String>
 		}{
 		Eval.reset();
@@ -31,8 +31,8 @@ class Extract{
 		iterate(ast);
 
 		//copy Eval state
-		var userDefinedTypes = new Map<DataType, IGLSLTypeDefinition>();
-		var userDefinedVariables = new Map<String, GLSLVariable>();
+		var userDefinedTypes = new Map<DataType, ITypeDefinition>();
+		var userDefinedVariables = new Map<String, Variable>();
 		var warnings = Eval.warnings.copy();
 
 		for(key in Eval.userDefinedTypes.keys()){

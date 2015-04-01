@@ -91,7 +91,7 @@ class Identifier extends Expression{
 	}
 }
 
-class Literal<T> extends Expression implements TypedExpression{
+class Primitive<T> extends Expression implements TypedExpression{
 	var value(default, set):T;
 	var raw:String;
 	var dataType:DataType;
@@ -496,7 +496,7 @@ enum TypeEnum{
 	StructDeclaratorNode(n:StructDeclarator);
 	ExpressionNode(n:Expression);
 	IdentifierNode(n:Identifier);
-	LiteralNode(n:Literal<Dynamic>);
+	PrimitiveNode(n:Primitive<Dynamic>);
 	BinaryExpressionNode(n:BinaryExpression);
 	UnaryExpressionNode(n:UnaryExpression);
 	SequenceExpressionNode(n:SequenceExpression);
@@ -537,7 +537,7 @@ class TypeEnumHelper{
 			case TClass(StructDeclarator)                : StructDeclaratorNode(untyped n);
 			case TClass(Expression)                      : ExpressionNode(untyped n);
 			case TClass(Identifier)                      : IdentifierNode(untyped n);
-			case TClass(Literal)                         : LiteralNode(untyped n);
+			case TClass(Primitive)                         : PrimitiveNode(untyped n);
 			case TClass(BinaryExpression)                : BinaryExpressionNode(untyped n);
 			case TClass(UnaryExpression)                 : UnaryExpressionNode(untyped n);
 			case TClass(SequenceExpression)              : SequenceExpressionNode(untyped n);

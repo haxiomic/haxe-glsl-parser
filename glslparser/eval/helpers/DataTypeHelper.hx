@@ -27,7 +27,7 @@ class DataTypeHelper{
 					}
 				}
 
-				return ComplexInstance(typeDefinition.createInstance(constructionParams), dataType);
+				return CompositeInstance(typeDefinition.createInstance(constructionParams), dataType);
 
 			//#! support for other types
 			case null, _:

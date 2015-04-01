@@ -12,7 +12,7 @@ package glslparser;
 import glslparser.Tokenizer.Token;
 import glslparser.Tokenizer.TokenType;
 
-import glslparser.ParserReducer.MinorType;
+import glslparser.TreeBuilder.MinorType;
 
 class Parser{
 	//state machine variables
@@ -39,7 +39,7 @@ class Parser{
 		errorCount = 0;
 		currentNode = null;
 		warnings = [];
-		ParserReducer.reset();
+		TreeBuilder.reset();
 
 		var lastToken = null;
 		for(t in tokens){
@@ -163,7 +163,7 @@ class Parser{
 		var size:Int;               //amount to pop the stack
 
 		//new node generated after reducing with this rule
-		var newNode = ParserReducer.reduce(ruleno); //trigger custom reduce behavior
+		var newNode = TreeBuilder.reduce(ruleno); //trigger custom reduce behavior
 		currentNode = newNode;
 
 		goto = ruleInfo[ruleno].lhs;

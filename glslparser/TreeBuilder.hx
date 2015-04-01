@@ -1,5 +1,5 @@
 /*
-	ParserReducer is responsible for constructing the abstract syntax tree by creation
+	TreeBuilder is responsible for constructing the abstract syntax tree by creation
 	and concatenation of notes in accordance with the grammar rules of the language
 	
 	@author George Corney
@@ -22,7 +22,7 @@ enum Instructions{
 }
 
 @:access(glslparser.Parser)
-class ParserReducer{
+class TreeBuilder{
 
 	static var i(get, null):Int;
 	static var stack(get, null):Parser.Stack;
@@ -30,7 +30,7 @@ class ParserReducer{
 	static var ruleno;
 
 	static public function reduce(ruleno:Int):MinorType{
-		ParserReducer.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
+		TreeBuilder.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
 
 		switch(ruleno){
 			case 0: return new Root(cast a(1)); //root ::= translation_unit
@@ -38,9 +38,9 @@ class ParserReducer{
 			/* Expressions */
 			case 1: return new Identifier(t(1).data);//variable_identifier ::= IDENTIFIER
 			case 2: return s(1); //primary_expression ::= variable_identifier
-			case 3: var l = new Literal<Int>(Std.parseInt(t(1).data), DataType.INT); l.raw = t(1).data; return l; //primary_expression ::= INTCONSTANT
-			case 4: var l = new Literal<Float>(Std.parseFloat(t(1).data), DataType.FLOAT); l.raw = t(1).data; return l; //primary_expression ::= FLOATCONSTANT
-			case 5: var l = new Literal<Bool>(t(1).data == 'true', DataType.BOOL); l.raw = t(1).data; return l; //primary_expression ::= BOOLCONSTANT
+			case 3: var l = new Primitive<Int>(Std.parseInt(t(1).data), DataType.INT); l.raw = t(1).data; return l; //primary_expression ::= INTCONSTANT
+			case 4: var l = new Primitive<Float>(Std.parseFloat(t(1).data), DataType.FLOAT); l.raw = t(1).data; return l; //primary_expression ::= FLOATCONSTANT
+			case 5: var l = new Primitive<Bool>(t(1).data == 'true', DataType.BOOL); l.raw = t(1).data; return l; //primary_expression ::= BOOLCONSTANT
 			case 6: e(2).parenWrap = true; return s(2); //primary_expression ::= LEFT_PAREN expression RIGHT_PAREN
 			case 7: return s(1); //postfix_expression ::= primary_expression
 			case 8: return new ArrayElementSelectionExpression(e(1), e(3)); //postfix_expression ::= postfix_expression LEFT_BRACKET integer_expression RIGHT_BRACKET

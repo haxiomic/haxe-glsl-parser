@@ -5,7 +5,7 @@
 	@author George Corney
 
 	#Notes
-	- could we do away with GLSLAccesss and use GLSLVariable instead?
+	- could we do away with GLSLAccesss and use Variable instead?
 		Sure, but how do we deal with array access?
 		Perhaps arrays are arrays of variables?
 	- setValue, getValue should take not of constant:Bool
@@ -43,14 +43,14 @@
 package glslparser.eval;
 
 import glslparser.AST;
-import glslparser.eval.GLSLStructDefinition;
+import glslparser.eval.StructDefinition;
 
 using AST.TypeEnumHelper;
 using glslparser.eval.helpers.GLSLInstanceHelper;
 using glslparser.eval.helpers.DataTypeHelper;
 
 class Eval{
-	static public var builtInVariables:Map<String, GLSLVariable> = [
+	static public var builtInVariables:Map<String, Variable> = [
 		'gl_MaxVertexAttribs'             => createConst('gl_MaxVertexAttribs'             , 8),
 		'gl_MaxVertexUniformVectors'      => createConst('gl_MaxVertexUniformVectors'      , 128),
 		'gl_MaxVaryingVectors'            => createConst('gl_MaxVaryingVectors'            , 8),
@@ -60,23 +60,23 @@ class Eval{
 		'gl_MaxFragmentUniformVectors'    => createConst('gl_MaxFragmentUniformVectors'    , 16),
 		'gl_MaxDrawBuffers'               => createConst('gl_MaxDrawBuffers'               , 1)
 	];
-	static public var builtInTypes:Map<DataType, IGLSLTypeDefinition> = new Map<DataType, IGLSLTypeDefinition>();
+	static public var builtInTypes:Map<DataType, ITypeDefinition> = new Map<DataType, ITypeDefinition>();
 
-	static public var userDefinedTypes:Map<DataType, GLSLStructDefinition> = new Map<DataType, GLSLStructDefinition>();
-	static public var userDefinedVariables:Map<String, GLSLVariable> = new Map<String, GLSLVariable>();
+	static public var userDefinedTypes:Map<DataType, StructDefinition> = new Map<DataType, StructDefinition>();
+	static public var userDefinedVariables:Map<String, Variable> = new Map<String, Variable>();
 
 	static public var warnings:Array<String> = new Array<String>();
 
 	static public function reset(){
-		userDefinedVariables = new Map<String, GLSLVariable>();
-		userDefinedTypes = new Map<DataType, GLSLStructDefinition>();
+		userDefinedVariables = new Map<String, Variable>();
+		userDefinedTypes = new Map<DataType, StructDefinition>();
 		warnings = [];
 	}
 
 	static public function evaluateExpr(expr:Expression, constant:Bool = false):GLSLInstance{
 
 		switch expr.toTypeEnum() {
-			case LiteralNode(n): 
+			case PrimitiveNode(n): 
 				return PrimitiveInstance(n.value, n.dataType);
 
 			case ConstructorNode(n):
@@ -86,11 +86,11 @@ class Eval{
 					var constructionParams:Array<GLSLInstance> = [];
 					for(i in 0...n.parameters.length)
 						constructionParams[i] = evaluateExpr(n.parameters[i], constant);
-					return ComplexInstance(type.createInstance(constructionParams), n.dataType);
+					return CompositeInstance(type.createInstance(constructionParams), n.dataType);
 				}
 
 			case IdentifierNode(n):
-				var v:GLSLVariable = getVariable(n.name);
+				var v:Variable = getVariable(n.name);
 
 				if(v != null){
 					if(constant && !v.qualifier.equals(TypeQualifier.CONST)){
@@ -106,7 +106,7 @@ class Eval{
 			case BinaryExpressionNode(n):
 				var lInst = evaluateExpr(n.left, constant);
 				var rInst = evaluateExpr(n.right, constant);
-				var result = GLSLOperations.binaryFunctions.get(n.op)(lInst, rInst);
+				var result = Operations.binaryFunctions.get(n.op)(lInst, rInst);
 				if(result != null) return result;
 
 			case UnaryExpressionNode(n):
@@ -125,7 +125,7 @@ class Eval{
 					return null;
 				}
 
-				var result = GLSLOperations.unaryFunctions.get(n.op)(arg, n.isPrefix);
+				var result = Operations.unaryFunctions.get(n.op)(arg, n.isPrefix);
 				if(result != null) return result;
 
 			case SequenceExpressionNode(n):
@@ -153,13 +153,13 @@ class Eval{
 
 				var value = evaluateExpr(n.right);
 				
-				var result = GLSLOperations.assignmentFunctions.get(n.op)(leftVar, value);
+				var result = Operations.assignmentFunctions.get(n.op)(leftVar, value);
 				if(result != null) return result;
 
 			case FieldSelectionExpressionNode(n):
 				var leftInst = evaluateExpr(n.left, constant);
 				switch leftInst {
-					case ComplexInstance(v, _):
+					case CompositeInstance(v, _):
 						return v.accessField(n.field.name).value;
 					case null, _:
 						warn('field access cannot be performed on $leftInst');
@@ -178,14 +178,14 @@ class Eval{
 		return null;
 	}
 
-	static public function evalulateStructSpecifier(specifier:StructSpecifier):GLSLStructDefinition{
-		var userType = GLSLStructDefinition.fromStructSpecifier(specifier);
+	static public function evalulateStructSpecifier(specifier:StructSpecifier):StructDefinition{
+		var userType = StructDefinition.fromStructSpecifier(specifier);
 		userDefinedTypes.set(DataType.USER_TYPE(specifier.name), userType);
 		return userType;
 	}
 
-	static public function evaluateVariableDeclaration(declaration:VariableDeclaration):Array<GLSLVariable>{
-		var declared:Array<GLSLVariable> = [];
+	static public function evaluateVariableDeclaration(declaration:VariableDeclaration):Array<Variable>{
+		var declared:Array<Variable> = [];
 
 		//if TypeSpecifier is StructDefinition, evaluate it
 		switch declaration.typeSpecifier.toTypeEnum() {
@@ -198,7 +198,7 @@ class Eval{
 			//in this case, skip it
 			if(dr.name == null || dr.name == '') continue;
 
-			var variable:GLSLVariable;
+			var variable:Variable;
 
 			//check for redeclaration
 			if((variable = getVariable(dr.name)) != null){ //variable already exists
@@ -254,8 +254,8 @@ class Eval{
 		return declared;
 	}
 
-	static function resolveVariable(expr:Expression, constant:Bool):GLSLVariable{
-		var variable:GLSLVariable = null;
+	static function resolveVariable(expr:Expression, constant:Bool):Variable{
+		var variable:Variable = null;
 
 		switch expr.toTypeEnum(){
 			case IdentifierNode(n): 
@@ -264,7 +264,7 @@ class Eval{
 			case FieldSelectionExpressionNode(n):
 				var leftInst = evaluateExpr(n.left, constant);
 				switch leftInst {
-					case ComplexInstance(v, _):
+					case CompositeInstance(v, _):
 						variable = v.accessField(n.field.name);
 					case null, _:
 						warn('field access cannot be performed on $leftInst');
@@ -285,13 +285,13 @@ class Eval{
 	}
 
 	static function getVariable(name:String){
-		var v:GLSLVariable = userDefinedVariables.get(name);
+		var v:Variable = userDefinedVariables.get(name);
 		if(v == null) v = builtInVariables.get(name);
 		return v;
 	}
 
 	static function getType(dataType:DataType){
-		var type:IGLSLTypeDefinition = null;
+		var type:ITypeDefinition = null;
 		if(dataType.match(USER_TYPE(_))){
 			type = userDefinedTypes.get(dataType);
 		}else{
@@ -300,7 +300,7 @@ class Eval{
 		return type;
 	}
 
-	static function createConst(name:String, value:Dynamic, ?precision:PrecisionQualifier):GLSLVariable{
+	static function createConst(name:String, value:Dynamic, ?precision:PrecisionQualifier):Variable{
 		if(precision == null) precision = PrecisionQualifier.MEDIUM_PRECISION;
 		var dataType:DataType = null;
 		switch (Type.typeof(value)) {
@@ -333,11 +333,11 @@ class Eval{
 
 enum GLSLInstance{
 	PrimitiveInstance(v:Dynamic, t:DataType);
-	ComplexInstance(v:IGLSLComplexInstance, t:DataType);
+	CompositeInstance(v:ICompositeInstance, t:DataType);
 	// ArrayInstance, for future use
 }
 
-typedef GLSLVariableDefinition = {
+typedef VariableDefinition = {
 	var name:String;
 	var dataType:DataType;
 	var qualifier:TypeQualifier;
@@ -346,7 +346,7 @@ typedef GLSLVariableDefinition = {
 	@:optional var arraySize:Int;
 };
 
-typedef GLSLVariable = {
-	> GLSLVariableDefinition,
+typedef Variable = {
+	> VariableDefinition,
 	var value:GLSLInstance;
 }
