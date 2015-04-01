@@ -16,7 +16,7 @@
 		implementations auto cast whereas other's do not
 
 	#Todo
-	- INVARIANT_VARYING should be replaced
+	- move Eval to eval/Eval, split up classes
 	- ++ -- should take GLSLVariable instead
 	- better errors and warnings
 	- should allow use of, but warn on reserved operations and symbols

@@ -254,14 +254,12 @@ class Declarator extends Node{
 class ParameterDeclaration extends Declaration{
 	var name:String;
 	var parameterQualifier:ParameterQualifier;
-	var typeQualifier:TypeQualifier;
 	var typeSpecifier:TypeSpecifier;
 	var arraySizeExpression:Expression;
-	function new(name:String, typeSpecifier:TypeSpecifier, ?parameterQualifier:ParameterQualifier, ?typeQualifier:TypeQualifier, ?arraySizeExpression:Expression){
+	function new(name:String, typeSpecifier:TypeSpecifier, ?parameterQualifier:ParameterQualifier, ?arraySizeExpression:Expression){
 		this.name = name;
 		this.typeSpecifier = typeSpecifier;
 		this.parameterQualifier = parameterQualifier;
-		this.typeQualifier = typeQualifier;
 		this.arraySizeExpression = arraySizeExpression;
 		super();
 	}
@@ -486,7 +484,6 @@ enum TypeQualifier{
 	CONST;
 	ATTRIBUTE;
 	VARYING;
-	INVARIANT_VARYING;
 	UNIFORM;
 }
 
