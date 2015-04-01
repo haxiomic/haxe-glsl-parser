@@ -206,43 +206,43 @@ class Parser{
 	}
 
 	//Language Data & Parser Settings
-	static inline var errorsSymbol:Bool       = ParserData.errorsSymbol;
+	static inline var errorsSymbol:Bool       = ParserTables.errorsSymbol;
 	//consts
-	static inline var illegalSymbolNumber:Int = ParserData.illegalSymbolNumber;
+	static inline var illegalSymbolNumber:Int = ParserTables.illegalSymbolNumber;
 
-	static inline var nStates                 = ParserData.nStates;
-	static inline var nRules                  = ParserData.nRules;
+	static inline var nStates                 = ParserTables.nStates;
+	static inline var nRules                  = ParserTables.nRules;
 	static inline var noAction                = nStates + nRules + 2;
 	static inline var acceptAction            = nStates + nRules + 1;
 	static inline var errorAction             = nStates + nRules;
 
 	//tables
-	static var actionCount                    = ParserData.actionCount;
-	static var action:Array<Int>              = ParserData.action;
-	static var lookahead:Array<Int>           = ParserData.lookahead;
+	static var actionCount                    = ParserTables.actionCount;
+	static var action:Array<Int>              = ParserTables.action;
+	static var lookahead:Array<Int>           = ParserTables.lookahead;
 
-	static inline var shiftUseDefault         = ParserData.shiftUseDefault;
-	static inline var shiftCount              = ParserData.shiftCount;
-	static inline var shiftOffsetMin          = ParserData.shiftOffsetMin;
-	static inline var shiftOffsetMax          = ParserData.shiftOffsetMax;
-	static var shiftOffset:Array<Int>         = ParserData.shiftOffset;
+	static inline var shiftUseDefault         = ParserTables.shiftUseDefault;
+	static inline var shiftCount              = ParserTables.shiftCount;
+	static inline var shiftOffsetMin          = ParserTables.shiftOffsetMin;
+	static inline var shiftOffsetMax          = ParserTables.shiftOffsetMax;
+	static var shiftOffset:Array<Int>         = ParserTables.shiftOffset;
 
-	static inline var reduceUseDefault        = ParserData.reduceUseDefault;
-	static inline var reduceCount             = ParserData.reduceCount;
-	static inline var reduceMin               = ParserData.reduceMin;
-	static inline var reduceMax               = ParserData.reduceMax;
-	static var reduceOffset:Array<Int>        = ParserData.reduceOffset;
+	static inline var reduceUseDefault        = ParserTables.reduceUseDefault;
+	static inline var reduceCount             = ParserTables.reduceCount;
+	static inline var reduceMin               = ParserTables.reduceMin;
+	static inline var reduceMax               = ParserTables.reduceMax;
+	static var reduceOffset:Array<Int>        = ParserTables.reduceOffset;
 
-	static var defaultAction:Array<Int>       = ParserData.defaultAction;
+	static var defaultAction:Array<Int>       = ParserTables.defaultAction;
 
 	//rule info table
-	static var ruleInfo:Array<RuleInfoEntry>  = ParserData.ruleInfo;
+	static var ruleInfo:Array<RuleInfoEntry>  = ParserTables.ruleInfo;
 
 	//tokenId
-	static var tokenIdMap:Map<TokenType, Int> = ParserData.tokenIdMap;
+	static var tokenIdMap:Map<TokenType, Int> = ParserTables.tokenIdMap;
 
 	//skip-over tokens
-	static var ignoredTokens:Array<TokenType> = ParserData.ignoredTokens;
+	static var ignoredTokens:Array<TokenType> = ParserTables.ignoredTokens;
 }
 
 abstract RuleInfoEntry(Array<Int>) from Array<Int> {

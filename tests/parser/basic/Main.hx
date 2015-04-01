@@ -30,7 +30,7 @@ class Main{
 	static function traceCTokenArray(tokens:Array<Token>){
 		var ids:Array<Int> = [];
 		for(t in tokens){
-			var id = glsl.parser.ParserData.tokenIdMap.get(t.type);
+			var id = glsl.parser.ParserTables.tokenIdMap.get(t.type);
 			if(id != null) ids.push(id);
 		}
 
