@@ -30,8 +30,6 @@ enum TokenType{
 
 	BOOLCONSTANT;
 
-	RESERVED_KEYWORD; //(non-spec)
-
 	//operators
 	LEFT_OP; RIGHT_OP; INC_OP; DEC_OP; 
 	LE_OP; GE_OP; EQ_OP; NE_OP; AND_OP; OR_OP; XOR_OP; 
@@ -51,10 +49,11 @@ enum TokenType{
 	FLOATCONSTANT; 
 
 	//other
-	BLOCK_COMMENT; //(non-spec)
-	LINE_COMMENT;  //(non-spec)
-	PREPROCESSOR;  //(non-spec)
-	WHITESPACE;    //(non-spec)
+	WHITESPACE;       			//(non-spec)
+	BLOCK_COMMENT;    			//(non-spec)
+	LINE_COMMENT;     			//(non-spec)
+	PREPROCESSOR_DIRECTIVE;     //(non-spec)
+	RESERVED_KEYWORD; 			//(non-spec)
 }
 
 
@@ -98,7 +97,7 @@ class Tokenizer{
 			//handle mode
 			switch (mode) {
 				case UNDETERMINED: determineMode();
-				case PREPROCESSOR: preprocessorMode();
+				case PREPROCESSOR_DIRECTIVE: preprocessorMode();
 				case BLOCK_COMMENT: blockCommentMode();
 				case LINE_COMMENT: lineCommentMode();
 				case WHITESPACE: whitespaceMode();
@@ -197,7 +196,7 @@ class Tokenizer{
 
 		if(tryMode(BLOCK_COMMENT)) return;
 		if(tryMode(LINE_COMMENT)) return;
-		if(tryMode(PREPROCESSOR)) return;
+		if(tryMode(PREPROCESSOR_DIRECTIVE)) return;
 		if(tryMode(WHITESPACE)) return;
 		if(tryMode(LITERAL)) return;
 
@@ -220,7 +219,7 @@ class Tokenizer{
 
 	static function preprocessorMode(){
 		if(isEnd(mode)){
-			buildToken(PREPROCESSOR);
+			buildToken(TokenType.PREPROCESSOR_DIRECTIVE);
 			mode = UNDETERMINED;
 			return;
 		}
@@ -229,7 +228,7 @@ class Tokenizer{
 
 	static function blockCommentMode(){
 		if(isEnd(mode)){
-			buildToken(BLOCK_COMMENT);
+			buildToken(TokenType.BLOCK_COMMENT);
 			mode = UNDETERMINED;
 			return;
 		}
@@ -238,7 +237,7 @@ class Tokenizer{
 
 	static function lineCommentMode(){
 		if(isEnd(mode)){
-			buildToken(LINE_COMMENT);
+			buildToken(TokenType.LINE_COMMENT);
 			mode = UNDETERMINED;
 			return;
 		}
@@ -247,7 +246,7 @@ class Tokenizer{
 
 	static function whitespaceMode(){
 		if(isEnd(mode)){
-			buildToken(WHITESPACE);
+			buildToken(TokenType.WHITESPACE);
 			mode = UNDETERMINED;
 			return;
 		}
@@ -309,7 +308,7 @@ class Tokenizer{
 		}
 
 		if(isEnd(mode)){
-			buildToken(FLOATCONSTANT);
+			buildToken(TokenType.FLOATCONSTANT);
 			mode = UNDETERMINED;
 			floatMode = 0;
 			return;
@@ -336,7 +335,7 @@ class Tokenizer{
 
 	static function integerConstantMode(){
 		if(isEnd(mode)){
-			buildToken(INTCONSTANT);
+			buildToken(TokenType.INTCONSTANT);
 			mode = UNDETERMINED;
 			return;
 		}
@@ -403,7 +402,7 @@ the order of modes is important
 BLOCK_COMMENT; /*   *\/
 LINE_COMMENT;  //   [^\\]\n,
 
-PREPROCESSOR;  #    [^\\]\n
+PREPROCESSOR_DIRECTIVE;  #    [^\\]\n
 WHITESPACE;    \s   ^\s
 
 OPERATOR;      operatorRegex && anyOperator search
@@ -423,19 +422,32 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
 	static var operatorRegex = ~/[&<=>|*?!+%(){}.~:,;\/\-\^\[\]]/;
 
 	//mode conditions
+	//returns either the length of the matched start string (starting from i) or null for invalid starting point
 	static var startConditionsMap:Map<ScanMode, Void->Null<Int>> = [
-		BLOCK_COMMENT    => function() return source.substring(i, i+2) == "/*"               ? 2 : null,
-		LINE_COMMENT     => function() return source.substring(i, i+2) == "//"               ? 2 : null,
-		PREPROCESSOR     => function() return c(i) == "#"                                    ? 1 : null,
-		WHITESPACE       => function() return ~/\s/.match(c(i))                              ? 1 : null,
-		OPERATOR         => function() return operatorRegex.match(c(i))                      ? 1 : null,
-		LITERAL          => function() return ~/[a-z_]/i.match(c(i))                         ? 1 : null,
+		BLOCK_COMMENT          => function() return source.substring(i, i+2) == '/*'               ? 2 : null,
+		LINE_COMMENT           => function() return source.substring(i, i+2) == '//'               ? 2 : null,
+		PREPROCESSOR_DIRECTIVE => function(){
+			// return c(i) == '#' ? 1 : null;
+			//a preprocessor directives # can only be proceeded with whitespace within its line
+			if(c(i) == '#'){
+				var j = i - 1;
+				while(c(j) != '\n' && c(j) != ''){
+					if(!~/\s/.match(c(j))) return null;//non-whitespace character found between # and line start
+					j--;
+				}
+				return 1;
+			}
+			return null;
+		},
+		WHITESPACE             => function() return ~/\s/.match(c(i))                              ? 1 : null,
+		OPERATOR               => function() return operatorRegex.match(c(i))                      ? 1 : null,
+		LITERAL                => function() return ~/[a-z_]/i.match(c(i))                         ? 1 : null,
 
-		HEX_CONSTANT     => function() return ~/0x[a-f0-9]/i.match(source.substring(i, i+3)) ? 3 : null,
-		OCTAL_CONSTANT   => function() return ~/0[0-7]/.match(source.substring(i, i+2))      ? 2 : null,
-		DECIMAL_CONSTANT => function() return ~/[0-9]/.match(c(i))                           ? 1 : null,
+		HEX_CONSTANT           => function() return ~/0x[a-f0-9]/i.match(source.substring(i, i+3)) ? 3 : null,
+		OCTAL_CONSTANT         => function() return ~/0[0-7]/.match(source.substring(i, i+2))      ? 2 : null,
+		DECIMAL_CONSTANT       => function() return ~/[0-9]/.match(c(i))                           ? 1 : null,
 
-		FLOATING_CONSTANT   => function(){
+		FLOATING_CONSTANT      => function(){
 			//first mode: FRACTIONAL_CONSTANT EXPONENT_PART?
 			if(isStart(FRACTIONAL_CONSTANT)) return 0;//return fl;
 			//second mode: \d+ EXPONENT_PART
@@ -447,32 +459,32 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
 			if(j > i && exponentFollows) return 0;//return ++j - i; 
 			return null;
 		},
-		FRACTIONAL_CONSTANT => function() {
+		FRACTIONAL_CONSTANT    => function() {
 			var j = i;
 			while(~/[0-9]/.match(c(j))) j++;
-			if(j > i && c(j) == ".") return ++j - i; //\d+\.
+			if(j > i && c(j) == '.') return ++j - i; //\d+\.
 			return ~/\.\d/.match(source.substring(i, i+2)) ? 2 : null; //\.\d
 		},
-		EXPONENT_PART       => function(){
+		EXPONENT_PART          => function(){
 			var r = ~/^[e][+-]?\d/i;
 			return r.match(source.substring(i, i+3)) ? r.matched(0).length : null;
 		}
 	];
 	static var endConditionsMap:Map<ScanMode, Void->Bool> = [
-		BLOCK_COMMENT    => function() return source.substring(i-2,i) == "*/",
-		LINE_COMMENT     => function() return c(i) == "\n" || c(i) == "",
-		PREPROCESSOR     => function() return (c(i) == "\n" && c(i-1) != "\\") || c(i) == "",
-		WHITESPACE       => function() return !~/\s/.match(c(i)),
-		OPERATOR         => function() return !operatorMap.exists(buf+c(i)) || c(i) == "",
-		LITERAL          => function() return !~/[a-z0-9_]/i.match(c(i)),
+		BLOCK_COMMENT          => function() return source.substring(i-2,i) == '*/',
+		LINE_COMMENT           => function() return c(i) == '\n' || c(i) == '',
+		PREPROCESSOR_DIRECTIVE => function() return (c(i) == '\n' && c(i-1) != '\\') || c(i) == '',
+		WHITESPACE             => function() return !~/\s/.match(c(i)),
+		OPERATOR               => function() return !operatorMap.exists(buf+c(i)) || c(i) == '',
+		LITERAL                => function() return !~/[a-z0-9_]/i.match(c(i)),
 
-		HEX_CONSTANT     => function() return !~/[a-f0-9]/i.match(c(i)),
-		OCTAL_CONSTANT   => function() return !~/[0-7]/.match(c(i)),
-		DECIMAL_CONSTANT => function() return !~/[0-9]/.match(c(i)),
+		HEX_CONSTANT           => function() return !~/[a-f0-9]/i.match(c(i)),
+		OCTAL_CONSTANT         => function() return !~/[0-7]/.match(c(i)),
+		DECIMAL_CONSTANT       => function() return !~/[0-9]/.match(c(i)),
 
-		FLOATING_CONSTANT 	=> function() return !~/[0-9]/.match(c(i)),
-		FRACTIONAL_CONSTANT => function() return !~/[0-9]/.match(c(i)),
-		EXPONENT_PART       => function() return !~/[0-9]/.match(c(i))
+		FLOATING_CONSTANT 	   => function() return !~/[0-9]/.match(c(i)),
+		FRACTIONAL_CONSTANT    => function() return !~/[0-9]/.match(c(i)),
+		EXPONENT_PART          => function() return !~/[0-9]/.match(c(i))
 	];
 
 	static var operatorMap:Map<String, TokenType> = [
@@ -593,7 +605,7 @@ enum ScanMode{
 	//non-spec
 	BLOCK_COMMENT;
 	LINE_COMMENT;
-	PREPROCESSOR;
+	PREPROCESSOR_DIRECTIVE;
 	WHITESPACE;
 
 	//token classes

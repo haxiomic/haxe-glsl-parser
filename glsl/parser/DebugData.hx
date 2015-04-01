@@ -1,6 +1,9 @@
 package glsl.parser;
 
 class DebugData{
+
+	#if debug
+
 	static public function ruleString(ruleno:Int){
 		return ruleMap.get(ruleno);
 	}
@@ -223,4 +226,6 @@ class DebugData{
 		208 => 'external_declaration ::= declaration',
 		209 => 'function_definition ::= function_prototype compound_statement_no_new_scope'
 	];
+
+	#end
 }

@@ -1,3 +1,9 @@
+bin/
+update.sh
+*.n
+
+# --- OS X ---
+
 .DS_Store
 .AppleDouble
 .LSOverride
@@ -23,7 +29,3 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
-
-bin/
-
-update.sh

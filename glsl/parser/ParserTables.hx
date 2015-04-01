@@ -9,7 +9,7 @@ import glsl.parser.Tokenizer.TokenType;
 import glsl.parser.Parser.RuleInfoEntry;
 
 class ParserTables{
-	static public var ignoredTokens:Array<TokenType> = [WHITESPACE, LINE_COMMENT, BLOCK_COMMENT, PREPROCESSOR];
+	static public var ignoredTokens:Array<TokenType> = [WHITESPACE, LINE_COMMENT, BLOCK_COMMENT, PREPROCESSOR_DIRECTIVE];
 
 	static public inline var errorsSymbol:Bool = false; //true when %syntax_error is used, this requires and ERROR token in the grammar
 	//consts

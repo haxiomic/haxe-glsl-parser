@@ -4,6 +4,11 @@ class Main{
 	static var input:String;
 	static function main(){
 
+
+		//preprocessor
+		input = "#define x\\\n100\nint i; #pragma invalid\n     #pragma valid\n 		#\n";
+		tryTokenize();
+
 		input = "!struct\n/* who does this?\n */ typename {...!}";
 		tryTokenize();
 
@@ -21,12 +26,20 @@ class Main{
 
 	static function tryTokenize(){
 		trace('"$input"');
+		var tokens:Array<Token> = null;
 		try{
-			Tokenizer.tokenize(input);
+			tokens = Tokenizer.tokenize(input);
 		}catch(e:Dynamic){
 			trace('Fatal Error: $e');
 		}
 		trace('--------');
+		return tokens;
+	}
+
+	static function printTokens(tokens:Array<Token>){
+		for(t in tokens){
+			trace(t.type, t.data);
+		}
 	}
 
 }

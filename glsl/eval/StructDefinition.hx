@@ -3,7 +3,7 @@ package glsl.eval;
 import glsl.SyntaxTree;
 import glsl.eval.Eval;
 
-using SyntaxTree.TypeEnumHelper;
+using SyntaxTree.NodeEnumHelper;
 
 @:access(glsl.eval.Eval)
 class StructDefinition implements ITypeDefinition{
@@ -31,7 +31,7 @@ class StructDefinition implements ITypeDefinition{
 			for(j in 0...d.declarators.length){
 
 				//create field def and push
-				switch d.declarators[j].toTypeEnum() {
+				switch d.declarators[j].toEnum() {
 					case StructDeclaratorNode(n):
 						var field:VariableDefinition = {
 							name: n.name,

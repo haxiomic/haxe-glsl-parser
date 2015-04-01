@@ -1,8 +1,10 @@
 /*
-	TODO
+	Todo
 */
 
 package glsl;
+
+import glsl.SyntaxTree.Node;
 
 
 class Validator{
@@ -10,4 +12,10 @@ class Validator{
 	//qualifiers are not allowed on function returns
 	//...
 	//(search through reference validator)
+
+	public static function validateAST(tree:Node){
+		/*
+			@! todo
+		*/
+	}
 }

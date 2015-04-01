@@ -302,8 +302,12 @@ class TreeBuilder{
 			case 208: cast(n(1), Declaration).global = true; return s(1); //external_declaration ::= declaration
 			case 209: return new FunctionDefinition(cast n(1), cast n(2)); //function_definition ::= function_prototype compound_statement_no_new_scope
 		}
-
+		
+		#if debug		
 		Parser.warn('unhandled reduce rule, ($ruleno, ${DebugData.ruleName(ruleno)})');
+		#else
+		Parser.warn('unhandled reduce rule number $ruleno');
+		#end
 		return null;
 	}
 

@@ -45,7 +45,7 @@ package glsl.eval;
 import glsl.SyntaxTree;
 import glsl.eval.StructDefinition;
 
-using SyntaxTree.TypeEnumHelper;
+using SyntaxTree.NodeEnumHelper;
 using glsl.eval.helpers.GLSLInstanceHelper;
 using glsl.eval.helpers.DataTypeHelper;
 
@@ -74,8 +74,8 @@ class Eval{
 	}
 
 	static public function evaluateExpr(expr:Expression, constant:Bool = false):GLSLInstance{
-
-		switch expr.toTypeEnum() {
+		
+		switch expr.toEnum() {
 			case PrimitiveNode(n): 
 				return PrimitiveInstance(n.value, n.dataType);
 
@@ -188,7 +188,7 @@ class Eval{
 		var declared:Array<Variable> = [];
 
 		//if TypeSpecifier is StructDefinition, evaluate it
-		switch declaration.typeSpecifier.toTypeEnum() {
+		switch declaration.typeSpecifier.toEnum() {
 			case StructSpecifierNode(n): evalulateStructSpecifier(n);
 			case null, _:
 		}
@@ -257,7 +257,7 @@ class Eval{
 	static function resolveVariable(expr:Expression, constant:Bool):Variable{
 		var variable:Variable = null;
 
-		switch expr.toTypeEnum(){
+		switch expr.toEnum(){
 			case IdentifierNode(n): 
 				variable = getVariable(n.name);
 
