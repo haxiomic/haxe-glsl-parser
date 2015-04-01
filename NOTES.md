@@ -1,5 +1,6 @@
 #Todo
 ------
+- Eval shouldn't consider reservation and version specific warnings, this should be handled in the validator
 - Different operator sets between GLSL and Preprocessor, this could make using Eval tricky
 - Error reporting needs redoing from the top - line numbers and positions should be non-optional for tokens
 - Rename ParserReducer to TreeBuilder ? with reduceRule or rule function?
