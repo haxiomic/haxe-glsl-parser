@@ -35,7 +35,7 @@ class ParserReducer{
 		switch(ruleno){
 			case 0: return new Root(cast a(1)); //root ::= translation_unit
 
-			//Expressions
+			/* Expressions */
 			case 1: return new Identifier(t(1).data);//variable_identifier ::= IDENTIFIER
 			case 2: return s(1); //primary_expression ::= variable_identifier
 			case 3: var l = new Literal<Int>(Std.parseInt(t(1).data), DataType.INT); l.raw = t(1).data; return l; //primary_expression ::= INTCONSTANT
@@ -138,7 +138,7 @@ class ParserReducer{
 						}
 
 
-			//Function Prototype & Header
+			/* Function Prototype & Header */
 			case 95: return s(1); //constant_expression ::= conditional_expression
 			case 96: return new FunctionPrototype(cast s(1)); //declaration ::= function_prototype SEMICOLON
 			case 97: return s(1); //declaration ::= init_declarator_list SEMICOLON
@@ -155,14 +155,15 @@ class ParserReducer{
 			case 104: return new FunctionHeader(t(2).data, cast n(1)); //function_header ::= fully_specified_type IDENTIFIER LEFT_PAREN
 
 
-			//Function Parameters
-			//a separate parameter_declarator class is sidestepped for simplicity
-			//parameter_declarator is combined with parameter_type_specifier into a single ParameterDeclaration
+			/* Function Parameters
+			*	a separate parameter_declarator class is sidestepped for simplicity
+			*	parameter_declarator is combined with parameter_type_specifier into a single ParameterDeclaration
+			*/
 			case 105: return new ParameterDeclaration(t(2).data, cast n(1)); //parameter_declarator ::= type_specifier IDENTIFIER
 			case 106: return new ParameterDeclaration(t(2).data, cast n(1), null, e(4)); //parameter_declarator ::= type_specifier IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 107: var pd = cast(n(3), ParameterDeclaration); //parameter_declaration ::= type_qualifier parameter_qualifier parameter_declarator
 						pd.parameterQualifier = cast ev(2);
-						
+
 						if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
 							//even though invariant varying isn't allowed, set anyway and catch in the validator
 							pd.typeSpecifier.qualifier = TypeQualifier.VARYING;
@@ -196,7 +197,7 @@ class ParserReducer{
 			case 116: return new ParameterDeclaration(null, cast n(1), null, e(3));//parameter_type_specifier ::= type_specifier LEFT_BRACKET constant_expression RIGHT_BRACKET
 
 
-			//Declarations
+			/* Declarations */
 			case 117: return s(1); //init_declarator_list ::= single_declaration
 			case 118: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, null, null)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER
 			case 119: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, null, e(5))); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
@@ -257,7 +258,8 @@ class ParserReducer{
 			case 166: return new StructDeclarator(t(1).data, e(3)); //struct_declarator ::= IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 167: return s(1); //initializer ::= assignment_expression
 
-			//Statements
+
+			/* Statements */
 			case 168: return new DeclarationStatement(cast n(1)); //declaration_statement ::= declaration
 			case 169: return s(1); /*#! scope change? */ //statement_no_new_scope ::= compound_statement_with_scope
 			case 170: return s(1); /*#! scope change? */ //statement_no_new_scope ::= simple_statement

@@ -18,6 +18,7 @@
 	#Todo
 	- move Eval to eval/Eval, split up classes
 	- ++ -- should take GLSLVariable instead
+	- new operator approach with search?
 	- better errors and warnings
 	- should allow use of, but warn on reserved operations and symbols
 	- .match(pattern) doesn't seem to be working?
@@ -72,7 +73,9 @@ class Eval{
 	}
 
 	static public function evaluateExpr(expr:Expression, constant:Bool = false):GLSLPrimitiveInstance{
-		trace('evaluateExpr '+(constant ? 'constant' : '')+' $expr');
+
+		trace('evaluateExpr '+(constant ? 'constant' : '')+' $expr'); //#! debug
+
 		switch expr.toTypeEnum() {
 			case LiteralNode(n): 
 				return LiteralInstance(n.value, n.dataType);
@@ -192,8 +195,9 @@ class Eval{
 
 			var variable:GLSLVariable;
 
-			if((variable = getVariable(dr.name)) != null){//variable already exists
-				if(declaration.typeSpecifier.invariant){//if invariant qualifier is set, it's not a considered redeclaration
+			//check for redeclaration
+			if((variable = getVariable(dr.name)) != null){ //variable already exists
+				if(declaration.typeSpecifier.invariant){ //if invariant qualifier is set, it's not a considered redeclaration
 					variable.invariant = true;
 					declared.push(variable);
 					continue;
