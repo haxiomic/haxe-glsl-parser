@@ -49,11 +49,11 @@ enum TokenType{
 	FLOATCONSTANT; 
 
 	//other
-	WHITESPACE;       			//(non-spec)
-	BLOCK_COMMENT;    			//(non-spec)
-	LINE_COMMENT;     			//(non-spec)
-	PREPROCESSOR_DIRECTIVE;     //(non-spec)
-	RESERVED_KEYWORD; 			//(non-spec)
+	WHITESPACE;             // (non-spec)
+	BLOCK_COMMENT;          // (non-spec)
+	LINE_COMMENT;           // (non-spec)
+	PREPROCESSOR_DIRECTIVE; // (non-spec)
+	RESERVED_KEYWORD;       // (non-spec)
 }
 
 

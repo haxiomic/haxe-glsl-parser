@@ -12,14 +12,6 @@ import glsl.SyntaxTree;
 
 typedef MinorType = Dynamic;
 
-typedef ConstructorIdentifier = {
-	var name:String;
-	var dataType:DataType;
-}
-
-enum Instructions{
-	SET_INVARIANT_VARYING;
-}
 
 @:access(glsl.parser.Parser)
 class TreeBuilder{
@@ -338,4 +330,8 @@ class TreeBuilder{
 
 	static inline function get_i() return Parser.i;
 	static inline function get_stack() return Parser.stack;	
+}
+
+enum Instructions{
+	SET_INVARIANT_VARYING;
 }
