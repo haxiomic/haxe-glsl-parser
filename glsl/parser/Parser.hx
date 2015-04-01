@@ -29,7 +29,7 @@ class Parser{
 	}
 
 	static public function parseTokens(tokens:Array<Token>){
-		//init
+		//init state machine
 		i = 0;
 		stack = [{
 			stateno: 0,
@@ -40,6 +40,10 @@ class Parser{
 		currentNode = null;
 		warnings = [];
 		TreeBuilder.reset();
+
+		//run preprocessor
+		tokens = glsl.parser.Preprocessor.preprocess(tokens);
+		warnings = warnings.concat(Preprocessor.warnings);
 
 		var lastToken = null;
 		for(t in tokens){
@@ -184,12 +188,22 @@ class Parser{
 		while(i >= 0) popStack();
 	}
 
-	static function syntaxError(major:Int, minor:MinorType){
-		warn('syntax error, $minor');
+	static inline function syntaxError(major:Int, minor:MinorType){
+		var msg = 'syntax error';
+
+		var data = Reflect.field(minor, 'data');
+		if(data != null) msg += ', \'$data\'';
+
+		warn(msg, minor);
 	}//@! needs improving
 
-	static function parseFailed(minor:MinorType){
-		error('parse failed, $minor');
+	static inline function parseFailed(minor:MinorType){
+		var msg = 'parse failed';
+		
+		var data = Reflect.field(minor, 'data');
+		if(data != null) msg += ', \'$data\'';
+
+		error(msg, minor);
 	}
 
 	//Utils
@@ -197,12 +211,34 @@ class Parser{
 		if(!cond) warn('assert failed in ${pos.className}::${pos.methodName} line ${pos.lineNumber}');
 
 	//Error Reporting
-	static function warn(msg){
-		warnings.push('Parser warning: $msg');
+	static function warn(msg, ?info:Dynamic){
+		var str = 'Parser Warning: $msg';
+
+		var line = Reflect.field(info, 'line');
+		var col = Reflect.field(info, 'column');
+		if(Type.typeof(line).equals(Type.ValueType.TInt)){
+			str += ', line $line';
+			if(Type.typeof(col).equals(Type.ValueType.TInt)){
+				str += ', column $col';
+			}
+		}
+
+		warnings.push(str);
 	}
 
-	static function error(msg){
-		throw 'Parser error: $msg';
+	static function error(msg, ?info:Dynamic){
+		var str = 'Parser Error: $msg';
+
+		var line = Reflect.field(info, 'line');
+		var col = Reflect.field(info, 'column');
+		if(Type.typeof(line).equals(Type.ValueType.TInt)){
+			str += ', line $line';
+			if(Type.typeof(col).equals(Type.ValueType.TInt)){
+				str += ', column $col';
+			}
+		}
+
+		throw str;
 	}
 
 	//Language Data & Parser Settings

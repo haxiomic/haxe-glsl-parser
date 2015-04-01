@@ -437,6 +437,7 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
 				}
 				return 1;
 			}
+			
 			return null;
 		},
 		WHITESPACE             => function() return ~/\s/.match(c(i))                              ? 1 : null,

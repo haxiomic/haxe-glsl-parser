@@ -71,7 +71,7 @@ class Operations{
 			case {lhs: PrimitiveInstance(lv, FLOAT), rhs: PrimitiveInstance(rv, FLOAT)}:
 				return PrimitiveInstance(lv * rv, FLOAT);
 			default: 
-				Eval.error('could not multiply $lhs and $rhs');
+				Eval.warn('could not multiply $lhs and $rhs');
 		}
 		return null;		
 	}
@@ -83,7 +83,7 @@ class Operations{
 			case {lhs: PrimitiveInstance(lv, FLOAT), rhs: PrimitiveInstance(rv, FLOAT)}:
 				return PrimitiveInstance(lv / rv, FLOAT);
 			default: 
-				Eval.error('could not divide $lhs by $rhs');
+				Eval.warn('could not divide $lhs by $rhs');
 		}
 		return null;		
 	}
@@ -97,7 +97,7 @@ class Operations{
 			case {lhs: PrimitiveInstance(lv, FLOAT), rhs: PrimitiveInstance(rv, FLOAT)}:
 				return PrimitiveInstance(Math.floor(lv % rv), FLOAT);
 			default: 
-				Eval.error('could not divide $lhs by $rhs');
+				Eval.warn('could not divide $lhs by $rhs');
 		}			
 		return null;		
 	}
@@ -109,7 +109,7 @@ class Operations{
 			case {lhs: PrimitiveInstance(lv, FLOAT), rhs: PrimitiveInstance(rv, FLOAT)}:
 				return PrimitiveInstance(lv + rv, FLOAT);
 			default: 
-				Eval.error('could not add $lhs and $rhs');
+				Eval.warn('could not add $lhs and $rhs');
 		}
 		return null;		
 	}
@@ -121,7 +121,7 @@ class Operations{
 			case {lhs: PrimitiveInstance(lv, FLOAT), rhs: PrimitiveInstance(rv, FLOAT)}:
 				return PrimitiveInstance(lv - rv, FLOAT);
 			default: 
-				Eval.error('could not subtract $lhs by $rhs');
+				Eval.warn('could not subtract $lhs by $rhs');
 		}
 		return null;		
 	}
@@ -172,9 +172,9 @@ class Operations{
 				 {arg: CompositeInstance(_, _), isPrefix: true}:
 				return argInst;
 			case {arg: _, isPrefix: true}:
-				Eval.error('operation +$argInst not supported');
+				Eval.warn('operation +$argInst not supported');
 			case {arg: _, isPrefix: false}:
-				Eval.error('operation $argInst+ not supported');
+				Eval.warn('operation $argInst+ not supported');
 		}
 		return null;
 	}
@@ -186,9 +186,9 @@ class Operations{
 			case {arg: PrimitiveInstance(v, FLOAT), isPrefix: true}:
 				return PrimitiveInstance(-v, FLOAT);
 			case {arg: _, isPrefix: true}:
-				Eval.error('operation -$argInst not supported');
+				Eval.warn('operation -$argInst not supported');
 			case {arg: _, isPrefix: false}:
-				Eval.error('operation $argInst- not supported');
+				Eval.warn('operation $argInst- not supported');
 		}
 		return null;
 	}
@@ -198,9 +198,9 @@ class Operations{
 			case {arg: PrimitiveInstance(v, BOOL), isPrefix: true}:
 				return PrimitiveInstance(!v, BOOL);
 			case {arg: _, isPrefix: true}:
-				Eval.error('operation !$argInst not supported');
+				Eval.warn('operation !$argInst not supported');
 			case {arg: _, isPrefix: false}:
-				Eval.error('operation $argInst! not supported');
+				Eval.warn('operation $argInst! not supported');
 		}
 		return null;
 	}
@@ -209,7 +209,7 @@ class Operations{
 	static function assign(variable:Variable, value:GLSLInstance){
 		//@! try variable conversion if possible?
 		if(!variable.dataType.equals(value.getDataType())){
-			Eval.error('type mismatch, cannot assign ${value} to variable ${variable.name} with type ${variable.dataType}');
+			Eval.warn('type mismatch, cannot assign ${value} to variable ${variable.name} with type ${variable.dataType}');
 		}
 		variable.value = value;
 		return value;

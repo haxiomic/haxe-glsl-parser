@@ -1,5 +1,6 @@
 #Todo
 ------
+- Different operator sets between GLSL and Preprocessor, this could make using Eval tricky
 - Error reporting needs redoing from the top - line numbers and positions should be non-optional for tokens
 - Rename ParserReducer to TreeBuilder ? with reduceRule or rule function?
 - Rename ParserDebugData?

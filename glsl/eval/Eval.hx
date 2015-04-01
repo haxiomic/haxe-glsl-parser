@@ -33,7 +33,6 @@
 		   // 1.2, 2.2, 0.0,
 		   // 0.0, 0.0, 1.0)
 		mat2 mm2x2 = mat2(m3x3); // = m2x2
-	- basic type .len?
 	- handle basic conversion in constructors, constructs seem to be completely type flexible!
 	- Arrays: const should be stored as VariableDefinition which includes array behavior
 	- Scoping
@@ -99,7 +98,7 @@ class Eval{
 
 					return v.value;		
 				}else{
-					warn('no variable named \'${n.name}\' has been defined');
+					error('no variable named \'${n.name}\' has been defined');
 					return null;
 				}
 
@@ -121,7 +120,7 @@ class Eval{
 				}
 
 				if(arg == null){
-					warn('cannot perform unary expression on null');
+					error('cannot perform unary expression on null');
 					return null;
 				}
 
@@ -141,7 +140,7 @@ class Eval{
 					case PrimitiveInstance(v, BOOL):
 						return v ? evaluateExpr(n.consequent, constant) : evaluateExpr(n.alternate, constant);
 					case null, _:
-						warn('conditional expression test must evaluate to boolean value');
+						error('conditional expression test must evaluate to boolean value');
 						return null;
 				}
 
@@ -162,19 +161,19 @@ class Eval{
 					case CompositeInstance(v, _):
 						return v.accessField(n.field.name).value;
 					case null, _:
-						warn('field access cannot be performed on $leftInst');
+						error('field access cannot be performed on $leftInst');
 						return null;
 				}
 
 			case ArrayElementSelectionExpressionNode(n): //@!
-				warn('Eval doesn\'t yet support array element selection');
+				error('Eval doesn\'t yet support array element selection');
 
 			case FunctionCallNode(n): //@!
-				warn('Eval doesn\'t yet support function calls');
+				error('Eval doesn\'t yet support function calls');
 			case null, _:
 		}
 
-		warn('cannot resolve expression $expr');
+		error('cannot resolve expression $expr');
 		return null;
 	}
 
