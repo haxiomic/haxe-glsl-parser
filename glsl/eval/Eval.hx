@@ -5,21 +5,17 @@
 	@author George Corney
 
 	#Notes
-	- could we do away with GLSLAccesss and use Variable instead?
-		Sure, but how do we deal with array access?
-		Perhaps arrays are arrays of variables?
-	- setValue, getValue should take not of constant:Bool
 	- generally, Eval should be as error tolerant as possible, but warn as much as possible
 	- stance on type checking?
 		Yes, it should absolutely type check - in fact, it should auto cast where possible,
 		but explicitly warn (or even throw if error sensitivity is high). This is become some
 		implementations auto cast whereas other's do not
+	- do not warn on version specific behavior. This is the validator's job
 
 	#Todo
 	- new operator approach with search?
 	- complete primitive operators
 	- better errors and warnings
-	- should allow use of, but warn on reserved operations and symbols
 	- .match(pattern) doesn't seem to be working?
 	- built in types
 	- handle complex construction:
@@ -33,10 +29,10 @@
 		   // 1.2, 2.2, 0.0,
 		   // 0.0, 0.0, 1.0)
 		mat2 mm2x2 = mat2(m3x3); // = m2x2
+
 	- handle basic conversion in constructors, constructs seem to be completely type flexible!
-	- Arrays: const should be stored as VariableDefinition which includes array behavior
+	- arrays: const should be stored as VariableDefinition which includes array behavior
 	- Scoping
-	- should support reserved operations but emit a warning
 */
 
 package glsl.eval;

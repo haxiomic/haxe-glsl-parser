@@ -1,6 +1,5 @@
 /*
 	@! Todo
-	- Can regular Compsite variables be used in preprocessor expressions?
 	
 	#Notes
 
@@ -47,13 +46,20 @@
 	- define with a regular variable creates a new const in place? (in contrast to macro function definitions)
 		alternatively, just paste the content in place?
 	- define is literally just handling arbitrary text rather than expressions
+	- macro functions identifiers can be found by tokenizing the function content
 
-	- if's process only a simple subset and also paste in defines in place
+	- if's process only a simple subset of expressions and also paste in defines in place
+		(tokenize content to find identifiers)
+
+	- Can regular Composite variables be used in preprocessor expressions?
+		> in #define, yes, any nonsense can be used - it's just pasting the text string in place
+		> in #if, no, only Primitives may be used
 
 	- do pragmas have special syntax?
 
-	- Undefined identifiers not consumed by the defined operator do not default to '0'. Use of such
-	identifiers causes an error.
+	- "Undefined identifiers not consumed by the defined operator do not default to '0'. Use of such
+	identifiers causes an error."
+
 	- A separate operator function table _may_ be necessary to handle C-style operations
 		(ie, 0 may be interchangeable with false for example)
 */
@@ -163,7 +169,6 @@ class Preprocessor{
 		//could be an operator or a macro
 		
 	}
-
 
 	static function readOperatorParameters(?expectedParameterCount:Int):Array<Token>{
 		// @! todo
