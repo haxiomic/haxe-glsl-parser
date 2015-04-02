@@ -221,10 +221,10 @@ typedef TranslationUnit = Array<Declaration>;
 
 class PrecisionDeclaration extends Declaration{
 	var precision:PrecisionQualifier;
-	var typeSpecifier:TypeSpecifier;
-	function new(precision:PrecisionQualifier, typeSpecifier:TypeSpecifier){
+	var dataType:DataType;
+	function new(precision:PrecisionQualifier, dataType:DataType){
 		this.precision = precision;
-		this.typeSpecifier = typeSpecifier;
+		this.dataType = dataType;
 		super();
 	}
 }

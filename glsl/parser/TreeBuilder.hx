@@ -134,7 +134,7 @@ class TreeBuilder{
 			case 95: return s(1); //constant_expression ::= conditional_expression
 			case 96: return new FunctionPrototype(cast s(1)); //declaration ::= function_prototype SEMICOLON
 			case 97: return s(1); //declaration ::= init_declarator_list SEMICOLON
-			case 98: return new PrecisionDeclaration(cast ev(2), cast n(3)); //declaration ::= PRECISION precision_qualifier type_specifier_no_prec SEMICOLON
+			case 98: return new PrecisionDeclaration(cast ev(2), cast(n(3), TypeSpecifier).dataType); //declaration ::= PRECISION precision_qualifier type_specifier_no_prec SEMICOLON
 			case 99: return s(1); //function_prototype ::= function_declarator RIGHT_PAREN
 			case 100: return s(1); //function_declarator ::= function_header
 			case 101: return s(1); //function_declarator ::= function_header_with_parameters
@@ -214,7 +214,7 @@ class TreeBuilder{
 			case 131: return Instructions.SET_INVARIANT_VARYING; //type_qualifier ::= INVARIANT VARYING
 			case 132: return TypeQualifier.UNIFORM; //type_qualifier ::= UNIFORM
 			case 133: return s(1); //type_specifier ::= type_specifier_no_prec
-			case 134: cast(n(1), TypeSpecifier).precision = cast ev(1); return s(1); //type_specifier ::= precision_qualifier type_specifier_no_prec
+			case 134: var ts = cast(n(2), TypeSpecifier);ts.precision = cast ev(1); return ts; //type_specifier ::= precision_qualifier type_specifier_no_prec
 			case 135: return new TypeSpecifier(DataType.VOID); //type_specifier_no_prec ::= VOID
 			case 136: return new TypeSpecifier(DataType.FLOAT); //type_specifier_no_prec ::= FLOAT
 			case 137: return new TypeSpecifier(DataType.INT); //type_specifier_no_prec ::= INT

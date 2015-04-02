@@ -52,7 +52,7 @@ class Main{
 
 			var globals = Extract.extractGlobalVariables(ast);
 			warnings = warnings.concat(globals.warnings);
-			// trace('Extracted globals:\n$globals');
+			trace('Extracted globals:\n$globals');
 			//print variable values
 			for(v in globals.variables){
 				trace('${v.name} = ${v.value}');

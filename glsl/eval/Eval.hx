@@ -223,16 +223,31 @@ class Eval{
 
 			//set value if there's an initializer
 			if(dr.initializer != null){
-				var value = evaluateExpr(dr.initializer, isConstant);
-				//check data types match
-				if(!value.getDataType().equals(variable.dataType)){
-					warn('type mismatch between variable of type ${variable.dataType} and value of type ${value.getDataType()}');
+				//not all variables need to be initialized
+				switch declaration.typeSpecifier.qualifier{
+					case TypeQualifier.ATTRIBUTE, TypeQualifier.VARYING, TypeQualifier.UNIFORM:
+						warn('variables with qualifier \'${declaration.typeSpecifier.qualifier} cannot be initialized\'');
+					case null, _:
+						//initialize by evaluating expression
+						var value = evaluateExpr(dr.initializer, isConstant);
+						//check data types match
+						if(!value.getDataType().equals(variable.dataType)){
+							warn('type mismatch between variable \'${variable.name}\' of type ${variable.dataType} and value of type ${value.getDataType()}');
+						}
+						variable.value = value;
 				}
-				variable.value = value;
+
 			}else{
-				if(isConstant) warn('variables with qualifier \'const\' must be initialized');
-				//initialize to 0 state or false
-				variable.value = variable.dataType.construct(null);
+				//const variables must be explicitly initialized
+				//non-qualified variables are implicitly initialized to 0 state
+				switch declaration.typeSpecifier.qualifier{
+					case TypeQualifier.CONST:
+						warn('variables with qualifier \'const\' must be initialized');
+						variable.value = variable.dataType.construct(null); //0 state
+					case null:
+						variable.value = variable.dataType.construct(null);	//0 state
+					case _:
+				}
 			}
 
 			//add array size if necessary

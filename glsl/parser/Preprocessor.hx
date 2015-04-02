@@ -34,6 +34,13 @@
 	language. (100 in this case for version 1.00)
 
 			GL_ES - will be defined and set to 1
+
+	------------------------------
+
+	- Some preprocessor directives can only be evaluated on the target platform
+	- Preprocessor directives should be stored on root note with position information so that they
+		can be printed with the AST
+	- Operators and predefined macros should remain as identifier tokens
 */
 
 package glsl.parser;
