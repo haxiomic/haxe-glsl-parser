@@ -2,7 +2,7 @@ package glsl.eval;
 
 import glsl.eval.Eval;
 
-using glsl.eval.helpers.GLSLInstanceHelper;
+using glsl.eval.Helpers;
 
 @:access(glsl.eval.Eval)
 class StructInstance implements ICompositeInstance{

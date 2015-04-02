@@ -3,7 +3,7 @@ package glsl.eval;
 import glsl.SyntaxTree;
 import glsl.eval.Eval;
 
-using glsl.eval.helpers.GLSLInstanceHelper;
+using glsl.eval.Helpers;
 
 @:publicFields
 @:access(glsl.eval.Eval)
@@ -90,7 +90,6 @@ class Operations{
 
 	static function modulo(lhs:GLSLInstance, rhs:GLSLInstance):GLSLInstance{
 		//OPERATOR RESERVED
-		Eval.warn('modulo operation not supported in GLSL ES 1.0 ($lhs % $rhs)');
 		switch {lhs: lhs, rhs: rhs} {
 			case {lhs: PrimitiveInstance(lv, INT), rhs: PrimitiveInstance(rv, INT)}:
 				return PrimitiveInstance(Math.floor(lv % rv), INT);

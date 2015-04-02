@@ -15,14 +15,15 @@ import glsl.parser.Tokenizer.TokenType;
 import glsl.parser.TreeBuilder.MinorType;
 
 class Parser{
+	
 	//state machine variables
+	static public var warnings:Array<String>;
+
 	static var i:Int; //stack index
 	static var stack:Stack;
 	static var errorCount:Int;
 
 	static var currentNode:MinorType;
-
-	static public var warnings:Array<String>;
 
 	static public function parseString(input:String){
 		return parseTokens(Tokenizer.tokenize(input));

@@ -45,10 +45,15 @@ import glsl.SyntaxTree;
 import glsl.eval.StructDefinition;
 
 using SyntaxTree.NodeEnumHelper;
-using glsl.eval.helpers.GLSLInstanceHelper;
-using glsl.eval.helpers.DataTypeHelper;
+// using glsl.eval.helpers.GLSLInstanceHelper;
+// using glsl.eval.helpers.DataTypeHelper;
+
+using glsl.eval.Helpers;
 
 class Eval{
+
+	static public var warnings:Array<String> = new Array<String>();
+
 	static public var builtInVariables:Map<String, Variable> = [
 		'gl_MaxVertexAttribs'             => createConst('gl_MaxVertexAttribs'             , 8),
 		'gl_MaxVertexUniformVectors'      => createConst('gl_MaxVertexUniformVectors'      , 128),
@@ -63,8 +68,6 @@ class Eval{
 
 	static public var userDefinedTypes:Map<DataType, StructDefinition> = new Map<DataType, StructDefinition>();
 	static public var userDefinedVariables:Map<String, Variable> = new Map<String, Variable>();
-
-	static public var warnings:Array<String> = new Array<String>();
 
 	static public function reset(){
 		userDefinedVariables = new Map<String, Variable>();

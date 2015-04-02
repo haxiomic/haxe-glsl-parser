@@ -59,6 +59,10 @@ enum TokenType{
 
 class Tokenizer{
 
+	static public var warnings:Array<String>;
+	@:noCompletion
+	static public var verbose:Bool = false;
+
 	//state machine data
 	static var tokens:Array<Token>;
 
@@ -72,11 +76,6 @@ class Tokenizer{
 	static var userDefinedTypes:Array<String>;
 
 	static var source:String;
-
-	@:noCompletion
-	static public var verbose:Bool = false;
-
-	static public var warnings:Array<String>;
 
 	static public function tokenize(source:String):Array<Token>{
 		Tokenizer.source = source;
@@ -364,8 +363,8 @@ class Tokenizer{
 		return source.charAt(j);
 	}
 
-	static function previousToken(n:Int = 0, ignoreWhitespaceAndComments:Bool = false){
-		if(!ignoreWhitespaceAndComments) return tokens[-n + tokens.length - 1];
+	static function previousToken(n:Int = 0, ignoreSkippable:Bool = false){
+		if(!ignoreSkippable) return tokens[-n + tokens.length - 1];
 		else{
 			var t:Token = null, i = 0;
 			while(n >= 0 && i < tokens.length){
@@ -377,8 +376,8 @@ class Tokenizer{
 		}
 	}
 
-	static function previousTokenType(n:Int = 0, ?ignoreWhitespaceAndComments:Bool):TokenType{
-		var pt = previousToken(n, ignoreWhitespaceAndComments);
+	static function previousTokenType(n:Int = 0, ?ignoreSkippable:Bool):TokenType{
+		var pt = previousToken(n, ignoreSkippable);
 		return pt != null ? pt.type : null;
 	}
 
@@ -597,7 +596,7 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
 		'using'               => RESERVED_KEYWORD
 	];
 
-	static var skippableTypes:Array<TokenType> = [WHITESPACE, BLOCK_COMMENT, LINE_COMMENT];
+	static public var skippableTypes(default, null):Array<TokenType> = [WHITESPACE, BLOCK_COMMENT, LINE_COMMENT];
 }
 
 enum ScanMode{
