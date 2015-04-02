@@ -1,14 +1,7 @@
 #Todo
 ------
-- Tokenizer column bug
-- Eval shouldn't consider reservation and version specific warnings, this should be handled in the validator
 - Different operator sets between GLSL and Preprocessor, this could make using Eval tricky
-- Error reporting needs redoing from the top - line numbers and positions should be non-optional for tokens
-- Rename ParserReducer to TreeBuilder ? with reduceRule or rule function?
-- Rename ParserDebugData?
-- Replace GLSLAccessor with GLSLVariable
-- Start on preprocessor
-- Since array lengths are required CPU size, **we need to evaluate constant expressions**
+- Error reporting needs redoing from the top - if token has pos info, this should be integrated into to nodes
 
 - A constant expression includes all basic types and user define types! So ```uniform vec2 x[NewThing(3).len];``` is valid as is something awful like. The result should be a basic type
 
@@ -31,7 +24,7 @@ uniform vec2 x[a.len];
 - Should the 'defined' operator be only part of the preprocessor?
 - Add a parameter to Tokenizer to disable storing line and column and position in the token?
 
-- For all rules whos only symbol is another rule, reduce by simply passing on the symbol's node (s(1))
+- For all rules whose only symbol is another rule, reduce by simply passing on the symbol's node (s(1))
 
 - In GLSL ES: "There is no mechanism for initializing arrays at declaration time from within a shader."
 - However, in GLSL (1.2), arrays can be initialized
