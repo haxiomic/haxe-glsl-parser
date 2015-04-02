@@ -98,7 +98,6 @@ class Preprocessor{
 
 		while(i < tokens.length){
 			var token = tokens[i];
-
 			switch token.type {
 				case PREPROCESSOR_DIRECTIVE:
 					handleDirective(token);
@@ -108,7 +107,7 @@ class Preprocessor{
 					tokenBuffer.push(token);
 			}
 
-			i--;
+			i++;
 		}
 
 		return tokens;
@@ -122,43 +121,43 @@ class Preprocessor{
 		switch directiveTitle {
 			case '':
 			case 'define':    // @! todo
-				warn('directive define is not yet supported');
+				warn('directive define is not yet supported', token);
 
 			case 'undef':     // @! todo
-				warn('directive undef is not yet supported');
+				warn('directive undef is not yet supported', token);
 
 			case 'if':        // @! todo
-				warn('directive if is not yet supported');
+				warn('directive if is not yet supported', token);
 
 			case 'ifdef':     // @! todo
-				warn('directive ifdef is not yet supported');
+				warn('directive ifdef is not yet supported', token);
 
 			case 'ifndef':    // @! todo
-				warn('directive ifndef is not yet supported');
+				warn('directive ifndef is not yet supported', token);
 
 			case 'else':      // @! todo
-				warn('directive else is not yet supported');
+				warn('directive else is not yet supported', token);
 
 			case 'elif':      // @! todo
-				warn('directive elif is not yet supported');
+				warn('directive elif is not yet supported', token);
 
 			case 'endif':     // @! todo
-				warn('directive endif is not yet supported');
+				warn('directive endif is not yet supported', token);
 
 			case 'error':     // @! todo
-				warn('directive error is not yet supported');
+				warn('directive error is not yet supported', token);
 
 			case 'pragma':    // @! todo
-				warn('directive pragma is not yet supported');
+				warn('directive pragma is not yet supported', token);
 
 			case 'extension': // @! todo
-				warn('directive extension is not yet supported');
+				warn('directive extension is not yet supported', token);
 
 			case 'version':   // @! todo
-				warn('directive version is not yet supported');
+				warn('directive version is not yet supported', token);
 
 			case 'line':      // @! todo
-				warn('directive line is not yet supported');
+				warn('directive line is not yet supported', token);
 
 			default:
 				warn('unknown directive \'$directiveTitle\'', token);

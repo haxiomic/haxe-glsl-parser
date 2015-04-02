@@ -350,7 +350,7 @@ class Tokenizer{
 			type: type,
 			data: buf,
 			line: line,
-			column: col,
+			column: col - buf.length,
 			position: i - buf.length
 		}
 		if(verbose) trace('building token $type ($buf)');

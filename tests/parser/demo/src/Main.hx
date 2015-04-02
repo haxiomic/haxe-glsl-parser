@@ -44,7 +44,7 @@ class Main{
 		try{
 			var tokens = Tokenizer.tokenize(input);
 			warnings = warnings.concat(Tokenizer.warnings);
-			
+
 			var ast = Parser.parseTokens(tokens);
 			warnings = warnings.concat(Parser.warnings);
 
