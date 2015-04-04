@@ -31,7 +31,7 @@ class DataTypeHelper{
 				if(value != null){
 					constructionParams = value;
 				}else{
-					//create empty fields
+					//create 0 state fields
 					constructionParams = [];
 					for(i in 0...typeDefinition.fields.length){
 						var f = typeDefinition.fields[i];

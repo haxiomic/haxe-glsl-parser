@@ -33,6 +33,7 @@
 	- handle basic conversion in constructors, constructs seem to be completely type flexible!
 	- arrays: const should be stored as VariableDefinition which includes array behavior
 	- Scoping
+	- Comprehend precision declarations, set precision of variables based on declaration
 */
 
 package glsl.eval;
@@ -50,7 +51,7 @@ class Eval{
 
 	static public var warnings:Array<String> = new Array<String>();
 
-	static public var builtInVariables:Map<String, Variable> = [
+	static public var builtinVariables:Map<String, Variable> = [
 		'gl_MaxVertexAttribs'             => createConst('gl_MaxVertexAttribs'             , 8),
 		'gl_MaxVertexUniformVectors'      => createConst('gl_MaxVertexUniformVectors'      , 128),
 		'gl_MaxVaryingVectors'            => createConst('gl_MaxVaryingVectors'            , 8),
@@ -60,7 +61,7 @@ class Eval{
 		'gl_MaxFragmentUniformVectors'    => createConst('gl_MaxFragmentUniformVectors'    , 16),
 		'gl_MaxDrawBuffers'               => createConst('gl_MaxDrawBuffers'               , 1)
 	];
-	static public var builtInTypes:Map<DataType, ITypeDefinition> = new Map<DataType, ITypeDefinition>();
+	static public var builtinTypes:Map<DataType, ITypeDefinition> = new Map<DataType, ITypeDefinition>();
 
 	static public var userDefinedTypes:Map<DataType, StructDefinition> = new Map<DataType, StructDefinition>();
 	static public var userDefinedVariables:Map<String, Variable> = new Map<String, Variable>();
@@ -177,7 +178,46 @@ class Eval{
 	}
 
 	static public function evalulateStructSpecifier(specifier:StructSpecifier):StructDefinition{
-		var userType = StructDefinition.fromStructSpecifier(specifier);
+		//convert struct declarations to definition's fields
+		var fields = new Array<VariableDefinition>();
+
+		for(i in 0...specifier.structDeclarations.length){
+			var d = specifier.structDeclarations[i];
+			var typeSpec = d.typeSpecifier;
+
+			for(j in 0...d.declarators.length){
+
+				//create field def and push
+				switch d.declarators[j].toEnum() {
+					case StructDeclaratorNode(n):
+						var field:VariableDefinition = {
+							name: n.name,
+							dataType: typeSpec.dataType, 
+							qualifier: typeSpec.qualifier,
+							precision: typeSpec.precision,
+							invariant: typeSpec.invariant
+						};
+
+						//add array size if necessary
+						if(n.arraySizeExpression != null){
+							var arraySizePrimitive = Eval.evaluateExpr(n.arraySizeExpression, true);
+							switch arraySizePrimitive {
+								case PrimitiveInstance(v, INT):
+									field.arraySize = v;
+								case null, _:
+									error('array size must an integer expression');
+							}
+						}
+
+						fields.push(field);
+					case null, _:
+				}
+
+			}
+		}
+
+		var userType = new StructDefinition(specifier.name, fields);
+
 		userDefinedTypes.set(DataType.USER_TYPE(specifier.name), userType);
 		return userType;
 	}
@@ -299,7 +339,7 @@ class Eval{
 
 	static function getVariable(name:String){
 		var v:Variable = userDefinedVariables.get(name);
-		if(v == null) v = builtInVariables.get(name);
+		if(v == null) v = builtinVariables.get(name);
 		return v;
 	}
 
@@ -308,7 +348,7 @@ class Eval{
 		if(dataType.match(USER_TYPE(_))){
 			type = userDefinedTypes.get(dataType);
 		}else{
-			type = builtInTypes.get(dataType);
+			type = builtinTypes.get(dataType);
 		}
 		return type;
 	}

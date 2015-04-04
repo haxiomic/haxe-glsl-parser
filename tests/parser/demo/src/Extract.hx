@@ -24,7 +24,7 @@ class Extract{
 					var v = Eval.evaluateVariableDeclaration(n);
 					
 				default:
-					trace('Extract default ${node.nodeName}');
+					// trace('Extract unknown: ${node.nodeName}');
 			}
 		}
 

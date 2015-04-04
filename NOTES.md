@@ -5,8 +5,9 @@
 
 - A constant expression includes all basic types and user define types! So ```uniform vec2 x[NewThing(3).len];``` is valid as is something awful like. The result should be a basic type
 
-
 #Notes
+- Another approach would be to make preprocessor tokens part of the syntax tree and then handle them in Eval
+	-> this would allow preprocessor directives to remain in the source
 ````
 const struct NewThing{
   int len; 

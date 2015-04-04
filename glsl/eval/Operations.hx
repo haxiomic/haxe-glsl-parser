@@ -1,3 +1,8 @@
+/* 
+	@! Operatons should not call out to eval!
+	Needs better type-searching approach
+*/
+
 package glsl.eval;
 
 import glsl.SyntaxTree;

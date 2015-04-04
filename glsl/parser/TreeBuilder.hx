@@ -21,7 +21,7 @@ class TreeBuilder{
 
 	static var ruleno;
 
-	static public function reduce(ruleno:Int):MinorType{
+	static public function buildRule(ruleno:Int):MinorType{
 		TreeBuilder.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
 
 		switch(ruleno){

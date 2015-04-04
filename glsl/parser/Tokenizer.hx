@@ -63,13 +63,18 @@ class Tokenizer{
 	@:noCompletion
 	static public var verbose:Bool = false;
 
+	static var onWarn:String->Void;
+	static var onError:String->Void;
+
 	//state machine data
 	static var tokens:Array<Token>;
 
 	static var i:Int;             // scan position
 	static var last_i:Int;
-	static var line:Int;
+	static var line:Int;          // scan position line & col
 	static var col:Int;
+	static var lineStart:Int;     // current token's starting line & col  
+	static var colStart:Int;
 	static var mode:ScanMode;
 	static var buf:String;        // current string buffer
 
@@ -77,8 +82,11 @@ class Tokenizer{
 
 	static var source:String;
 
-	static public function tokenize(source:String):Array<Token>{
+	static public function tokenize(source:String, ?onWarn:String->Void, ?onError:String->Void):Array<Token>{
 		Tokenizer.source = source;
+		Tokenizer.onWarn = onWarn;
+		Tokenizer.onError = onError;
+
 		//init
 		tokens = [];
 		i = 0;
@@ -192,6 +200,8 @@ class Tokenizer{
 	//Mode Functions
 	static function determineMode(){
 		buf = '';//flush buffer
+		lineStart = line;
+		colStart = col;
 
 		if(tryMode(BLOCK_COMMENT)) return;
 		if(tryMode(LINE_COMMENT)) return;
@@ -349,8 +359,8 @@ class Tokenizer{
 		var token:Token = {
 			type: type,
 			data: buf,
-			line: line,
-			column: col - buf.length,
+			line: lineStart,
+			column: colStart,
 			position: i - buf.length
 		}
 		if(verbose) trace('building token $type ($buf)');
@@ -383,11 +393,13 @@ class Tokenizer{
 
 	//Error Reporting
 	static function warn(msg){
-		warnings.push('Tokenizer Warning: $msg, line $line, column $col');
+		if(onWarn != null) onWarn(msg);
+		else warnings.push('Tokenizer Warning: $msg, line $line, column $col');
 	}
 
 	static function error(msg){
-		throw 'Tokenizer Error: $msg, line $line, column $col';
+		if(onError != null) onError(msg);
+		else throw 'Tokenizer Error: $msg, line $line, column $col';
 	}
 
 
@@ -599,7 +611,7 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
 	static public var skippableTypes(default, null):Array<TokenType> = [WHITESPACE, BLOCK_COMMENT, LINE_COMMENT];
 }
 
-enum ScanMode{
+private enum ScanMode{
 	UNDETERMINED;
 
 	//non-spec

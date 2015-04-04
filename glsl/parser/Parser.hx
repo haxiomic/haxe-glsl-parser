@@ -2,6 +2,8 @@
 	LALR parser based on lemon parser generator
 	Lemon was written by D. Richard Hipp and is maintained as part of the SQLite project
 	http://www.hwaci.com/sw/lemon/
+
+	Parser is glsl version independent
 	
 	haxe port
 	@author George Corney
@@ -13,6 +15,8 @@ import glsl.parser.Tokenizer.Token;
 import glsl.parser.Tokenizer.TokenType;
 
 import glsl.parser.TreeBuilder.MinorType;
+
+import glsl.SyntaxTree;
 
 class Parser{
 	
@@ -43,8 +47,11 @@ class Parser{
 		TreeBuilder.reset();
 
 		//run preprocessor
-		tokens = glsl.parser.Preprocessor.preprocess(tokens);
-		warnings = warnings.concat(Preprocessor.warnings);
+		var preprocess = true;
+		if(preprocess){
+			tokens = glsl.parser.Preprocessor.preprocess(tokens);
+			warnings = warnings.concat(Preprocessor.warnings);
+		}
 
 		var lastToken = null;
 		for(t in tokens){
@@ -53,8 +60,25 @@ class Parser{
 			lastToken = t;
 		}
 
+
 		//eof step
-		parseStep(0, lastToken);//using the lastToken for the EOF step allows better error reporting if it fails
+		if(lastToken != null){
+			parseStep(0, lastToken); //using the lastToken for the EOF step allows better error reporting if it fails
+		}else{
+			currentNode = new Root([]); //since no tokens have been processed, create empty root
+		}
+
+		//add preprocessor data to root node
+		if(preprocess){
+			switch(NodeEnumHelper.toEnum(currentNode)){
+				case RootNode(n):
+					n.preprocessor = {
+						version: Preprocessor.version,
+						pragmas: Preprocessor.pragmas
+					};
+				default:
+			}
+		}
 
 		return currentNode;
 	}
@@ -92,7 +116,6 @@ class Parser{
 				}
 			}
 		}while( major != illegalSymbolNumber && i >= 0);
-
 		return;
 	}
 
@@ -168,7 +191,7 @@ class Parser{
 		var size:Int;               //amount to pop the stack
 
 		//new node generated after reducing with this rule
-		var newNode = TreeBuilder.reduce(ruleno); //trigger custom reduce behavior
+		var newNode = TreeBuilder.buildRule(ruleno); //trigger custom reduce behavior
 		currentNode = newNode;
 
 		goto = ruleInfo[ruleno].lhs;
