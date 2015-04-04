@@ -92,7 +92,8 @@ class Preprocessor{
 	static var builtinMacros:Map<String, PPMacro> = [//@! todo
 		'defined' => OperatorMacro,
 		'__VERSION__' => BuiltinMacro( function(_) return Tokenizer.tokenize(Std.string(version)) ),
-		'__LINE__' => BuiltinMacro( function(_) return Tokenizer.tokenize(Std.string(tokens[i].line)) ),
+		'__LINE__' => BuiltinMacro( function(_) return Tokenizer.tokenize(Std.string(tokens[i].line)) ), //line of current token
+		'__FILE__' => UnresolveableMacro, //@! this should be left to the real compiler (however, it's not a critical issue)
 		'GL_ES' => UnresolveableMacro
 	];
 	static var userDefinedMacros:Map<String, PPMacro>;
@@ -111,12 +112,17 @@ class Preprocessor{
 
 		while(i < Preprocessor.tokens.length){
 			var token = Preprocessor.tokens[i];
-
+			trace('pp step $i ${token.data}');
 			switch token.type {
 				case PREPROCESSOR_DIRECTIVE:
 					try{ processDirective(Preprocessor.tokens, i); }catch(e:String){ warn(e, token); }
 				case IDENTIFIER:
-					try{ processIdentifier(Preprocessor.tokens, i); }catch(e:String){ warn(e, token); }
+					try{ 
+						if(processIdentifier(Preprocessor.tokens, i)){
+							//step back one token to allow the first new token to be preprocessed
+							i--;
+						}
+					}catch(e:String){ warn(e, token); }
 				default:
 			}
 
@@ -143,7 +149,7 @@ class Preprocessor{
 			case UserMacroObject(_), UserMacroFunction(_, _): throw 'macro redefinition';
 			case null:
 		}
-		
+
 		if(~/^__/.match(id)) throw 'macro name is reserved';
 		userDefinedMacros.set(id, value);
 	}
@@ -179,8 +185,13 @@ class Preprocessor{
 					throw e;
 				}
 
-			case 'undef':     // @! todo
-				throw 'directive #undef is not yet supported';
+			case 'undef':
+				if(macroNameReg.match(directiveContent)){
+					var macroName = macroNameReg.matched(1);
+					undefineObject(macroName);
+				}else{
+					throw 'invalid undefine';
+				}
 
 			case 'if':        // @! todo
 				throw 'directive #if is not yet supported';
@@ -200,7 +211,7 @@ class Preprocessor{
 			case 'endif':     // @! todo
 				throw 'directive #endif is not yet supported';
 
-			case 'error':     // @! todo
+			case 'error':
 				error('$directiveContent');
 				tokens.deleteTokens(i);
 
@@ -244,21 +255,22 @@ class Preprocessor{
 		}
 	}
 
-	static function processIdentifier(tokens:Array<Token>, i:Int, ?overrideMap:Map<String, PPMacro>){
+	static function processIdentifier(tokens:Array<Token>, i:Int, ?overrideMap:Map<String, PPMacro>):Bool{
 		var token = tokens[i];
 		//could be an operator or a macro
 		var ppMacro = overrideMap == null ? getMacro(token.data) : overrideMap.get(token.data);
-		if(ppMacro == null) return;
+		if(ppMacro == null) return false;
 
 		//we have a PPMacro
 		switch ppMacro {
 			case UserMacroObject(newTokens):
-					//delete identifier token (current token)
-					tokens.deleteTokens(i, 1);
-					//insert tokenized content
-					tokens.insertTokens(i, newTokens);
-					//step back one token to allow the first new token to be preprocessed
-					i--;
+				trace('UserMacroObject $newTokens');
+				//delete identifier token (current token)
+				tokens.deleteTokens(i, 1);
+				//insert tokenized content
+				tokens.insertTokens(i, newTokens);
+
+				return true;
 
 			case UserMacroFunction(newTokens, parameters):
 				try{
@@ -279,7 +291,9 @@ class Preprocessor{
 					//replace IDENTIFIERS with function parameters
 					for(j in 0...replacementTokens.length){
 						if(replacementTokens[j].type.equals(TokenType.IDENTIFIER)){
-							try{ processIdentifier(replacementTokens, j, parameterMap); }catch(e:String){ warn(e, token); }
+							try{
+								processIdentifier(replacementTokens, j, parameterMap);
+							}catch(e:String){ warn(e, token); }
 						}
 					}
 
@@ -287,10 +301,11 @@ class Preprocessor{
 					tokens.deleteTokens(i, functionCall.len);
 					//insert tokenized content
 					tokens.insertTokens(i, replacementTokens);
-					//step back one token to allow the first new token to be preprocessed
-					i--;
+
+					return true;
+
 				}catch(e:String){
-					return; //identifier isn't a function call
+					//identifier isn't a function call
 				}
 			case BuiltinMacro(func):
 				var newTokens = func([]);
@@ -298,20 +313,20 @@ class Preprocessor{
 				tokens.deleteTokens(i, 1);
 				//insert tokenized content
 				tokens.insertTokens(i, newTokens);
-				//step back one token to allow the first new token to be preprocessed
-				i--;
+
+				return true;
 
 			case UnresolveableMacro:
 				throw 'cannot resolve macro';
 			default:
 				throw 'unhanded object $ppMacro';
 		}
+
+		return false;
 	}
 
 
 	static function evaluateMacroDefinition(definitionString:String):PPMacro{
-		var macroNameReg = ~/^([a-z_]\w*)([^\w]|$)/i;
-
 		if(macroNameReg.match(definitionString)){
 			var macroName = macroNameReg.matched(1);
 			var macroContent = '';
@@ -426,6 +441,8 @@ class Preprocessor{
 
 	//Preprocessor Data
 	static var directiveTitleReg = ~/^#\s*([^\s]*)/;
+	static var macroNameReg = ~/^([a-z_]\w*)([^\w]|$)/i;
+
 
 	static var allowedBinaryOperators:Array<BinaryOperator> = [
 		STAR,
@@ -457,6 +474,13 @@ class Preprocessor{
 	];
 }
 
+typedef MacroFunctionCall = {
+	var ident:Token;
+	var args:Array<Array<Token>>;
+	var start:Int;
+	var len:Int;
+}
+
 enum PPMacro{//@!
 	UserMacroObject(content:Array<Token>);
 	UserMacroFunction(content:Array<Token>, parameters:Array<String>);
@@ -466,7 +490,7 @@ enum PPMacro{//@!
 }
 
 class PPTokensHelper{
-	static public function readFunctionCall(tokens:Array<Token>, start:Int):{ident:Token, args:Array<Array<Token>>, start:Int, len:Int}{
+	static public function readFunctionCall(tokens:Array<Token>, start:Int):MacroFunctionCall{
 		//macrofunction (identifier, identifier, ...)
 		var j = start;
 		var ident = tokens[j];
@@ -555,55 +579,3 @@ class PPTokensHelper{
 		return tokens;
 	}
 }
-
-//PP Tokenizer
-// typedef PPToken = {
-// 	var type:PPTokenType;
-// 	var data:String;
-// 	@:optional var position:Int;
-// 	@:optional var line:Int;
-// 	@:optional var column:Int;
-// }
-
-// enum PPTokenType{
-// 	DIRECTIVE_TITLE;
-// 	IDENTIFIER;
-// 	LEFT_PAREN;
-// 	RIGHT_PAREN;
-// 	COMMA;
-// 	WHITESPACE;
-// 	OTHER;
-// }
-
-// class PreprocessorTokenizer{
-
-// 	static public var warnings:Array<String>;
-// 	@:noCompletion
-// 	static public var verbose:Bool = false;
-
-// 	//state machine data
-// 	static var tokens:Array<PPToken>;
-
-// 	static var i:Int;             // scan position
-// 	static var last_i:Int;
-// 	static var line:Int;          // scan position line & col
-// 	static var col:Int;
-// 	static var lineStart:Int;     // current token's starting line & col  
-// 	static var colStart:Int;
-// 	static var mode:ScanMode;
-// 	static var buf:String;        // current string buffer
-
-// 	static public function tokenize(source:String):Array<PPToken>{
-// 		//init
-// 		tokens = [];
-// 		i = 0;
-// 		line = 1;
-// 		col = 1;
-// 		warnings = [];
-
-// 		return tokens;
-// 	}
-
-// }
-
-// enum ScanMode{}

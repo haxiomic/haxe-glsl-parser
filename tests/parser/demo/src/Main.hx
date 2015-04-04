@@ -58,13 +58,13 @@ class Main{
 				trace('${v.name} = ${v.value}');
 			}
 
-			saveInput(input);
-
 		}catch(e:Dynamic){
 			warnings = warnings.concat([e]);
 			jsonContainer.innerHTML = '';
 		}	
 
+		saveInput(input);
+		
 		showErrors(warnings);
 
 		inputChanged = false;
