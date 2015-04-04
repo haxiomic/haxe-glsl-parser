@@ -61,9 +61,7 @@
 	- A separate operator function table _may_ be necessary to handle C-style operations
 		(ie, 0 may be interchangeable with false for example)
 
-	- defined operator is treaded as a built in macro (with different function call syntax)
-		doesn't seem to exist in os x chrome's preprocessor?
-		(handle it anyway)
+	- defined operator is only available in macro expressions!
 
 	------------------------------
 	Extra rules:
@@ -90,9 +88,8 @@ class Preprocessor{
 	static var i:Int;
 
 	static var builtinMacros:Map<String, PPMacro> = [
-		'defined' => OperatorMacro( function(args) return isMacroDefined(args[0][0].data) ? '1' : '0', 1),
-		'__VERSION__' => BuiltinMacro( function() return Std.string(version) ),
-		'__LINE__' => BuiltinMacro( function() return Std.string(tokens[i].line) ), //line of current token
+		'__VERSION__' => BuiltinMacroObject( function() return Std.string(version) ),
+		'__LINE__' => BuiltinMacroObject( function() return Std.string(tokens[i].line) ), //line of current token
 		'__FILE__' => UnresolveableMacro, //@! this should be left to the real compiler (however, it's not a critical issue)
 		'GL_ES' => UnresolveableMacro
 	];
@@ -144,8 +141,7 @@ class Preprocessor{
 	static function defineMacro(id:String, ppMacro:PPMacro){
 		var existingMacro = getMacro(id);
 		switch existingMacro {
-			case BuiltinMacro(_) | UnresolveableMacro: throw 'redefinition of predefined macro';
-			case OperatorMacro(_, _): throw 'redefinition of operator';
+			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _) | UnresolveableMacro: throw 'redefinition of predefined macro';
 			case UserMacroObject(_), UserMacroFunction(_, _): throw 'macro redefinition';
 			case null:
 		}
@@ -181,8 +177,7 @@ class Preprocessor{
 	static function undefineObject(id:String){
 		var existingMacro = getMacro(id);
 		switch existingMacro {
-			case BuiltinMacro(_) | UnresolveableMacro: throw 'cannot undefine predefined macro';
-			case OperatorMacro(_, _): throw 'cannot undefine operator';
+			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _) | UnresolveableMacro: throw 'cannot undefine predefined macro';
 			case UserMacroObject(_) | UserMacroFunction(_, _): userDefinedMacros.remove(id);
 			case null:
 		}
@@ -365,7 +360,7 @@ class Preprocessor{
 				}catch(e:String){
 					//identifier isn't a function call; ignore
 				}
-			case BuiltinMacro(func): //object-like builtin
+			case BuiltinMacroObject(func):
 				var newTokens = tokenizeContent(func());
 				//delete identifier token (current token)
 				tokens.deleteTokens(i, 1);
@@ -374,22 +369,22 @@ class Preprocessor{
 
 				return ppMacro;
 
-			case OperatorMacro(func, requiredParameterCount): //function-like builtin
+			case BuiltinMacroFunction(func, requiredParameterCount):
 				try{
 					//get arguments
-					var operatorCall = tokens.readOperatorCall(i);
+					var functionCall = tokens.readFunctionCall(i);
 					//ensure number of arguments match
-					if(operatorCall.args.length != requiredParameterCount){
-						switch operatorCall.args.length > requiredParameterCount{
+					if(functionCall.args.length != requiredParameterCount){
+						switch functionCall.args.length > requiredParameterCount{
 							case true: throw 'too many arguments for macro';
 							case false: throw 'not enough arguments for macro';
 						}
 					}
 
-					var newTokens = tokenizeContent(func(operatorCall.args));
+					var newTokens = tokenizeContent(func(functionCall.args));
 
 					//delete operator call
-					tokens.deleteTokens(i, operatorCall.len);
+					tokens.deleteTokens(i, functionCall.len);
 					//insert tokenized content
 					tokens.insertTokens(i, newTokens);
 
@@ -525,8 +520,8 @@ typedef MacroFunctionCall = {
 enum PPMacro{//@!
 	UserMacroObject(content:String);
 	UserMacroFunction(content:String, parameters:Array<String>);
-	BuiltinMacro(func:Void -> String);//function(args):Array<PPToken> (Built-in Macros are object-like by default)
-	OperatorMacro(func:Array<Array<PPToken>> -> String, parameterCount:Int);//function(args):Array<PPToken>
+	BuiltinMacroObject(func:Void -> String);//function():Array<PPToken>
+	BuiltinMacroFunction(func:Array<Array<PPToken>> -> String, parameterCount:Int);//function(args):Array<PPToken>
 	UnresolveableMacro; 
 }
 
@@ -582,33 +577,6 @@ class PPTokensHelper{
 
 		throw 'expecting \'(\'';
 		return null;
-	}
-
-	static public function readOperatorCall(tokens:Array<PPToken>, start:Int):MacroFunctionCall{
-		//operator token
-		//operator ( token token ... , token, ... , )
-		if(tokens.nextNonSkipToken(start).type.equals(PPTokenType.LEFT_PAREN)){//looks like a function call
-			return readFunctionCall(tokens, start);
-		}else{
-			//'operator token' format, pass next token as argument
-			var ident = tokens[start];
-			if(ident == null || ident.type != PPTokenType.IDENTIFIER){
-				throw 'invalid operator call';
-			}
-
-			//find next non-skip token and record distance
-			var j = tokens.nextNonSkipTokenIndex(start);
-			if(j == -1) throw 'invalid operator call';
-
-			var argToken = tokens[j];
-			var args:Array<Array<PPToken>> = [[argToken]];
-			return {
-				ident: ident,
-				args: args,
-				start: start,
-				len: j - start + 1
-			}
-		}
 	}
 
 	//returns the token n tokens away from token start, ignoring skippables. Supports negative n
