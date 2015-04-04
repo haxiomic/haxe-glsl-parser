@@ -88,7 +88,7 @@ class Preprocessor{
 	static var i:Int;
 
 	static var builtinMacros:Map<String, PPMacro> = [
-		'__VERSION__' => BuiltinMacroObject( function() return Std.string(version) ),
+		'__VERSION__' => BuiltinMacroObject( function() return Std.string(version) ), //@! maybe this should be unresolvable
 		'__LINE__' => BuiltinMacroObject( function() return Std.string(tokens[i].line) ), //line of current token
 		'__FILE__' => UnresolveableMacro, //@! this should be left to the real compiler (however, it's not a critical issue)
 		'GL_ES' => UnresolveableMacro

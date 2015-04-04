@@ -1,5 +1,6 @@
 package;
 
+import glsl.parser.Preprocessor;
 import glsl.parser.Parser;
 import glsl.parser.Tokenizer;
 import js.Browser;
@@ -42,6 +43,9 @@ class Main{
 		var warnings = [];
 
 		try{
+			input = glsl.parser.Preprocessor.preprocess(input);
+			warnings = warnings.concat(Preprocessor.warnings);
+
 			var ast = Parser.parse(input);
 			warnings = warnings.concat(Parser.warnings);
 

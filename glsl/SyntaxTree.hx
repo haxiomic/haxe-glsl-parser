@@ -9,11 +9,6 @@ package glsl;
 
 import Type.ValueType.TClass;
 
-typedef PreprocessorData = {
-	var version:Null<Int>;
-	var pragmas:Array<String>;	
-}
-
 @:publicFields
 class Node{
 	var nodeName:String;
@@ -23,7 +18,6 @@ class Node{
 }
 
 class Root extends Node{
-	var preprocessor:PreprocessorData;
 	var declarations:TranslationUnit;
 	public function new(declarations:TranslationUnit){
 		this.declarations = declarations;
