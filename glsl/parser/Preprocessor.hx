@@ -226,12 +226,12 @@ class Preprocessor{
 				throw 'directive #if is not yet supported';
 
 			case 'ifdef':     // @! todo
+				throw 'directive #ifdef is not yet supported';
 				//all regions of an if sequence are mutually exclusive
 				//all ifs must eventually reach an endif
 
 				//first identify regions
 				//identify regions and their associated tests
-				throw 'directive #ifdef is not yet supported';
 
 				if(macroNameReg.match(directiveContent)){
 					var macroName = macroNameReg.matched(1);

@@ -1,0 +1,77 @@
+//Grammar for preprocessor constant expressions
+//constant expression is root node
+//- draft
+
+primary_expression:
+	INTCONSTANT
+	FLOATCONSTANT
+	LEFT_PAREN expression RIGHT_PAREN
+
+unary_expression:
+    postfix_expression
+    unary_operator unary_expression
+
+unary_operator:
+    PLUS
+    DASH
+    BANG
+    TILDE
+
+multiplicative_expression:
+    unary_expression
+    multiplicative_expression STAR unary_expression
+    multiplicative_expression SLASH unary_expression
+    multiplicative_expression PERCENT unary_expression
+
+additive_expression:
+    multiplicative_expression
+    additive_expression PLUS multiplicative_expression
+    additive_expression DASH multiplicative_expression
+
+shift_expression:
+    additive_expression
+    shift_expression LEFT_OP additive_expression 
+    shift_expression RIGHT_OP additive_expression 
+
+relational_expression:
+    shift_expression
+    relational_expression LEFT_ANGLE shift_expression
+    relational_expression RIGHT_ANGLE shift_expression
+    relational_expression LE_OP shift_expression
+    relational_expression GE_OP shift_expression
+
+equality_expression:
+    relational_expression
+    equality_expression EQ_OP relational_expression
+    equality_expression NE_OP relational_expression
+
+and_expression:
+    equality_expression
+    and_expression AMPERSAND equality_expression 
+
+exclusive_or_expression:
+    and_expression
+    exclusive_or_expression CARET and_expression 
+
+inclusive_or_expression:
+    exclusive_or_expression
+    inclusive_or_expression VERTICAL_BAR exclusive_or_expression 
+
+logical_and_expression:
+    inclusive_or_expression
+    logical_and_expression AND_OP inclusive_or_expression
+
+logical_xor_expression:
+    logical_and_expression
+    logical_xor_expression XOR_OP logical_and_expression
+
+logical_or_expression:
+    logical_xor_expression
+    logical_or_expression OR_OP logical_xor_expression
+
+conditional_expression:
+    logical_or_expression
+    logical_or_expression QUESTION expression COLON assignment_expression
+
+constant_expression:
+    conditional_expression
