@@ -199,7 +199,7 @@ class Preprocessor{
 		var directiveTitle = getDirectiveTitle(token);
 		var directiveContent = directiveTitleReg.matchedRight();
 		directiveContent = StringTools.trim(directiveContent);
-		//remove newline indicators '\'
+		//remove newline overrun character '\'
 		directiveContent = StringTools.replace(directiveContent, '\\\n', '\n');
 
 		switch directiveTitle {
@@ -248,7 +248,7 @@ class Preprocessor{
 			case 'ifndef':    // @! todo
 				throw 'directive #ifndef is not yet supported';
 
-			case 'else', 'elif', 'endif':      // @! todo
+			case 'else', 'elif', 'endif':
 				throw 'unexpected #$directiveTitle';
 
 			case 'error':
