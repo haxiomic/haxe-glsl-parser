@@ -11,12 +11,10 @@
 
 package glsl.parser;
 
-import glsl.parser.Tokenizer.Token;
-import glsl.parser.Tokenizer.TokenType;
+typedef Token = glsl.parser.Tokenizer.Token;
+typedef TokenType = import glsl.parser.Tokenizer.TokenType;
 
 import glsl.parser.TreeBuilder.MinorType;
-
-import glsl.SyntaxTree;
 
 class Parser{
 	
@@ -44,15 +42,6 @@ class Parser{
 		warnings = [];
 		TreeBuilder.reset();
 
-		//run preprocessor
-		if(preprocess){
-			input = glsl.parser.Preprocessor.preprocess(input);
-			warnings = warnings.concat(Preprocessor.warnings);
-		}
-
-		var tokens = Tokenizer.tokenize(input);
-		warnings = warnings.concat(Tokenizer.warnings);
-
 		return parseTokens(tokens);
 	}
 
@@ -66,23 +55,7 @@ class Parser{
 		}
 
 		//eof step
-		if(lastToken != null){
-			parseStep(0, lastToken); //using the lastToken for the EOF step allows better error reporting if it fails
-		}else{
-			currentNode = new Root([]); //since no tokens have been processed, create empty root
-		}
-
-		//add preprocessor data to root node
-		if(preprocess){
-			switch(NodeEnumHelper.toEnum(currentNode)){
-				case RootNode(n):
-					n.preprocessor = {
-						version: Preprocessor.version,
-						pragmas: Preprocessor.pragmas
-					};
-				default:
-			}
-		}
+		parseStep(0, lastToken); //using the lastToken for the EOF step allows better error reporting if it fails
 
 		return currentNode;
 	}

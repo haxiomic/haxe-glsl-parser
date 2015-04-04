@@ -1,5 +1,7 @@
 #Todo
 ------
+- Parser shouldn't handle preprocessing, nor creating empty root
+- We probably need a preprocessor expression parser that includes the defined operator
 - Different operator sets between GLSL and Preprocessor, this could make using Eval tricky
 - Error reporting needs redoing from the top - if token has pos info, this should be integrated into to nodes
 
