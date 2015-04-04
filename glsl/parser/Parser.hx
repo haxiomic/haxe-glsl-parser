@@ -2,10 +2,8 @@
 	LALR parser based on lemon parser generator
 	Lemon was written by D. Richard Hipp and is maintained as part of the SQLite project
 	http://www.hwaci.com/sw/lemon/
-
-	Parser is glsl version independent
 	
-	haxe port
+	Haxe port:
 	@author George Corney
 */
 

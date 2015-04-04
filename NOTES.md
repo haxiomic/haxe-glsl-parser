@@ -1,15 +1,12 @@
 #Todo
 ------
-- Parser shouldn't handle preprocessing, nor creating empty root
 - We probably need a preprocessor expression parser that includes the defined operator
-- Different operator sets between GLSL and Preprocessor, this could make using Eval tricky
+- Preprocessor_directive tokens need to be part of the SyntaxTree to make passing on PP tokens possible
 - Error reporting needs redoing from the top - if token has pos info, this should be integrated into to nodes
 
 - A constant expression includes all basic types and user define types! So ```uniform vec2 x[NewThing(3).len];``` is valid as is something awful like. The result should be a basic type
 
 #Notes
-- Another approach would be to make preprocessor tokens part of the syntax tree and then handle them in Eval
-	-> this would allow preprocessor directives to remain in the source
 ````
 const struct NewThing{
   int len; 

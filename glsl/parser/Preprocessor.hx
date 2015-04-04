@@ -1,10 +1,10 @@
 /*
 	@! Todo
-	- Unresolveable macros should result in tokens being left unchanged
-	- Use of Tokenizer should be replaced with PPTokenizer
 
 	#Notes
 	Preprocessor syntax is handled by regex (is simple enough to allow this)
+	Unresolveable macros should result in tokens being left unchanged
+	-> If a directive can be completely handled, it is removed from the token array, otherwise it is left untouched
 
 	------------------------------
 		Directives
@@ -62,10 +62,7 @@
 		(ie, 0 may be interchangeable with false for example)
 
 	- defined operator is only available in macro expressions!
-
-	------------------------------
-	Extra rules:
-		__ reserved macros
+		-> this probably necessitates a specialized preprocessor expression grammar
 */
 
 package glsl.parser;
@@ -95,7 +92,7 @@ class Preprocessor{
 	];
 	static var userDefinedMacros:Map<String, PPMacro>;
 
-	static public function preprocess(input:String):String{
+	static public function process(input:String):String{
 		//make tokens available to other functions within class
 		tokens = PPTokenizer.tokenize(input);
 
@@ -159,7 +156,11 @@ class Preprocessor{
 				//expand macros and search for ppMacro
 				while(j < macroTokens.length){
 					if(macroTokens[j].type.equals(PPTokenType.IDENTIFIER)){
-						var processedPPMacro = processIdentifier(macroTokens, j);
+						var processedPPMacro:PPMacro = null;
+						try{
+							processedPPMacro = processIdentifier(macroTokens, j);
+						}catch(e:Dynamic){}//supress processIdentifier warnings
+
 						if(processedPPMacro != null) j--;//macro expanded, step back once to process new tokens
 						if(ppMacro.equals(processedPPMacro)){
 							//macro contains itself - remove and throw
@@ -237,6 +238,9 @@ class Preprocessor{
 					var macroName = macroNameReg.matched(1);
 
 					var testResult = isMacroDefined(macroName);
+					//@! when evaluating tests, if a test cannot be evaluated because of an UnresolveableMacro, no tokens should be removed
+					//throw that the macro is not available at compile-time
+
 				}else{
 					throw 'invalid #ifdef syntax';
 				}
@@ -629,6 +633,8 @@ class PPTokensHelper{
 	Preprocessor Tokenizer
 	
 	for simplicity it uses glsl tokenizer but remaps special tokens
+
+	@! how to handle 'defined' operator?
 */
 typedef PPToken = {
 	var type:PPTokenType;

@@ -43,10 +43,10 @@ class Main{
 		var warnings = [];
 
 		try{
-			input = glsl.parser.Preprocessor.preprocess(input);
+			var processedInput = glsl.parser.Preprocessor.process(input);
 			warnings = warnings.concat(Preprocessor.warnings);
 
-			var ast = Parser.parse(input);
+			var ast = Parser.parse(processedInput);
 			warnings = warnings.concat(Parser.warnings);
 
 			displayAST(ast);
