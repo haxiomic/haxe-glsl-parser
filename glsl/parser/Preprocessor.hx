@@ -89,8 +89,8 @@ class Preprocessor{
 	static var tokens:Array<PPToken>;
 	static var i:Int;
 
-	static var builtinMacros:Map<String, PPMacro> = [//@! todo
-		'defined' => OperatorMacro( function(args) return glsl.printer.Utils.glslBoolString(isMacroDefined(args[0][0].data)) , 1),
+	static var builtinMacros:Map<String, PPMacro> = [
+		'defined' => OperatorMacro( function(args) return isMacroDefined(args[0][0].data) ? '1' : '0', 1),
 		'__VERSION__' => BuiltinMacro( function() return Std.string(version) ),
 		'__LINE__' => BuiltinMacro( function() return Std.string(tokens[i].line) ), //line of current token
 		'__FILE__' => UnresolveableMacro, //@! this should be left to the real compiler (however, it's not a critical issue)
@@ -195,8 +195,12 @@ class Preprocessor{
 	static function processDirective(tokens:Array<PPToken>, i:Int){
 		var token = tokens[i];
 
-		directiveTitleReg.match(token.data);
-		var directiveTitle = directiveTitleReg.matched(1);
+		inline function getDirectiveTitle(t:PPToken){
+			directiveTitleReg.match(t.data);
+			return directiveTitleReg.matched(1);
+		}
+
+		var directiveTitle = getDirectiveTitle(token);
 		var directiveContent = directiveTitleReg.matchedRight();
 		directiveContent = StringTools.trim(directiveContent);
 		//remove newline indicators '\'
@@ -219,26 +223,34 @@ class Preprocessor{
 					undefineObject(macroName);
 					tokens.deleteTokens(i);
 				}else{
-					throw 'invalid undefine';
+					throw 'invalid #undef syntax';
 				}
 
 			case 'if':        // @! todo
+				//@! parse with glsl parser and evaluate with PP evaluator
 				throw 'directive #if is not yet supported';
 
 			case 'ifdef':     // @! todo
+				//all regions of an if sequence are mutually exclusive
+				//all ifs must eventually reach an endif
+
+				//first identify regions
+				//identify regions and their associated tests
 				throw 'directive #ifdef is not yet supported';
+
+				if(macroNameReg.match(directiveContent)){
+					var macroName = macroNameReg.matched(1);
+
+					var testResult = isMacroDefined(macroName);
+				}else{
+					throw 'invalid #ifdef syntax';
+				}
 
 			case 'ifndef':    // @! todo
 				throw 'directive #ifndef is not yet supported';
 
-			case 'else':      // @! todo
-				throw 'directive #else is not yet supported';
-
-			case 'elif':      // @! todo
-				throw 'directive #elif is not yet supported';
-
-			case 'endif':     // @! todo
-				throw 'directive #endif is not yet supported';
+			case 'else', 'elif', 'endif':      // @! todo
+				throw 'unexpected #$directiveTitle';
 
 			case 'error':
 				error('$directiveContent');
@@ -389,6 +401,7 @@ class Preprocessor{
 
 			case UnresolveableMacro:
 				throw 'cannot resolve macro';
+
 			default:
 				throw 'unhandled macro object $ppMacro';
 		}
@@ -529,17 +542,13 @@ class PPTokensHelper{
 
 		//find matching parenthesis
 		//open function
-		var j = start;
-		var t:PPToken;
-		do{
-			if((t = tokens[++j]) == null)//next token
-				throw 'invalid operator call';
-		}while(PPTokenizer.skippableTypes.indexOf(t.type) != -1);
+		var j = tokens.nextNonSkipTokenIndex(start);
+		if(j == -1) throw 'invalid function call';
 
+		var t:PPToken = tokens[j];
 		if(t.type.equals(PPTokenType.LEFT_PAREN)){
 			//read args, taking care to match parentheses
 			var argBuffer:Array<PPToken> = [];
-			var t:PPToken;
 			var level = 1;
 			inline function pushArgs(){
 				args.push(argBuffer);
@@ -588,14 +597,10 @@ class PPTokensHelper{
 			}
 
 			//find next non-skip token and record distance
-			var j = start;
-			var t:PPToken;
-			do{
-				if((t = tokens[++j]) == null)//next token
-					throw 'invalid operator call';
-			}while(PPTokenizer.skippableTypes.indexOf(t.type) != -1);
+			var j = tokens.nextNonSkipTokenIndex(start);
+			if(j == -1) throw 'invalid operator call';
 
-			var argToken = t;
+			var argToken = tokens[j];
 			var args:Array<Array<PPToken>> = [[argToken]];
 			return {
 				ident: ident,
@@ -606,8 +611,8 @@ class PPTokensHelper{
 		}
 	}
 
-	//returns the token n tokens away from token start. Supports negative n
-	static public function nextNonSkipToken(tokens:Array<PPToken>, start:Int, n:Int = 1):PPToken{
+	//returns the token n tokens away from token start, ignoring skippables. Supports negative n
+	static public function nextNonSkipToken(tokens:Array<PPToken>, start:Int, n:Int = 1, ?requiredType:PPTokenType):PPToken{
 		var direction = n >= 0 ? 1 : -1;
 		var j = start;
 		var m = Math.abs(n);
@@ -616,11 +621,29 @@ class PPTokensHelper{
 			j += direction;//advance token
 			t = tokens[j];
 			if(t == null) break;
-			if(PPTokenizer.skippableTypes.indexOf(t.type) != -1)//skip over token
-				continue;
+			//continue for skip over
+			if(PPTokenizer.skippableTypes.indexOf(t.type) != -1) continue;
+			if(requiredType != null && !t.type.equals(requiredType)) continue;
 			m--;
 		}
 		return t;
+	}
+
+	static public function nextNonSkipTokenIndex(tokens:Array<PPToken>, start:Int, n:Int = 1, ?requiredType:PPTokenType):Int{
+		var direction = n >= 0 ? 1 : -1;
+		var j = start;
+		var m = Math.abs(n);
+		var t:PPToken;
+		while(m > 0){
+			j += direction;//advance token
+			t = tokens[j];
+			if(t == null) return -1;
+			//continue for skip over
+			if(PPTokenizer.skippableTypes.indexOf(t.type) != -1) continue;
+			if(requiredType != null && !t.type.equals(requiredType)) continue;
+			m--;
+		}
+		return j;
 	}
 
 	static public function deleteTokens(tokens:Array<PPToken>, start:Int, count:Int = 1){
@@ -651,7 +674,7 @@ typedef PPTokenType = glsl.parser.Tokenizer.TokenType;
 @:access(glsl.parser.Tokenizer)
 class PPTokenizer{
 	static public function tokenize(input:String, ?onWarn:String->Void, ?onError:String->Void):Array<PPToken>{
-		//temporarily alter keywords map on Tokenizer
+		//temporarily clear keywords map on Tokenizer
 		var tmpKeywords = glsl.parser.Tokenizer.literalKeywordMap;
 		glsl.parser.Tokenizer.literalKeywordMap = new Map<String, glsl.parser.Tokenizer.TokenType>();
 
