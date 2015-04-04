@@ -1,6 +1,7 @@
 /*
 	@! Todo
-	- Figure out how to use handleDirective on independant tokens
+	- Unresolveable macros should result in tokens being left unchanged
+	- Use of Tokenizer should be replaced with PPTokenizer
 
 	#Notes
 	Preprocessor syntax is handled by regex (is simple enough to allow this)
@@ -72,9 +73,9 @@
 package glsl.parser;
 
 import glsl.SyntaxTree;
-import glsl.parser.Tokenizer;
 
 using Preprocessor.PPTokensHelper;
+using glsl.printer.Helper;
 
 class Preprocessor{
 
@@ -84,23 +85,22 @@ class Preprocessor{
 	static public var version:Null<Int>;
 	static public var pragmas:Array<String>;
 	// static public var extensions:?<?> @! todo, extensions have an associated behavior parameter
-	
 
-	static var tokens:Array<Token>;
+	static var tokens:Array<PPToken>;
 	static var i:Int;
 
 	static var builtinMacros:Map<String, PPMacro> = [//@! todo
-		'defined' => OperatorMacro,
-		'__VERSION__' => BuiltinMacro( function(_) return Tokenizer.tokenize(Std.string(version)) ),
-		'__LINE__' => BuiltinMacro( function(_) return Tokenizer.tokenize(Std.string(tokens[i].line)) ), //line of current token
+		'defined' => OperatorMacro( function(args) return glsl.printer.Utils.glslBoolString(isMacroDefined(args[0][0].data)) , 1),
+		'__VERSION__' => BuiltinMacro( function() return Std.string(version) ),
+		'__LINE__' => BuiltinMacro( function() return Std.string(tokens[i].line) ), //line of current token
 		'__FILE__' => UnresolveableMacro, //@! this should be left to the real compiler (however, it's not a critical issue)
 		'GL_ES' => UnresolveableMacro
 	];
 	static var userDefinedMacros:Map<String, PPMacro>;
 
-	static public function preprocess(tokens:Array<Token>):Array<Token>{
+	static public function preprocess(input:String):String{
 		//make tokens available to other functions within class
-		Preprocessor.tokens = tokens;
+		tokens = PPTokenizer.tokenize(input);
 
 		//init state machine variables
 		i = 0;
@@ -110,15 +110,15 @@ class Preprocessor{
 		version = 100; //default version number
 		pragmas = [];
 
-		while(i < Preprocessor.tokens.length){
-			var token = Preprocessor.tokens[i];
-			trace('pp step $i ${token.data}');
+		while(i < tokens.length){
+			var token = tokens[i];
+
 			switch token.type {
 				case PREPROCESSOR_DIRECTIVE:
-					try{ processDirective(Preprocessor.tokens, i); }catch(e:String){ warn(e, token); }
+					try{ processDirective(tokens, i); }catch(e:String){ warn(e, token); }
 				case IDENTIFIER:
 					try{ 
-						if(processIdentifier(Preprocessor.tokens, i)){
+						if(processIdentifier(tokens, i) != null){ //identifier processed
 							//step back one token to allow the first new token to be preprocessed
 							i--;
 						}
@@ -130,8 +130,8 @@ class Preprocessor{
 		}
 
 		//@! debug trace result
-		trace(glsl.printer.Helper.TokenArrayPrinter.print(Preprocessor.tokens));
-		return Preprocessor.tokens;
+		trace(tokens.print());
+		return tokens.print();
 	}
 
 	static function getMacro(id:String):PPMacro{
@@ -141,30 +141,58 @@ class Preprocessor{
 		return null;
 	}
 
-	static function defineMacro(id:String, value:PPMacro){
+	static function defineMacro(id:String, ppMacro:PPMacro){
 		var existingMacro = getMacro(id);
 		switch existingMacro {
 			case BuiltinMacro(_) | UnresolveableMacro: throw 'redefinition of predefined macro';
-			case OperatorMacro: throw 'redefinition of operator';
+			case OperatorMacro(_, _): throw 'redefinition of operator';
 			case UserMacroObject(_), UserMacroFunction(_, _): throw 'macro redefinition';
 			case null:
 		}
 
 		if(~/^__/.match(id)) throw 'macro name is reserved';
-		userDefinedMacros.set(id, value);
+		if(ppMacro == null) throw 'null macro definitions are not allowed';
+
+		userDefinedMacros.set(id, ppMacro);
+
+		//check for recursion and undefine macro if discovered
+		switch ppMacro{
+			case UserMacroObject(content), UserMacroFunction(content, _):
+				var macroTokens = PPTokenizer.tokenize(content);
+				var j = 0;
+				//expand macros and search for ppMacro
+				while(j < macroTokens.length){
+					if(macroTokens[j].type.equals(PPTokenType.IDENTIFIER)){
+						var processedPPMacro = processIdentifier(macroTokens, j);
+						if(processedPPMacro != null) j--;//macro expanded, step back once to process new tokens
+						if(ppMacro.equals(processedPPMacro)){
+							//macro contains itself - remove and throw
+							undefineObject(id);
+							throw 'macro contains recursion';
+						}
+					}
+					j++;
+				}
+
+			default:
+		}
 	}
 
 	static function undefineObject(id:String){
 		var existingMacro = getMacro(id);
 		switch existingMacro {
 			case BuiltinMacro(_) | UnresolveableMacro: throw 'cannot undefine predefined macro';
-			case OperatorMacro: throw 'cannot undefine operator';
+			case OperatorMacro(_, _): throw 'cannot undefine operator';
 			case UserMacroObject(_) | UserMacroFunction(_, _): userDefinedMacros.remove(id);
 			case null:
 		}
 	}
 
-	static function processDirective(tokens:Array<Token>, i:Int){
+	static function isMacroDefined(id:String):Bool{
+		return getMacro(id) != null;
+	}
+
+	static function processDirective(tokens:Array<PPToken>, i:Int){
 		var token = tokens[i];
 
 		directiveTitleReg.match(token.data);
@@ -189,6 +217,7 @@ class Preprocessor{
 				if(macroNameReg.match(directiveContent)){
 					var macroName = macroNameReg.matched(1);
 					undefineObject(macroName);
+					tokens.deleteTokens(i);
 				}else{
 					throw 'invalid undefine';
 				}
@@ -227,7 +256,7 @@ class Preprocessor{
 
 			case 'version':
 				//ensure there are no (non-skip) tokens before directive
-				if(tokens.nextNonSkipToken(-1, i) == null){
+				if(tokens.nextNonSkipToken(i, -1) == null){
 					//extract version number with regex (strictly a string of digits)
 					var versionNumRegex = ~/^(\d+)$/;
 					var matched = versionNumRegex.match(directiveContent);
@@ -255,74 +284,116 @@ class Preprocessor{
 		}
 	}
 
-	static function processIdentifier(tokens:Array<Token>, i:Int, ?overrideMap:Map<String, PPMacro>):Bool{
+	static function processIdentifier(tokens:Array<PPToken>, i:Int, ?overrideMap:Map<String, PPMacro>):PPMacro{
 		var token = tokens[i];
 		//could be an operator or a macro
 		var ppMacro = overrideMap == null ? getMacro(token.data) : overrideMap.get(token.data);
-		if(ppMacro == null) return false;
+		if(ppMacro == null) return null;
+
+		inline function tokenizeContent(content:String){
+			var newTokens = PPTokenizer.tokenize(content, function(warning:String){
+				throw '$warning';
+			}, function(error:String){
+				throw '$error';
+			});
+			//@! correct line information, approximate (everything following is now incorrect)
+			for(t in newTokens){
+				t.line = token.line;
+				t.column = token.column;
+			}
+			return newTokens;
+		}
 
 		//we have a PPMacro
 		switch ppMacro {
-			case UserMacroObject(newTokens):
-				trace('UserMacroObject $newTokens');
+			case UserMacroObject(content):
+				var newTokens = tokenizeContent(content);
 				//delete identifier token (current token)
 				tokens.deleteTokens(i, 1);
 				//insert tokenized content
 				tokens.insertTokens(i, newTokens);
 
-				return true;
+				return ppMacro;
 
-			case UserMacroFunction(newTokens, parameters):
+			case UserMacroFunction(content, parameters):
 				try{
-					var replacementTokens = newTokens.copy();
-
 					//get function arguments
 					var functionCall = tokens.readFunctionCall(i);
 					//ensure number of arguments match
 					if(functionCall.args.length != parameters.length){
-						throw 'not enough arguments for macro';
+						switch functionCall.args.length > parameters.length{
+							case true: throw 'too many arguments for macro';
+							case false: throw 'not enough arguments for macro';
+						}
 					}
+
+					var newTokens = tokenizeContent(content);
 
 					//map parameter name to function call arguments
 					var parameterMap = new Map<String, PPMacro>();
-					for(i in 0...parameters.length)
-						parameterMap.set(parameters[i], UserMacroObject(functionCall.args[i]));
+					for(i in 0...parameters.length){
+						if(!parameterMap.exists(parameters[i]))
+							parameterMap.set(parameters[i], UserMacroObject(functionCall.args[i].print()));
+					}
 
 					//replace IDENTIFIERS with function parameters
-					for(j in 0...replacementTokens.length){
-						if(replacementTokens[j].type.equals(TokenType.IDENTIFIER)){
-							try{
-								processIdentifier(replacementTokens, j, parameterMap);
-							}catch(e:String){ warn(e, token); }
+					for(j in 0...newTokens.length){
+						if(newTokens[j].type.equals(PPTokenType.IDENTIFIER)){
+							processIdentifier(newTokens, j, parameterMap);
 						}
 					}
 
 					//delete function call
 					tokens.deleteTokens(i, functionCall.len);
 					//insert tokenized content
-					tokens.insertTokens(i, replacementTokens);
+					tokens.insertTokens(i, newTokens);
 
-					return true;
+					return ppMacro;
 
 				}catch(e:String){
-					//identifier isn't a function call
+					//identifier isn't a function call; ignore
 				}
-			case BuiltinMacro(func):
-				var newTokens = func([]);
+			case BuiltinMacro(func): //object-like builtin
+				var newTokens = tokenizeContent(func());
 				//delete identifier token (current token)
 				tokens.deleteTokens(i, 1);
 				//insert tokenized content
 				tokens.insertTokens(i, newTokens);
 
-				return true;
+				return ppMacro;
+
+			case OperatorMacro(func, requiredParameterCount): //function-like builtin
+				try{
+					//get arguments
+					var operatorCall = tokens.readOperatorCall(i);
+					//ensure number of arguments match
+					if(operatorCall.args.length != requiredParameterCount){
+						switch operatorCall.args.length > requiredParameterCount{
+							case true: throw 'too many arguments for macro';
+							case false: throw 'not enough arguments for macro';
+						}
+					}
+
+					var newTokens = tokenizeContent(func(operatorCall.args));
+
+					//delete operator call
+					tokens.deleteTokens(i, operatorCall.len);
+					//insert tokenized content
+					tokens.insertTokens(i, newTokens);
+
+					return ppMacro;
+
+				}catch(e:String){
+					//identifier isn't a function call; ignore
+				}
 
 			case UnresolveableMacro:
 				throw 'cannot resolve macro';
 			default:
-				throw 'unhanded object $ppMacro';
+				throw 'unhandled macro object $ppMacro';
 		}
 
-		return false;
+		return null;
 	}
 
 
@@ -335,18 +406,6 @@ class Preprocessor{
 			var nextChar = macroNameReg.matched(2);
 
 			var userMacro:PPMacro;
-
-			inline function tokenizeContent(macroContent:String){
-				macroContent = StringTools.trim(macroContent); //trim whitespace
-
-				var tokenized = Tokenizer.tokenize(macroContent, function(warning:String){
-					throw '$warning';
-				}, function(error:String){
-					throw '$error';
-				});
-
-				return tokenized;
-			}
 
 			switch nextChar {
 				case '(': //function-like
@@ -379,14 +438,14 @@ class Preprocessor{
 					}
 
 					//create macro object
-					userMacro = UserMacroFunction(tokenizeContent(macroContent), macroParameters);
+					userMacro = UserMacroFunction(StringTools.trim(macroContent), macroParameters);
 
 				default:  //object-like
 					macroContent = nextChar + macroNameReg.matchedRight();
 					macroContent = StringTools.trim(macroContent); //trim whitespace
 
 					//create macro object
-					userMacro = UserMacroObject(tokenizeContent(macroContent));
+					userMacro = UserMacroObject(StringTools.trim(macroContent));
 			}
 
 			defineMacro(macroName, userMacro);
@@ -406,7 +465,6 @@ class Preprocessor{
 		 * ...
 		 */
 	}
-
 
 	//Error Reporting
 	static function warn(msg, ?info:Dynamic){
@@ -442,75 +500,46 @@ class Preprocessor{
 	//Preprocessor Data
 	static var directiveTitleReg = ~/^#\s*([^\s]*)/;
 	static var macroNameReg = ~/^([a-z_]\w*)([^\w]|$)/i;
-
-
-	static var allowedBinaryOperators:Array<BinaryOperator> = [
-		STAR,
-		SLASH,
-		PERCENT,
-		PLUS,
-		DASH,
-		LEFT_OP,
-		RIGHT_OP,
-		LEFT_ANGLE,
-		RIGHT_ANGLE,
-		LE_OP,
-		GE_OP,
-		EQ_OP,
-		NE_OP,
-		AMPERSAND,
-		CARET,
-		VERTICAL_BAR,
-		AND_OP,
-		/* XOR_OP (^^) not allowed */
-		OR_OP
-	];
-
-	static var allowedUnaryOperators:Array<UnaryOperator> = [
-		PLUS,
-		DASH,
-		BANG,
-		TILDE
-	];
 }
 
 typedef MacroFunctionCall = {
-	var ident:Token;
-	var args:Array<Array<Token>>;
+	var ident:PPToken;
+	var args:Array<Array<PPToken>>;
 	var start:Int;
 	var len:Int;
 }
 
 enum PPMacro{//@!
-	UserMacroObject(content:Array<Token>);
-	UserMacroFunction(content:Array<Token>, parameters:Array<String>);
-	BuiltinMacro(func:Array<Array<Token>> -> Array<Token>);//function(args):Array<Token>
-	OperatorMacro(); //@! incomplete
+	UserMacroObject(content:String);
+	UserMacroFunction(content:String, parameters:Array<String>);
+	BuiltinMacro(func:Void -> String);//function(args):Array<PPToken> (Built-in Macros are object-like by default)
+	OperatorMacro(func:Array<Array<PPToken>> -> String, parameterCount:Int);//function(args):Array<PPToken>
 	UnresolveableMacro; 
 }
 
 class PPTokensHelper{
-	static public function readFunctionCall(tokens:Array<Token>, start:Int):MacroFunctionCall{
+	static public function readFunctionCall(tokens:Array<PPToken>, start:Int):MacroFunctionCall{
 		//macrofunction (identifier, identifier, ...)
-		var j = start;
-		var ident = tokens[j];
-		if(ident == null || ident.type != TokenType.IDENTIFIER){
+		var ident = tokens[start];
+		if(ident == null || ident.type != PPTokenType.IDENTIFIER){
 			throw 'invalid function call';
 		}
 
-		var args:Array<Array<Token>> = [];
+		var args:Array<Array<PPToken>> = [];
+
 		//find matching parenthesis
 		//open function
-		var t:Token;
+		var j = start;
+		var t:PPToken;
 		do{
-			t = tokens[++j]; //next token
-			if(t == null) throw 'invalid function call';
-		}while(Tokenizer.skippableTypes.indexOf(t.type) != -1);
+			if((t = tokens[++j]) == null)//next token
+				throw 'invalid operator call';
+		}while(PPTokenizer.skippableTypes.indexOf(t.type) != -1);
 
-		if(t.type.equals(TokenType.LEFT_PAREN)){
+		if(t.type.equals(PPTokenType.LEFT_PAREN)){
 			//read args, taking care to match parentheses
-			var argBuffer:Array<Token> = [];
-			var t:Token;
+			var argBuffer:Array<PPToken> = [];
+			var t:PPToken;
 			var level = 1;
 			inline function pushArgs(){
 				args.push(argBuffer);
@@ -519,11 +548,11 @@ class PPTokensHelper{
 			do{
 				t = tokens[++j];//next token
 				if(t == null) throw 'expecting \')\'';
-				if(Tokenizer.skippableTypes.indexOf(t.type) != -1) continue; //ignore skippable tokens
+				if(PPTokenizer.skippableTypes.indexOf(t.type) != -1) continue; //ignore skippable tokens
 				switch t.type{
-					case TokenType.LEFT_PAREN: level++;
-					case TokenType.RIGHT_PAREN: level--;
-					case TokenType.COMMA: if(level == 1) pushArgs(); else argBuffer.push(t);
+					case PPTokenType.LEFT_PAREN: level++;
+					case PPTokenType.RIGHT_PAREN: level--;
+					case PPTokenType.COMMA: if(level == 1) pushArgs(); else argBuffer.push(t);
 					case null: throw '$t has no token type';
 					case _: argBuffer.push(t);
 				}
@@ -546,36 +575,105 @@ class PPTokensHelper{
 		return null;
 	}
 
-	static public function readOperatorArguments(){
-		// @! todo
-		//operator identifier
-		//operator (identifier, identifier, ...)
+	static public function readOperatorCall(tokens:Array<PPToken>, start:Int):MacroFunctionCall{
+		//operator token
+		//operator ( token token ... , token, ... , )
+		if(tokens.nextNonSkipToken(start).type.equals(PPTokenType.LEFT_PAREN)){//looks like a function call
+			return readFunctionCall(tokens, start);
+		}else{
+			//'operator token' format, pass next token as argument
+			var ident = tokens[start];
+			if(ident == null || ident.type != PPTokenType.IDENTIFIER){
+				throw 'invalid operator call';
+			}
+
+			//find next non-skip token and record distance
+			var j = start;
+			var t:PPToken;
+			do{
+				if((t = tokens[++j]) == null)//next token
+					throw 'invalid operator call';
+			}while(PPTokenizer.skippableTypes.indexOf(t.type) != -1);
+
+			var argToken = t;
+			var args:Array<Array<PPToken>> = [[argToken]];
+			return {
+				ident: ident,
+				args: args,
+				start: start,
+				len: j - start + 1
+			}
+		}
 	}
 
 	//returns the token n tokens away from token start. Supports negative n
-	static public function nextNonSkipToken(tokens:Array<Token>, n:Int = 1, start:Int):Token{
+	static public function nextNonSkipToken(tokens:Array<PPToken>, start:Int, n:Int = 1):PPToken{
 		var direction = n >= 0 ? 1 : -1;
 		var j = start;
 		var m = Math.abs(n);
-		var t:Token;
+		var t:PPToken;
 		while(m > 0){
 			j += direction;//advance token
 			t = tokens[j];
 			if(t == null) break;
-			if(Tokenizer.skippableTypes.indexOf(t.type) != -1)//skip over token
+			if(PPTokenizer.skippableTypes.indexOf(t.type) != -1)//skip over token
 				continue;
 			m--;
 		}
 		return t;
 	}
 
-	static public function deleteTokens(tokens:Array<Token>, start:Int, count:Int = 1){
+	static public function deleteTokens(tokens:Array<PPToken>, start:Int, count:Int = 1){
 		return tokens.splice(start, count);
 	}
 
-	static public function insertTokens(tokens:Array<Token>, start:Int, newTokens:Array<Token>){
+	static public function insertTokens(tokens:Array<PPToken>, start:Int, newTokens:Array<PPToken>){
 		var j = newTokens.length;
 		while(--j >= 0) tokens.insert(start, newTokens[j]);
 		return tokens;
 	}
+}
+
+/*
+	Preprocessor Tokenizer
+	
+	for simplicity it uses glsl tokenizer but remaps special tokens
+*/
+typedef PPToken = {
+	var type:PPTokenType;
+	var data:String;
+	@:optional var position:Int;
+	@:optional var line:Int;
+	@:optional var column:Int;
+}
+typedef PPTokenType = glsl.parser.Tokenizer.TokenType;
+
+@:access(glsl.parser.Tokenizer)
+class PPTokenizer{
+	static public function tokenize(input:String, ?onWarn:String->Void, ?onError:String->Void):Array<PPToken>{
+		//temporarily alter keywords map on Tokenizer
+		var tmpKeywords = glsl.parser.Tokenizer.literalKeywordMap;
+		glsl.parser.Tokenizer.literalKeywordMap = new Map<String, glsl.parser.Tokenizer.TokenType>();
+
+		var tokens = glsl.parser.Tokenizer.tokenize(input, onWarn, onError);
+
+		glsl.parser.Tokenizer.literalKeywordMap = tmpKeywords;
+
+		return remap(tokens);
+	}
+
+	static function remap(tokens:Array<glsl.parser.Tokenizer.Token>){
+		for(t in tokens){
+			t.type = switch t.type {
+				//remap special keywords to identifier
+				case TYPE_NAME:
+					//remap to
+					IDENTIFIER;
+				default: t.type;
+			}
+		}
+		return tokens;
+	}
+
+	static public var skippableTypes = glsl.parser.Tokenizer.skippableTypes;
 }

@@ -29,11 +29,9 @@ class Parser{
 
 	static var currentNode:MinorType;
 
-	static public function parseString(input:String){
-		return parseTokens(Tokenizer.tokenize(input));
-	}
+	static var preprocess = true;
 
-	static public function parseTokens(tokens:Array<Token>){
+	static public function parse(input:String){
 		//init state machine
 		i = 0;
 		stack = [{
@@ -47,19 +45,25 @@ class Parser{
 		TreeBuilder.reset();
 
 		//run preprocessor
-		var preprocess = true;
 		if(preprocess){
-			tokens = glsl.parser.Preprocessor.preprocess(tokens);
+			input = glsl.parser.Preprocessor.preprocess(input);
 			warnings = warnings.concat(Preprocessor.warnings);
 		}
 
+		var tokens = Tokenizer.tokenize(input);
+		warnings = warnings.concat(Tokenizer.warnings);
+
+		return parseTokens(tokens);
+	}
+
+	static function parseTokens(tokens:Array<Token>){
+		//for each token, execute parseStep
 		var lastToken = null;
 		for(t in tokens){
 			if(ignoredTokens.indexOf(t.type) != -1) continue;
 			parseStep(tokenIdMap.get(t.type), t);
 			lastToken = t;
 		}
-
 
 		//eof step
 		if(lastToken != null){

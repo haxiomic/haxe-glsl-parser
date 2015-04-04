@@ -42,10 +42,7 @@ class Main{
 		var warnings = [];
 
 		try{
-			var tokens = Tokenizer.tokenize(input);
-			warnings = warnings.concat(Tokenizer.warnings);
-
-			var ast = Parser.parseTokens(tokens);
+			var ast = Parser.parse(input);
 			warnings = warnings.concat(Parser.warnings);
 
 			displayAST(ast);
@@ -64,7 +61,7 @@ class Main{
 		}	
 
 		saveInput(input);
-		
+
 		showErrors(warnings);
 
 		inputChanged = false;
