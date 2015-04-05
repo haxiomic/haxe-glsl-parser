@@ -4,7 +4,7 @@
 	 -> multi-line directives should be accounted for
 
 	#Notes
-	Gentle: Preprocessor only alters source if it's sure it's correct
+	Gentle: Preprocessor only alters source if it's sure it's correct in doing so
 
 	Preprocessor syntax is handled by regex (is simple enough to allow this)
 
@@ -323,124 +323,13 @@ class Preprocessor{
 	}
 
 	static function processIdentifier(){
-		if(expandIdentifier(tokens, i) != null){ //identifier processed
+		if(tokens.expandIdentifier(i) != null){ //identifier processed
 			//step back one token to allow the first new token to be preprocessed
 			Preprocessor.i--;
 		}
 	}
 
-	static function expandIdentifier(tokens:Array<PPToken>, i:Int, ?overrideMap:Map<String, PPMacro>):PPMacro{
-		var token = tokens[i];
-		//could be an operator or a macro
-		var ppMacro = overrideMap == null ? getMacro(token.data) : overrideMap.get(token.data);
-		if(ppMacro == null) return null;
-
-		inline function tokenizeContent(content:String){
-			var newTokens = PPTokenizer.tokenize(content, function(warning:String){
-				throw '$warning';
-			}, function(error:String){
-				throw '$error';
-			});
-			//@! line information needs to be corrected, following is approximate:
-			for(t in newTokens){
-				t.line = token.line;
-				t.column = token.column;
-			}
-			return newTokens;
-		}
-
-		//we have a PPMacro
-		switch ppMacro {
-			case UserMacroObject(content):
-				var newTokens = tokenizeContent(content);
-				//delete identifier token (current token)
-				tokens.deleteTokens(i, 1);
-				//insert tokenized content
-				tokens.insertTokens(i, newTokens);
-
-				return ppMacro;
-
-			case UserMacroFunction(content, parameters):
-				try{
-					//get function arguments
-					var functionCall = tokens.readFunctionCall(i);
-					//ensure number of arguments match
-					if(functionCall.args.length != parameters.length){
-						switch functionCall.args.length > parameters.length{
-							case true: throw 'too many arguments for macro';
-							case false: throw 'not enough arguments for macro';
-						}
-					}
-
-					var newTokens = tokenizeContent(content);
-
-					//map parameter name to function call arguments
-					var parameterMap = new Map<String, PPMacro>();
-					for(i in 0...parameters.length){
-						if(!parameterMap.exists(parameters[i]))
-							parameterMap.set(parameters[i], UserMacroObject(functionCall.args[i].print()));
-					}
-
-					//replace IDENTIFIERS with function parameters
-					for(j in 0...newTokens.length){
-						if(newTokens[j].type.equals(PPTokenType.IDENTIFIER)){
-							expandIdentifier(newTokens, j, parameterMap);
-						}
-					}
-
-					//delete function call
-					tokens.deleteTokens(i, functionCall.len);
-					//insert tokenized content
-					tokens.insertTokens(i, newTokens);
-
-					return ppMacro;
-
-				}catch(e:Dynamic){
-					//identifier isn't a function call; ignore
-				}
-			case BuiltinMacroObject(func):
-				var newTokens = tokenizeContent(func());
-				//delete identifier token (current token)
-				tokens.deleteTokens(i, 1);
-				//insert tokenized content
-				tokens.insertTokens(i, newTokens);
-
-				return ppMacro;
-
-			case BuiltinMacroFunction(func, requiredParameterCount):
-				try{
-					//get arguments
-					var functionCall = tokens.readFunctionCall(i);
-					//ensure number of arguments match
-					if(functionCall.args.length != requiredParameterCount){
-						switch functionCall.args.length > requiredParameterCount{
-							case true: throw 'too many arguments for macro';
-							case false: throw 'not enough arguments for macro';
-						}
-					}
-
-					var newTokens = tokenizeContent(func(functionCall.args));
-
-					//delete operator call
-					tokens.deleteTokens(i, functionCall.len);
-					//insert tokenized content
-					tokens.insertTokens(i, newTokens);
-
-					return ppMacro;
-
-				}catch(e:Dynamic){
-					//identifier isn't a function call; ignore
-				}
-
-			case UnresolveableMacro:
-				throw 'cannot resolve macro';
-
-			default:
-				throw 'unhandled macro object $ppMacro';
-		}
-
-		return null;
-	}
+	//the following functions are not allowed to alter the state machine directly
 
 	//MACRO_NAME(args)? content?
 	static function evaluateMacroDefinition(definitionString:String):PPMacro{
@@ -534,7 +423,7 @@ class Preprocessor{
 					if(macroTokens[j].type.equals(PPTokenType.IDENTIFIER)){
 						var processedPPMacro:PPMacro = null;
 						try{
-							processedPPMacro = expandIdentifier(macroTokens, j);
+							processedPPMacro = macroTokens.expandIdentifier(j);
 						}catch(e:Dynamic){}//supress expandIdentifier warnings
 
 						if(processedPPMacro != null) j--;//macro expanded, step back once to process new tokens
@@ -655,7 +544,122 @@ enum PPError{
 	Error(msg:String, info:Dynamic);
 }
 
+@:access(glsl.parser.Preprocessor)
 class PPTokensHelper{
+
+	static public function expandIdentifier(tokens:Array<PPToken>, i:Int, ?overrideMap:Map<String, PPMacro>):PPMacro{
+		var token = tokens[i];
+		//could be an operator or a macro
+		var ppMacro = overrideMap == null ? Preprocessor.getMacro(token.data) : overrideMap.get(token.data);
+		if(ppMacro == null) return null;
+
+		inline function tokenizeContent(content:String){
+			var newTokens = PPTokenizer.tokenize(content, function(warning:String){
+				throw '$warning';
+			}, function(error:String){
+				throw '$error';
+			});
+			//@! line information needs to be corrected, following is approximate:
+			for(t in newTokens){
+				t.line = token.line;
+				t.column = token.column;
+			}
+			return newTokens;
+		}
+
+		//we have a PPMacro
+		switch ppMacro {
+			case UserMacroObject(content):
+				var newTokens = tokenizeContent(content);
+				//delete identifier token (current token)
+				tokens.deleteTokens(i, 1);
+				//insert tokenized content
+				tokens.insertTokens(i, newTokens);
+
+				return ppMacro;
+
+			case UserMacroFunction(content, parameters):
+				try{
+					//get function arguments
+					var functionCall = tokens.readFunctionCall(i);
+					//ensure number of arguments match
+					if(functionCall.args.length != parameters.length){
+						switch functionCall.args.length > parameters.length{
+							case true: throw 'too many arguments for macro';
+							case false: throw 'not enough arguments for macro';
+						}
+					}
+
+					var newTokens = tokenizeContent(content);
+
+					//map parameter name to function call arguments
+					var parameterMap = new Map<String, PPMacro>();
+					for(i in 0...parameters.length){
+						if(!parameterMap.exists(parameters[i]))
+							parameterMap.set(parameters[i], UserMacroObject(functionCall.args[i].print()));
+					}
+
+					//replace IDENTIFIERS with function parameters
+					for(j in 0...newTokens.length){
+						if(newTokens[j].type.equals(PPTokenType.IDENTIFIER)){
+							expandIdentifier(newTokens, j, parameterMap);
+						}
+					}
+
+					//delete function call
+					tokens.deleteTokens(i, functionCall.len);
+					//insert tokenized content
+					tokens.insertTokens(i, newTokens);
+
+					return ppMacro;
+
+				}catch(e:Dynamic){
+					//identifier isn't a function call; ignore
+				}
+			case BuiltinMacroObject(func):
+				var newTokens = tokenizeContent(func());
+				//delete identifier token (current token)
+				tokens.deleteTokens(i, 1);
+				//insert tokenized content
+				tokens.insertTokens(i, newTokens);
+
+				return ppMacro;
+
+			case BuiltinMacroFunction(func, requiredParameterCount):
+				try{
+					//get arguments
+					var functionCall = tokens.readFunctionCall(i);
+					//ensure number of arguments match
+					if(functionCall.args.length != requiredParameterCount){
+						switch functionCall.args.length > requiredParameterCount{
+							case true: throw 'too many arguments for macro';
+							case false: throw 'not enough arguments for macro';
+						}
+					}
+
+					var newTokens = tokenizeContent(func(functionCall.args));
+
+					//delete operator call
+					tokens.deleteTokens(i, functionCall.len);
+					//insert tokenized content
+					tokens.insertTokens(i, newTokens);
+
+					return ppMacro;
+
+				}catch(e:Dynamic){
+					//identifier isn't a function call; ignore
+				}
+
+			case UnresolveableMacro:
+				throw 'cannot resolve macro';
+
+			default:
+				throw 'unhandled macro object $ppMacro';
+		}
+
+		return null;
+	}
+
 	static public function readFunctionCall(tokens:Array<PPToken>, start:Int):MacroFunctionCall{
 		//macrofunction (identifier, identifier, ...)
 		var ident = tokens[start];
