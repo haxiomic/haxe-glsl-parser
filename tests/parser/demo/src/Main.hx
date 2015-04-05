@@ -45,6 +45,8 @@ class Main{
 		try{
 			var tokens = glsl.parser.Tokenizer.tokenize(input);
 			warnings = warnings.concat(Tokenizer.warnings);
+
+			trace(glsl.printer.Helper.TokenArrayPrinter.print(tokens));
 			
 			tokens = glsl.parser.Preprocessor.process(tokens);
 			warnings = warnings.concat(Preprocessor.warnings);
