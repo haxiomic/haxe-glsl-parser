@@ -43,10 +43,13 @@ class Main{
 		var warnings = [];
 
 		try{
-			var processedInput = glsl.parser.Preprocessor.process(input);
+			var tokens = glsl.parser.Tokenizer.tokenize(input);
+			warnings = warnings.concat(Tokenizer.warnings);
+			
+			tokens = glsl.parser.Preprocessor.process(tokens);
 			warnings = warnings.concat(Preprocessor.warnings);
 
-			var ast = Parser.parse(processedInput);
+			var ast = Parser.parseTokens(tokens);
 			warnings = warnings.concat(Parser.warnings);
 
 			displayAST(ast);

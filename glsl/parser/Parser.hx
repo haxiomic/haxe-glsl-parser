@@ -27,7 +27,7 @@ class Parser{
 
 	static var preprocess = true;
 
-	static public function parse(input:String){
+	static function init(){
 		//init state machine
 		i = 0;
 		stack = [{
@@ -39,12 +39,18 @@ class Parser{
 		currentNode = null;
 		warnings = [];
 		TreeBuilder.reset();
+	}
+
+	static public function parse(input:String){
+		init();
 
 		var tokens = Tokenizer.tokenize(input);
 		return parseTokens(tokens);
 	}
 
-	static function parseTokens(tokens:Array<Token>){
+	static public function parseTokens(tokens:Array<Token>){
+		init();
+		
 		//for each token, execute parseStep
 		var lastToken = null;
 		for(t in tokens){
