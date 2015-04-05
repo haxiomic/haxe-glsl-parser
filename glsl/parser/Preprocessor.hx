@@ -1,4 +1,9 @@
 /*
+	GLSL Preprocessor
+	- in progress
+
+	@author George Corney
+
 	@! Todo
 	- create custom expression tokenizer
 
@@ -134,8 +139,6 @@ class Preprocessor{
 			i++;
 		}
 
-		//@! debug trace result
-		trace(tokens.print());
 		return tokens;
 	}
 
@@ -241,53 +244,58 @@ class Preprocessor{
 		try{
 			//handle opening if
 			t = tokens[j];
-			switch directive = readDirectiveData(t.data){
-				case {title: 'if', content: content}:  //@!
-					level++;
-					throw Warn('#if directive is not yet supported', t); 
-					// openBlock(function() return evaluateExpr(expr)); 
-				case {title: 'ifdef', content: content}:
-					level++;
-					var macroName = readMacroName(content);
-					openBlock(function() return isMacroDefined(macroName));
-				case {title: 'ifndef', content: content}:
-					level++;
-					var macroName = readMacroName(content);
-					openBlock(function() return !isMacroDefined(macroName));
-				case directive: throw Warn('expected if-switch directive, got #${directive.title}', t);
-			}
-			lastTitle = directive.title;
-			//find and act on other if-switch statements
-			while(level > 0){
-				j = tokens.nextNonSkipTokenIndex(j, 1, TokenType.PREPROCESSOR_DIRECTIVE);//next preprocessor directive
-				t = tokens[j];
-				if(t == null) throw Warn('expecting #endif but reached end of file', t);
-
+			//catch so we can pass on with better line info
+			try{
 				switch directive = readDirectiveData(t.data){
-					case {title: 'if' | 'ifdef' | 'ifndef', content: _}:
+					case {title: 'if', content: content}:  //@!
 						level++;
-					case {title: 'else', content: _}:
-						if(level == 1){
-							if(lastTitle == 'else') throw Warn('#${directive.title} cannot follow #else', t);
-							closeBlock();
-							openBlock(function() return true);						
-						}
-					case {title: 'elif', content: content}: //@!
-						if(level == 1){
-							throw Warn('#elif directive is not yet supported', t);
-							if(lastTitle == 'else') throw Warn('#${directive.title} cannot follow #else', t);
-							closeBlock();						
-							// openBlock(function() return evaluateExpr(expr));
-						}
-					case {title: 'endif', content: _}:
-						level--;
-					case _:
+						throw '#if directive is not yet supported';
+						// openBlock(function() return evaluateExpr(expr)); 
+					case {title: 'ifdef', content: content}:
+						level++;
+						var macroName = readMacroName(content);
+						openBlock(function() return isMacroDefined(macroName));
+					case {title: 'ifndef', content: content}:
+						level++;
+						var macroName = readMacroName(content);
+						openBlock(function() return !isMacroDefined(macroName));
+					case directive: throw 'expected if-switch directive, got #${directive.title}';
 				}
-
 				lastTitle = directive.title;
+				//find and act on other if-switch statements
+				while(level > 0){
+					j = tokens.nextNonSkipTokenIndex(j, 1, TokenType.PREPROCESSOR_DIRECTIVE);//next preprocessor directive
+					t = tokens[j];
+					if(t == null) throw 'expecting #endif but reached end of file';
+
+					switch directive = readDirectiveData(t.data){
+						case {title: 'if' | 'ifdef' | 'ifndef', content: _}:
+							level++;
+						case {title: 'else', content: _}:
+							if(level == 1){
+								if(lastTitle == 'else') throw '#${directive.title} cannot follow #else';
+								closeBlock();
+								openBlock(function() return true);						
+							}
+						case {title: 'elif', content: content}: //@!
+							if(level == 1){
+								throw '#elif directive is not yet supported';
+								if(lastTitle == 'else') throw '#${directive.title} cannot follow #else';
+								closeBlock();						
+								// openBlock(function() return evaluateExpr(expr));
+							}
+						case {title: 'endif', content: _}:
+							level--;
+						case _:
+					}
+
+					lastTitle = directive.title;
+				}
+				//close the last block
+				closeBlock();
+			}catch(msg:String){
+				throw Warn(msg, t); //set line information to current token
 			}
-			//close the last block
-			closeBlock();
 
 			//if-switch extent = i -> j (inclusive of j)
 			end = j;
@@ -329,69 +337,6 @@ class Preprocessor{
 			//step back one token to allow the first new token to be preprocessed
 			Preprocessor.i--;
 		}
-	}
-
-	//the following functions are not allowed to alter the state machine directly
-
-	//MACRO_NAME(args)? content?
-	static function evaluateMacroDefinition(definitionString:String):PPMacro{
-		if(macroNameReg.match(definitionString)){
-			var macroName = macroNameReg.matched(1);
-			var macroContent = '';
-			var macroParameters = new Array<String>();
-
-			var nextChar = macroNameReg.matched(2);
-
-			var userMacro:PPMacro;
-
-			switch nextChar {
-				case '(': //function-like
-					//match and extract parameters
-					var parametersReg = ~/([^\)]*)\)/; //string between parentheses
-					var parameterReg = ~/^\s*(([a-z_]\w*)?)\s*(,|$)/i; //individual parameters
-					//(parameter name can be blank)
-					var matchedRightParen = parametersReg.match(macroNameReg.matchedRight());
-					if(matchedRightParen){
-						var parameterString = parametersReg.matched(1);
-						macroContent = parametersReg.matchedRight();
-
-						//extract parameters
-						var reachedLast = false;
-						while(!reachedLast){
-							if(parameterReg.match(parameterString)){
-								//found parameter
-								var parameterName = parameterReg.matched(1);
-								var parameterNextChar = parameterReg.matched(3);
-								macroParameters.push(parameterName);
-								//advance
-								parameterString = parameterReg.matchedRight();
-								reachedLast = parameterNextChar != ',';
-							}else{
-								throw 'invalid macro parameter';
-							}
-						}
-					}else{
-						throw 'unmatched parentheses';
-					}
-
-					//create macro object
-					userMacro = UserMacroFunction(StringTools.trim(macroContent), macroParameters);
-
-				default:  //object-like
-					macroContent = nextChar + macroNameReg.matchedRight();
-					macroContent = StringTools.trim(macroContent); //trim whitespace
-
-					//create macro object
-					userMacro = UserMacroObject(StringTools.trim(macroContent));
-			}
-
-			defineMacro(macroName, userMacro);
-			return userMacro;
-		}else{
-			throw 'invalid macro definition';
-		}
-
-		return null;
 	}
 
 	//Macro Definition Handling
@@ -460,7 +405,7 @@ class Preprocessor{
 		}
 	}
 
-	//Utils
+	//Preprocessor Language Utils
 	static function readDirectiveData(data:String):DirectiveData{
 		if(!directiveTitleReg.match(data)) throw 'invalid directive title';
 		var title = directiveTitleReg.matched(1); 
@@ -476,6 +421,67 @@ class Preprocessor{
 	static inline function readMacroName(data:String):String{
 		if(!macroNameReg.match(data)) throw 'invalid macro name';
 		return macroNameReg.matched(1);
+	}
+
+	//MACRO_NAME(args)? content?
+	static function evaluateMacroDefinition(definitionString:String):PPMacro{
+		if(macroNameReg.match(definitionString)){
+			var macroName = macroNameReg.matched(1);
+			var macroContent = '';
+			var macroParameters = new Array<String>();
+
+			var nextChar = macroNameReg.matched(2);
+
+			var userMacro:PPMacro;
+
+			switch nextChar {
+				case '(': //function-like
+					//match and extract parameters
+					var parametersReg = ~/([^\)]*)\)/; //string between parentheses
+					var parameterReg = ~/^\s*(([a-z_]\w*)?)\s*(,|$)/i; //individual parameters
+					//(parameter name can be blank)
+					var matchedRightParen = parametersReg.match(macroNameReg.matchedRight());
+					if(matchedRightParen){
+						var parameterString = parametersReg.matched(1);
+						macroContent = parametersReg.matchedRight();
+
+						//extract parameters
+						var reachedLast = false;
+						while(!reachedLast){
+							if(parameterReg.match(parameterString)){
+								//found parameter
+								var parameterName = parameterReg.matched(1);
+								var parameterNextChar = parameterReg.matched(3);
+								macroParameters.push(parameterName);
+								//advance
+								parameterString = parameterReg.matchedRight();
+								reachedLast = parameterNextChar != ',';
+							}else{
+								throw 'invalid macro parameter';
+							}
+						}
+					}else{
+						throw 'unmatched parentheses';
+					}
+
+					//create macro object
+					userMacro = UserMacroFunction(StringTools.trim(macroContent), macroParameters);
+
+				default:  //object-like
+					macroContent = nextChar + macroNameReg.matchedRight();
+					macroContent = StringTools.trim(macroContent); //trim whitespace
+
+					//create macro object
+					userMacro = UserMacroObject(StringTools.trim(macroContent));
+			}
+
+			defineMacro(macroName, userMacro);
+			return userMacro;
+		}else{
+			throw 'invalid macro definition';
+		}
+
+		return null;
 	}
 
 	//Custom restricted expression evaluation
@@ -796,7 +802,7 @@ class PPTokensHelper{
 		LOW_PRECISION,
 		BOOLCONSTANT,
 		RESERVED_KEYWORD,
-		TYPE_NAME
+		TYPE_NAME,
 		FIELD_SELECTION
 	];
 }
