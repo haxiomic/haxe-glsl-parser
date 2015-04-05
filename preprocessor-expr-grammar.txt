@@ -1,6 +1,13 @@
 //Grammar for preprocessor constant expressions
-//constant expression is root node
+//constant_expression is root node
 //- draft
+/* @! todo
+ * fully define 'defined' operator
+ * remove XOR_OP
+ */
+
+root: 
+    constant_expression
 
 primary_expression:
 	INTCONSTANT

@@ -1,8 +1,13 @@
 /*
 	@! Todo
+	- Better throwing to pin down the correct token
+	- Catch and throw errors
 
 	#Notes
+	Gentle: Preprocessor only alters source if it's sure it's correct
+
 	Preprocessor syntax is handled by regex (is simple enough to allow this)
+
 	Unresolveable macros should result in tokens being left unchanged
 	-> If a directive can be completely handled, it is removed from the token array, otherwise it is left untouched
 
@@ -93,10 +98,9 @@ class Preprocessor{
 	static var userDefinedMacros:Map<String, PPMacro>;
 
 	static public function process(input:String):String{
-		//make tokens available to other functions within class
-		tokens = PPTokenizer.tokenize(input);
 
 		//init state machine variables
+		tokens = PPTokenizer.tokenize(input);
 		i = 0;
 		userDefinedMacros = new Map<String, PPMacro>();
 		warnings = [];
@@ -104,19 +108,17 @@ class Preprocessor{
 		version = 100; //default version number
 		pragmas = [];
 
+		var token:PPToken;
 		while(i < tokens.length){
-			var token = tokens[i];
-
+			//@! catch error and call error
+			token = tokens[i];
 			switch token.type {
 				case PREPROCESSOR_DIRECTIVE:
-					try{ processDirective(tokens, i); }catch(e:String){ warn(e, token); }
+					try processDirective()
+					catch(e:String) warn(e, token);
 				case IDENTIFIER:
-					try{ 
-						if(processIdentifier(tokens, i) != null){ //identifier processed
-							//step back one token to allow the first new token to be preprocessed
-							i--;
-						}
-					}catch(e:String){ warn(e, token); }
+					try processIdentifier()
+					catch(e:String) warn(e, token);
 				default:
 			}
 
@@ -128,139 +130,41 @@ class Preprocessor{
 		return tokens.print();
 	}
 
-	static function getMacro(id:String):PPMacro{
-		var ppMacro:PPMacro;
-		if((ppMacro = builtinMacros.get(id)) != null) return ppMacro;
-		if((ppMacro = userDefinedMacros.get(id)) != null) return ppMacro;
-		return null;
-	}
+	//process functions can alter the state machine directly
 
-	static function defineMacro(id:String, ppMacro:PPMacro){
-		var existingMacro = getMacro(id);
-		switch existingMacro {
-			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _) | UnresolveableMacro: throw 'redefinition of predefined macro';
-			case UserMacroObject(_), UserMacroFunction(_, _): throw 'macro redefinition';
-			case null:
-		}
-
-		if(~/^__/.match(id)) throw 'macro name is reserved';
-		if(ppMacro == null) throw 'null macro definitions are not allowed';
-
-		userDefinedMacros.set(id, ppMacro);
-
-		//check for recursion and undefine macro if discovered
-		switch ppMacro{
-			case UserMacroObject(content), UserMacroFunction(content, _):
-				var macroTokens = PPTokenizer.tokenize(content);
-				var j = 0;
-				//expand macros and search for ppMacro
-				while(j < macroTokens.length){
-					if(macroTokens[j].type.equals(PPTokenType.IDENTIFIER)){
-						var processedPPMacro:PPMacro = null;
-						try{
-							processedPPMacro = processIdentifier(macroTokens, j);
-						}catch(e:Dynamic){}//supress processIdentifier warnings
-
-						if(processedPPMacro != null) j--;//macro expanded, step back once to process new tokens
-						if(ppMacro.equals(processedPPMacro)){
-							//macro contains itself - remove and throw
-							undefineObject(id);
-							throw 'macro contains recursion';
-						}
-					}
-					j++;
-				}
-
-			default:
-		}
-	}
-
-	static function undefineObject(id:String){
-		var existingMacro = getMacro(id);
-		switch existingMacro {
-			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _) | UnresolveableMacro: throw 'cannot undefine predefined macro';
-			case UserMacroObject(_) | UserMacroFunction(_, _): userDefinedMacros.remove(id);
-			case null:
-		}
-	}
-
-	static function isMacroDefined(id:String):Bool{
-		return getMacro(id) != null;
-	}
-
-	static function processDirective(tokens:Array<PPToken>, i:Int){
+	static function processDirective(){
 		var token = tokens[i];
 
-		inline function getDirectiveTitle(t:PPToken){
-			directiveTitleReg.match(t.data);
-			return directiveTitleReg.matched(1);
-		}
+		var directive = readDirectiveData(token.data);
 
-		var directiveTitle = getDirectiveTitle(token);
-		var directiveContent = directiveTitleReg.matchedRight();
-		directiveContent = StringTools.trim(directiveContent);
-		//remove newline overrun character '\'
-		directiveContent = StringTools.replace(directiveContent, '\\\n', '\n');
-
-		switch directiveTitle {
+		switch directive.title {
 			case '':
 			case 'define':
 				//define macro
-				try{
-					evaluateMacroDefinition(directiveContent);
-					tokens.deleteTokens(i);
-				}catch(e:String){
-					throw e;
-				}
+				evaluateMacroDefinition(directive.content);
+				tokens.deleteTokens(i);
 
 			case 'undef':
-				if(macroNameReg.match(directiveContent)){
-					var macroName = macroNameReg.matched(1);
-					undefineObject(macroName);
-					tokens.deleteTokens(i);
-				}else{
-					throw 'invalid #undef syntax';
-				}
+				var macroName = readMacroName(directive.content);
+				undefineMacro(macroName);
+				tokens.deleteTokens(i);
 
-			case 'if':        // @! todo
-				//@! parse with glsl parser and evaluate with PP evaluator
-				throw 'directive #if is not yet supported';
-
-			case 'ifdef':     // @! todo
-				throw 'directive #ifdef is not yet supported';
-				//all regions of an if sequence are mutually exclusive
-				//all ifs must eventually reach an endif
-
-				//first identify regions
-				//identify regions and their associated tests
-
-				if(macroNameReg.match(directiveContent)){
-					var macroName = macroNameReg.matched(1);
-
-					var testResult = isMacroDefined(macroName);
-					//@! when evaluating tests, if a test cannot be evaluated because of an UnresolveableMacro, no tokens should be removed
-					//throw that the macro is not available at compile-time
-
-				}else{
-					throw 'invalid #ifdef syntax';
-				}
-
-			case 'ifndef':    // @! todo
-				throw 'directive #ifndef is not yet supported';
+			case 'if', 'ifdef', 'ifndef':
+				processIfSwitch();
 
 			case 'else', 'elif', 'endif':
-				throw 'unexpected #$directiveTitle';
+				throw 'unexpected #${directive.title}';
 
 			case 'error':
-				error('$directiveContent');
+				throw '${directive.content}';
 				tokens.deleteTokens(i);
 
 			case 'pragma':
-				if(~/^\s*STDGL(\s+|$)/.match(directiveContent))
+				if(~/^\s*STDGL(\s+|$)/.match(directive.content))
 					throw 'pragmas beginning with STDGL are reserved';
 
-				pragmas.push(directiveContent);
-				tokens.deleteTokens(i);
+				pragmas.push(directive.content);
+				//pragmas should not be removed (since the parser is preprocessor friendly)
 
 			case 'extension': // @! todo
 				throw 'directive #extension is not yet supported';
@@ -270,17 +174,17 @@ class Preprocessor{
 				if(tokens.nextNonSkipToken(i, -1) == null){
 					//extract version number with regex (strictly a string of digits)
 					var versionNumRegex = ~/^(\d+)$/;
-					var matched = versionNumRegex.match(directiveContent);
+					var matched = versionNumRegex.match(directive.content);
 					if(matched){
 						var numStr = versionNumRegex.matched(1);
 						version = Std.parseInt(versionNumRegex.matched(1));
 						tokens.deleteTokens(i);
 					}else{
-						switch directiveContent {
+						switch directive.content {
 							case '':
 								throw 'version number required';
 							default:
-								throw 'invalid version number \'$directiveContent\'';
+								throw 'invalid version number \'${directive.content}\'';
 						}
 					}
 				}else{
@@ -289,13 +193,137 @@ class Preprocessor{
 
 			case 'line':      // @! todo
 				throw 'directive #line is not yet supported';
+				//change all the following line's tokens line numbers to specified line number
 
 			default:
-				throw 'unknown directive #\'$directiveTitle\'';
+				throw 'unknown directive #\'${directive.title}\'';
 		}
 	}
 
-	static function processIdentifier(tokens:Array<PPToken>, i:Int, ?overrideMap:Map<String, PPMacro>):PPMacro{
+	static function processIfSwitch(){
+		var newTokens:Array<PPToken> = [];
+
+		/*/ @!
+		 *  when an #if expression's macros are expanded, the #if should be modified with the fully expanded form
+		 *  so that if the switch cannot be resolved, the expression only references unresolved macros
+		 *  resolved macros will have been removed!
+		/*/
+
+		var start = i, end = null;
+		var j = i;
+		var t:PPToken;
+		var level = 0;//(level = 0 is outside statement)
+		var directive:DirectiveData;
+		var lastTitle:String;
+
+		var testBlocks:Array<{testFunc:Void->Bool, start:Int, end:Null<Int>}> = [];
+
+		inline function openBlock(testFunc:Void->Bool){
+			testBlocks.push({
+				testFunc: testFunc,
+				start: j + 1,
+				end: null
+			});
+		}
+
+		inline function closeBlock(){
+			testBlocks[testBlocks.length - 1].end = j - 1;
+		}
+
+		try{
+			//handle opening if
+			switch directive = readDirectiveData(tokens[j].data){
+				case {title: 'if', content: content}: 
+					level++;
+					throw '#if directive is not yet supported';
+					// openBlock(function() return evaluateExpr(expr));
+				case {title: 'ifdef', content: content}:
+					level++;
+					var macroName = readMacroName(content);
+					openBlock(function() return isMacroDefined(macroName));
+				case {title: 'ifndef', content: content}:
+					level++;
+					var macroName = readMacroName(content);
+					openBlock(function() return !isMacroDefined(macroName));
+				case directive: throw 'expected if-switch directive, got #${directive.title}';
+			}
+			lastTitle = directive.title;
+			//find and act on other if-switch statements
+			while(level > 0){
+				j = tokens.nextNonSkipTokenIndex(j, 1, PPTokenType.PREPROCESSOR_DIRECTIVE);//next preprocessor directive
+				t = tokens[j];
+				if(t == null) throw 'expecting #endif but reached end of file';
+
+				switch directive = readDirectiveData(t.data){
+					case {title: 'if' | 'ifdef' | 'ifndef', content: _}:
+						level++;
+					case {title: 'else', content: _}:
+						if(level == 1){
+							if(lastTitle == 'else') throw '#${directive.title} cannot follow #else';
+							closeBlock();
+							openBlock(function() return true);						
+						}
+					case {title: 'elif', content: content}:
+						if(level == 1){
+							throw '#elif directive is not yet supported';
+							if(lastTitle == 'else') throw '#${directive.title} cannot follow #else';
+							closeBlock();						
+							// openBlock(function() return evaluateExpr(expr));
+						}
+					case {title: 'endif', content: _}:
+						level--;
+					case _:
+				}
+
+				lastTitle = directive.title;
+			}
+			//close the last block
+			closeBlock();
+
+			//if-switch extent = i -> j (inclusive of j)
+			end = j;
+
+			//select block by first testFunc returning true
+			for(b in testBlocks){
+				if(b.testFunc()){
+					newTokens = tokens.slice(b.start, b.end);
+					break;
+				}
+			}
+			//remove entire if-switch
+			tokens.deleteTokens(start, end - start + 1);
+			//insert new tokens
+			tokens.insertTokens(start, newTokens);
+			//step back 1 since tokens has changed
+			Preprocessor.i = start - 1;
+
+		}catch(e:Dynamic){
+			//@! not working !
+			//if-switch could not be handled
+			//skip to end of if-switch
+			while(level > 0){
+				j = tokens.nextNonSkipTokenIndex(j, 1, PPTokenType.PREPROCESSOR_DIRECTIVE);
+				t = tokens[j];
+				if(t == null) throw '2 expecting #endif but reached end of file';
+				switch readDirectiveData(t.data).title{
+					case 'if', 'ifdef', 'ifndef': level++;
+					case 'endif': level--;
+				}
+			}
+			//set i to end of if-switch
+			Preprocessor.i = j;
+			throw e;
+		}
+	}
+
+	static function processIdentifier(){
+		if(expandIdentifier(tokens, i) != null){ //identifier processed
+			//step back one token to allow the first new token to be preprocessed
+			Preprocessor.i--;
+		}
+	}
+
+	static function expandIdentifier(tokens:Array<PPToken>, i:Int, ?overrideMap:Map<String, PPMacro>):PPMacro{
 		var token = tokens[i];
 		//could be an operator or a macro
 		var ppMacro = overrideMap == null ? getMacro(token.data) : overrideMap.get(token.data);
@@ -307,7 +335,7 @@ class Preprocessor{
 			}, function(error:String){
 				throw '$error';
 			});
-			//@! correct line information, approximate (everything following is now incorrect)
+			//@! line information needs to be corrected, following is approximate:
 			for(t in newTokens){
 				t.line = token.line;
 				t.column = token.column;
@@ -350,7 +378,7 @@ class Preprocessor{
 					//replace IDENTIFIERS with function parameters
 					for(j in 0...newTokens.length){
 						if(newTokens[j].type.equals(PPTokenType.IDENTIFIER)){
-							processIdentifier(newTokens, j, parameterMap);
+							expandIdentifier(newTokens, j, parameterMap);
 						}
 					}
 
@@ -408,7 +436,7 @@ class Preprocessor{
 		return null;
 	}
 
-
+	//MACRO_NAME(args)? content?
 	static function evaluateMacroDefinition(definitionString:String):PPMacro{
 		if(macroNameReg.match(definitionString)){
 			var macroName = macroNameReg.matched(1);
@@ -469,7 +497,89 @@ class Preprocessor{
 		return null;
 	}
 
+	//Macro Definition Handling
+	static function getMacro(id:String):PPMacro{
+		var ppMacro:PPMacro;
+		if((ppMacro = builtinMacros.get(id)) != null) return ppMacro;
+		if((ppMacro = userDefinedMacros.get(id)) != null) return ppMacro;
+		return null;
+	}
+
+	static function defineMacro(id:String, ppMacro:PPMacro){
+		var existingMacro = getMacro(id);
+		switch existingMacro {
+			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _) | UnresolveableMacro: throw 'redefinition of predefined macro';
+			case UserMacroObject(_), UserMacroFunction(_, _): throw 'macro redefinition';
+			case null:
+		}
+
+		if(~/^__/.match(id)) throw 'macro name is reserved';
+		if(ppMacro == null) throw 'null macro definitions are not allowed';
+
+		userDefinedMacros.set(id, ppMacro);
+
+		//check for recursion and undefine macro if discovered
+		switch ppMacro{
+			case UserMacroObject(content), UserMacroFunction(content, _):
+				var macroTokens = PPTokenizer.tokenize(content);
+				var j = 0;
+				//expand macros and search for ppMacro
+				while(j < macroTokens.length){
+					if(macroTokens[j].type.equals(PPTokenType.IDENTIFIER)){
+						var processedPPMacro:PPMacro = null;
+						try{
+							processedPPMacro = expandIdentifier(macroTokens, j);
+						}catch(e:Dynamic){}//supress expandIdentifier warnings
+
+						if(processedPPMacro != null) j--;//macro expanded, step back once to process new tokens
+						if(ppMacro.equals(processedPPMacro)){
+							//macro contains itself - remove and throw
+							undefineMacro(id);
+							throw 'macro contains recursion';
+						}
+					}
+					j++;
+				}
+
+			default:
+		}
+	}
+
+	static function undefineMacro(id:String){
+		var existingMacro = getMacro(id);
+		switch existingMacro {
+			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _) | UnresolveableMacro: throw 'cannot undefine predefined macro';
+			case UserMacroObject(_) | UserMacroFunction(_, _): userDefinedMacros.remove(id);
+			case null:
+		}
+	}
+
+	static function isMacroDefined(id:String):Bool{
+		var m = getMacro(id);
+		switch m{
+			case UnresolveableMacro: throw 'cannot resolve macro definition';
+			case null: return false;
+			case _: return true;
+		}
+	}
+
 	//Utils
+	static function readDirectiveData(data:String):DirectiveData{
+		if(!directiveTitleReg.match(data)) throw 'invalid directive title';
+		var title = directiveTitleReg.matched(1); 
+		var content = StringTools.trim(directiveTitleReg.matchedRight());
+		//remove newline overrun character '\'
+		content = StringTools.replace(content, '\\\n', '\n');
+		return {
+			title: title, 
+			content: content
+		}
+	}
+
+	static inline function readMacroName(data:String):String{
+		if(!macroNameReg.match(data)) throw 'invalid macro name';
+		return macroNameReg.matched(1);
+	}
 
 	//Custom restricted expression evaluation
 	static function evaluateExpr(expr:Expression){//@! todo
@@ -512,6 +622,11 @@ class Preprocessor{
 	//Preprocessor Data
 	static var directiveTitleReg = ~/^#\s*([^\s]*)/;
 	static var macroNameReg = ~/^([a-z_]\w*)([^\w]|$)/i;
+}
+
+typedef DirectiveData = {
+	var title:String;
+	var content:String;
 }
 
 typedef MacroFunctionCall = {
@@ -585,20 +700,8 @@ class PPTokensHelper{
 
 	//returns the token n tokens away from token start, ignoring skippables. Supports negative n
 	static public function nextNonSkipToken(tokens:Array<PPToken>, start:Int, n:Int = 1, ?requiredType:PPTokenType):PPToken{
-		var direction = n >= 0 ? 1 : -1;
-		var j = start;
-		var m = Math.abs(n);
-		var t:PPToken;
-		while(m > 0){
-			j += direction;//advance token
-			t = tokens[j];
-			if(t == null) break;
-			//continue for skip over
-			if(PPTokenizer.skippableTypes.indexOf(t.type) != -1) continue;
-			if(requiredType != null && !t.type.equals(requiredType)) continue;
-			m--;
-		}
-		return t;
+		var j = nextNonSkipTokenIndex(tokens, start, n, requiredType);
+		return j != -1 ? tokens[j] : null;
 	}
 
 	static public function nextNonSkipTokenIndex(tokens:Array<PPToken>, start:Int, n:Int = 1, ?requiredType:PPTokenType):Int{
@@ -611,8 +714,8 @@ class PPTokensHelper{
 			t = tokens[j];
 			if(t == null) return -1;
 			//continue for skip over
-			if(PPTokenizer.skippableTypes.indexOf(t.type) != -1) continue;
 			if(requiredType != null && !t.type.equals(requiredType)) continue;
+			if(PPTokenizer.skippableTypes.indexOf(t.type) != -1) continue;
 			m--;
 		}
 		return j;
@@ -632,9 +735,9 @@ class PPTokensHelper{
 /*
 	Preprocessor Tokenizer
 	
-	for simplicity it uses glsl tokenizer but remaps special tokens
-
+	for now, it uses glsl tokenizer but remaps special tokens
 	@! how to handle 'defined' operator?
+	@! in the future this should be a custom tokenizer
 */
 typedef PPToken = {
 	var type:PPTokenType;

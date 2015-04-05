@@ -6,7 +6,26 @@
 
 - A constant expression includes all basic types and user define types! So ```uniform vec2 x[NewThing(3).len];``` is valid as is something awful like. The result should be a basic type
 
+
 #Notes
+
+Preprocessor ifs
+#ifdef A
+1
+#elif B == 12
+2
+#elif B == 3
+3
+#else
+4
+#endif
+
+{isDefined(A), [1]} , {eval(B == 12), [2]} , {eval(B == 3), [3]} , {!eval(B == 3), [3]}
+
+
+
+
+
 ````
 const struct NewThing{
   int len; 
