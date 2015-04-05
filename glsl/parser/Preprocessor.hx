@@ -1,7 +1,7 @@
 /*
 	@! Todo
-	- Better throwing to pin down the correct token
-	- Catch and throw errors
+	- Preprocessor tokens should replace with a newline whitespace not delete (to preserve line numbers)
+	 -> multi-line directives should be accounted for
 
 	#Notes
 	Gentle: Preprocessor only alters source if it's sure it's correct
@@ -108,17 +108,24 @@ class Preprocessor{
 		version = 100; //default version number
 		pragmas = [];
 
+		//preprocessor loop
+		inline function tryProcess(process:Void->Void){
+			try process()
+			catch(e:PPError) switch e{
+				case Warn(msg, info): warn(msg, info);
+				case Error(msg, info): error(msg, info);
+			}
+			//if no position info is provided, assume error concerns the current token
+			catch(msg:String) warn(msg, tokens[i]);
+		}
+
 		var token:PPToken;
 		while(i < tokens.length){
-			//@! catch error and call error
-			token = tokens[i];
-			switch token.type {
+			switch tokens[i].type {
 				case PREPROCESSOR_DIRECTIVE:
-					try processDirective()
-					catch(e:String) warn(e, token);
+					tryProcess(processDirective);
 				case IDENTIFIER:
-					try processIdentifier()
-					catch(e:String) warn(e, token);
+					tryProcess(processIdentifier);
 				default:
 			}
 
@@ -133,9 +140,8 @@ class Preprocessor{
 	//process functions can alter the state machine directly
 
 	static function processDirective(){
-		var token = tokens[i];
-
-		var directive = readDirectiveData(token.data);
+		var t = tokens[i];
+		var directive = readDirectiveData(t.data);
 
 		switch directive.title {
 			case '':
@@ -156,7 +162,7 @@ class Preprocessor{
 				throw 'unexpected #${directive.title}';
 
 			case 'error':
-				throw '${directive.content}';
+				throw Error('${directive.content}', t);
 				tokens.deleteTokens(i);
 
 			case 'pragma':
@@ -232,11 +238,12 @@ class Preprocessor{
 
 		try{
 			//handle opening if
-			switch directive = readDirectiveData(tokens[j].data){
-				case {title: 'if', content: content}: 
+			t = tokens[j];
+			switch directive = readDirectiveData(t.data){
+				case {title: 'if', content: content}:  //@!
 					level++;
-					throw '#if directive is not yet supported';
-					// openBlock(function() return evaluateExpr(expr));
+					throw Warn('#if directive is not yet supported', t); 
+					// openBlock(function() return evaluateExpr(expr)); 
 				case {title: 'ifdef', content: content}:
 					level++;
 					var macroName = readMacroName(content);
@@ -245,28 +252,28 @@ class Preprocessor{
 					level++;
 					var macroName = readMacroName(content);
 					openBlock(function() return !isMacroDefined(macroName));
-				case directive: throw 'expected if-switch directive, got #${directive.title}';
+				case directive: throw Warn('expected if-switch directive, got #${directive.title}', t);
 			}
 			lastTitle = directive.title;
 			//find and act on other if-switch statements
 			while(level > 0){
 				j = tokens.nextNonSkipTokenIndex(j, 1, PPTokenType.PREPROCESSOR_DIRECTIVE);//next preprocessor directive
 				t = tokens[j];
-				if(t == null) throw 'expecting #endif but reached end of file';
+				if(t == null) throw Warn('expecting #endif but reached end of file', t);
 
 				switch directive = readDirectiveData(t.data){
 					case {title: 'if' | 'ifdef' | 'ifndef', content: _}:
 						level++;
 					case {title: 'else', content: _}:
 						if(level == 1){
-							if(lastTitle == 'else') throw '#${directive.title} cannot follow #else';
+							if(lastTitle == 'else') throw Warn('#${directive.title} cannot follow #else', t);
 							closeBlock();
 							openBlock(function() return true);						
 						}
-					case {title: 'elif', content: content}:
+					case {title: 'elif', content: content}: //@!
 						if(level == 1){
-							throw '#elif directive is not yet supported';
-							if(lastTitle == 'else') throw '#${directive.title} cannot follow #else';
+							throw Warn('#elif directive is not yet supported', t);
+							if(lastTitle == 'else') throw Warn('#${directive.title} cannot follow #else', t);
 							closeBlock();						
 							// openBlock(function() return evaluateExpr(expr));
 						}
@@ -294,23 +301,22 @@ class Preprocessor{
 			tokens.deleteTokens(start, end - start + 1);
 			//insert new tokens
 			tokens.insertTokens(start, newTokens);
-			//step back 1 since tokens has changed
+			//step back index since tokens have changed
 			Preprocessor.i = start - 1;
 
 		}catch(e:Dynamic){
-			//@! not working !
 			//if-switch could not be handled
 			//skip to end of if-switch
 			while(level > 0){
 				j = tokens.nextNonSkipTokenIndex(j, 1, PPTokenType.PREPROCESSOR_DIRECTIVE);
 				t = tokens[j];
-				if(t == null) throw '2 expecting #endif but reached end of file';
+				if(t == null) throw Warn('expecting #endif but reached end of file', tokens[start]);
 				switch readDirectiveData(t.data).title{
 					case 'if', 'ifdef', 'ifndef': level++;
 					case 'endif': level--;
 				}
 			}
-			//set i to end of if-switch
+			//set index to end of if-switch
 			Preprocessor.i = j;
 			throw e;
 		}
@@ -389,7 +395,7 @@ class Preprocessor{
 
 					return ppMacro;
 
-				}catch(e:String){
+				}catch(e:Dynamic){
 					//identifier isn't a function call; ignore
 				}
 			case BuiltinMacroObject(func):
@@ -422,7 +428,7 @@ class Preprocessor{
 
 					return ppMacro;
 
-				}catch(e:String){
+				}catch(e:Dynamic){
 					//identifier isn't a function call; ignore
 				}
 
@@ -636,12 +642,17 @@ typedef MacroFunctionCall = {
 	var len:Int;
 }
 
-enum PPMacro{//@!
+enum PPMacro{
 	UserMacroObject(content:String);
 	UserMacroFunction(content:String, parameters:Array<String>);
 	BuiltinMacroObject(func:Void -> String);//function():Array<PPToken>
 	BuiltinMacroFunction(func:Array<Array<PPToken>> -> String, parameterCount:Int);//function(args):Array<PPToken>
 	UnresolveableMacro; 
+}
+
+enum PPError{
+	Warn(msg:String, info:Dynamic);
+	Error(msg:String, info:Dynamic);
 }
 
 class PPTokensHelper{
