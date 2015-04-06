@@ -40,18 +40,18 @@ class TypeSpecifier extends Node{
 }
 
 class StructSpecifier extends TypeSpecifier{
-	var structDeclarations:StructDeclarationList;
+	var fieldDeclarations:StructFieldDeclarationList;
 	var name:String;
-	function new(name:String, structDeclarations:StructDeclarationList){
+	function new(name:String, fieldDeclarations:StructFieldDeclarationList){
 		this.name = name;
-		this.structDeclarations = structDeclarations;
+		this.fieldDeclarations = fieldDeclarations;
 		super(USER_TYPE(name));
 	}
 }
 
-typedef StructDeclarationList = Array<StructDeclaration>;
+typedef StructFieldDeclarationList = Array<StructFieldDeclaration>;
 
-class StructDeclaration extends Node{ //@! extend Declaration? Is global meaningful here?
+class StructFieldDeclaration extends Node{ //@! extend Declaration? Is global meaningful here?
 	var typeSpecifier:TypeSpecifier;
 	var declarators:StructDeclaratorList;
 	function new(typeSpecifier:TypeSpecifier, declarators:StructDeclaratorList){
@@ -491,7 +491,7 @@ enum NodeEnum{
 	RootNode(n:Root);
 	TypeSpecifierNode(n:TypeSpecifier);
 	StructSpecifierNode(n:StructSpecifier);
-	StructDeclarationNode(n:StructDeclaration);
+	StructFieldDeclarationNode(n:StructFieldDeclaration);
 	StructDeclaratorNode(n:StructDeclarator);
 	ExpressionNode(n:Expression);
 	IdentifierNode(n:Identifier);
@@ -532,7 +532,7 @@ class NodeEnumHelper{
 			case TClass(Root)                            : NodeEnum.RootNode(untyped n);
 			case TClass(TypeSpecifier)                   : NodeEnum.TypeSpecifierNode(untyped n);
 			case TClass(StructSpecifier)                 : NodeEnum.StructSpecifierNode(untyped n);
-			case TClass(StructDeclaration)               : NodeEnum.StructDeclarationNode(untyped n);
+			case TClass(StructFieldDeclaration)          : NodeEnum.StructFieldDeclarationNode(untyped n);
 			case TClass(StructDeclarator)                : NodeEnum.StructDeclaratorNode(untyped n);
 			case TClass(Expression)                      : NodeEnum.ExpressionNode(untyped n);
 			case TClass(Identifier)                      : NodeEnum.IdentifierNode(untyped n);

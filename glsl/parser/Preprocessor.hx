@@ -83,7 +83,7 @@ import glsl.SyntaxTree;
 import glsl.parser.Tokenizer;
 
 using Preprocessor.PPTokensHelper;
-using glsl.printer.Helper;
+using glsl.printer.TokenHelper;
 
 class Preprocessor{
 

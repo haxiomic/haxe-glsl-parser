@@ -6,7 +6,6 @@ import glsl.parser.Tokenizer;
 import js.Browser;
 import js.html.DOMElement;
 
-
 class Main{
 	var jsonContainer:DOMElement;
 	var messagesElement:DOMElement;
@@ -45,8 +44,6 @@ class Main{
 		try{
 			var tokens = glsl.parser.Tokenizer.tokenize(input);
 			warnings = warnings.concat(Tokenizer.warnings);
-
-			trace(glsl.printer.Helper.TokenArrayPrinter.print(tokens));
 			
 			tokens = glsl.parser.Preprocessor.process(tokens);
 			warnings = warnings.concat(Preprocessor.warnings);
@@ -63,6 +60,9 @@ class Main{
 			for(v in globals.variables){
 				trace('${v.name} = ${v.value}');
 			}
+
+			trace(' - printed -');
+			trace(glsl.printer.SyntaxTreeHelper.NodePrinter.print(ast));
 
 		}catch(e:Dynamic){
 			warnings = warnings.concat([e]);

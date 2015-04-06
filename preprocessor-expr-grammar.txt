@@ -1,10 +1,12 @@
-//Grammar for preprocessor constant expressions
-//constant_expression is root node
-//- draft
-/* @! todo
- * fully define 'defined' operator
- * remove XOR_OP
- */
+/*/ Grammar for preprocessor constant expressions
+ *
+ *  constant_expression is root node
+ *  - draft
+ * 
+ *  @! todo
+ *  fully define 'defined' operator
+ *  remove XOR_OP
+/*/
 
 root: 
     constant_expression

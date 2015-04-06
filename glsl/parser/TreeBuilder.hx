@@ -242,7 +242,7 @@ class TreeBuilder{
 			case 159: return new StructSpecifier(null, cast a(3)); //struct_specifier ::= STRUCT LEFT_BRACE struct_declaration_list RIGHT_BRACE
 			case 160: return [n(1)]; //struct_declaration_list ::= struct_declaration
 			case 161: a(1).push(n(2)); return s(1); //struct_declaration_list ::= struct_declaration_list struct_declaration
-			case 162: return new StructDeclaration(cast n(1), cast a(2)); //struct_declaration ::= type_specifier struct_declarator_list SEMICOLON
+			case 162: return new StructFieldDeclaration(cast n(1), cast a(2)); //struct_declaration ::= type_specifier struct_declarator_list SEMICOLON
 			case 163: return [n(1)]; //struct_declarator_list ::= struct_declarator
 			case 164: a(1).push(n(3)); return s(1); //struct_declarator_list ::= struct_declarator_list COMMA struct_declarator
 			case 165: return new StructDeclarator(t(1).data); //struct_declarator ::= IDENTIFIER

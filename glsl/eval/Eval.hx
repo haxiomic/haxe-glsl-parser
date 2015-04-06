@@ -181,8 +181,8 @@ class Eval{
 		//convert struct declarations to definition's fields
 		var fields = new Array<VariableDefinition>();
 
-		for(i in 0...specifier.structDeclarations.length){
-			var d = specifier.structDeclarations[i];
+		for(i in 0...specifier.fieldDeclarations.length){
+			var d = specifier.fieldDeclarations[i];
 			var typeSpec = d.typeSpecifier;
 
 			for(j in 0...d.declarators.length){
