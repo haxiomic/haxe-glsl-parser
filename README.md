@@ -11,7 +11,8 @@ Supports all platforms available to the [haxe](haxe.org) compiler (notably JavaS
 
 ##Project Status:
 ###Complete
-- Parser 
+- Parser
+- Pretty Printer and Minifier
 
 ###In progress
 - Evaluator
