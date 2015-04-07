@@ -61,8 +61,10 @@ class Main{
 				trace('${v.name} = ${v.value}');
 			}
 
-			trace(' - printed -');
-			trace(glsl.printer.SyntaxTreeHelper.NodePrinter.print(ast));
+			trace(' - Pretty Print -');
+			trace(glsl.printer.SyntaxTreeHelper.NodePrinter.print(ast, '+'));
+			trace(' - Plain Print -');
+			trace(glsl.printer.SyntaxTreeHelper.NodePrinter.print(ast, null));
 
 		}catch(e:Dynamic){
 			warnings = warnings.concat([e]);

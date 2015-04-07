@@ -527,44 +527,44 @@ enum NodeEnum{
 }
 
 class NodeEnumHelper{
-	static public function toEnum(n:Node){
+	static public function toEnum(n:Node):NodeEnum{
 		return switch (Type.typeof(n)) {
-			case TClass(Root)                            : NodeEnum.RootNode(untyped n);
-			case TClass(TypeSpecifier)                   : NodeEnum.TypeSpecifierNode(untyped n);
-			case TClass(StructSpecifier)                 : NodeEnum.StructSpecifierNode(untyped n);
-			case TClass(StructFieldDeclaration)          : NodeEnum.StructFieldDeclarationNode(untyped n);
-			case TClass(StructDeclarator)                : NodeEnum.StructDeclaratorNode(untyped n);
-			case TClass(Expression)                      : NodeEnum.ExpressionNode(untyped n);
-			case TClass(Identifier)                      : NodeEnum.IdentifierNode(untyped n);
-			case TClass(Primitive)                       : NodeEnum.PrimitiveNode(untyped n);
-			case TClass(BinaryExpression)                : NodeEnum.BinaryExpressionNode(untyped n);
-			case TClass(UnaryExpression)                 : NodeEnum.UnaryExpressionNode(untyped n);
-			case TClass(SequenceExpression)              : NodeEnum.SequenceExpressionNode(untyped n);
-			case TClass(ConditionalExpression)           : NodeEnum.ConditionalExpressionNode(untyped n);
-			case TClass(AssignmentExpression)            : NodeEnum.AssignmentExpressionNode(untyped n);
-			case TClass(FieldSelectionExpression)        : NodeEnum.FieldSelectionExpressionNode(untyped n);
-			case TClass(ArrayElementSelectionExpression) : NodeEnum.ArrayElementSelectionExpressionNode(untyped n);
-			case TClass(FunctionCall)                    : NodeEnum.FunctionCallNode(untyped n);
-			case TClass(Constructor)                     : NodeEnum.ConstructorNode(untyped n);
-			case TClass(Declaration)                     : NodeEnum.DeclarationNode(untyped n);
-			case TClass(PrecisionDeclaration)            : NodeEnum.PrecisionDeclarationNode(untyped n);
-			case TClass(VariableDeclaration)             : NodeEnum.VariableDeclarationNode(untyped n);
-			case TClass(Declarator)                      : NodeEnum.DeclaratorNode(untyped n);
-			case TClass(ParameterDeclaration)            : NodeEnum.ParameterDeclarationNode(untyped n);
-			case TClass(FunctionDefinition)              : NodeEnum.FunctionDefinitionNode(untyped n);
-			case TClass(FunctionPrototype)               : NodeEnum.FunctionPrototypeNode(untyped n);
-			case TClass(FunctionHeader)                  : NodeEnum.FunctionHeaderNode(untyped n);
-			case TClass(Statement)                       : NodeEnum.StatementNode(untyped n);
-			case TClass(CompoundStatement)               : NodeEnum.CompoundStatementNode(untyped n);
-			case TClass(DeclarationStatement)            : NodeEnum.DeclarationStatementNode(untyped n);
-			case TClass(ExpressionStatement)             : NodeEnum.ExpressionStatementNode(untyped n);
-			case TClass(IterationStatement)              : NodeEnum.IterationStatementNode(untyped n);
-			case TClass(WhileStatement)                  : NodeEnum.WhileStatementNode(untyped n);
-			case TClass(DoWhileStatement)                : NodeEnum.DoWhileStatementNode(untyped n);
-			case TClass(ForStatement)                    : NodeEnum.ForStatementNode(untyped n);
-			case TClass(IfStatement)                     : NodeEnum.IfStatementNode(untyped n);
-			case TClass(JumpStatement)                   : NodeEnum.JumpStatementNode(untyped n);
-			case TClass(ReturnStatement)                 : NodeEnum.ReturnStatementNode(untyped n);
+			case TClass(Root)                            : RootNode(untyped n);
+			case TClass(TypeSpecifier)                   : TypeSpecifierNode(untyped n);
+			case TClass(StructSpecifier)                 : StructSpecifierNode(untyped n);
+			case TClass(StructFieldDeclaration)          : StructFieldDeclarationNode(untyped n);
+			case TClass(StructDeclarator)                : StructDeclaratorNode(untyped n);
+			case TClass(Expression)                      : ExpressionNode(untyped n);
+			case TClass(Identifier)                      : IdentifierNode(untyped n);
+			case TClass(Primitive)                       : PrimitiveNode(untyped n);
+			case TClass(BinaryExpression)                : BinaryExpressionNode(untyped n);
+			case TClass(UnaryExpression)                 : UnaryExpressionNode(untyped n);
+			case TClass(SequenceExpression)              : SequenceExpressionNode(untyped n);
+			case TClass(ConditionalExpression)           : ConditionalExpressionNode(untyped n);
+			case TClass(AssignmentExpression)            : AssignmentExpressionNode(untyped n);
+			case TClass(FieldSelectionExpression)        : FieldSelectionExpressionNode(untyped n);
+			case TClass(ArrayElementSelectionExpression) : ArrayElementSelectionExpressionNode(untyped n);
+			case TClass(FunctionCall)                    : FunctionCallNode(untyped n);
+			case TClass(Constructor)                     : ConstructorNode(untyped n);
+			case TClass(Declaration)                     : DeclarationNode(untyped n);
+			case TClass(PrecisionDeclaration)            : PrecisionDeclarationNode(untyped n);
+			case TClass(VariableDeclaration)             : VariableDeclarationNode(untyped n);
+			case TClass(Declarator)                      : DeclaratorNode(untyped n);
+			case TClass(ParameterDeclaration)            : ParameterDeclarationNode(untyped n);
+			case TClass(FunctionDefinition)              : FunctionDefinitionNode(untyped n);
+			case TClass(FunctionPrototype)               : FunctionPrototypeNode(untyped n);
+			case TClass(FunctionHeader)                  : FunctionHeaderNode(untyped n);
+			case TClass(Statement)                       : StatementNode(untyped n);
+			case TClass(CompoundStatement)               : CompoundStatementNode(untyped n);
+			case TClass(DeclarationStatement)            : DeclarationStatementNode(untyped n);
+			case TClass(ExpressionStatement)             : ExpressionStatementNode(untyped n);
+			case TClass(IterationStatement)              : IterationStatementNode(untyped n);
+			case TClass(WhileStatement)                  : WhileStatementNode(untyped n);
+			case TClass(DoWhileStatement)                : DoWhileStatementNode(untyped n);
+			case TClass(ForStatement)                    : ForStatementNode(untyped n);
+			case TClass(IfStatement)                     : IfStatementNode(untyped n);
+			case TClass(JumpStatement)                   : JumpStatementNode(untyped n);
+			case TClass(ReturnStatement)                 : ReturnStatementNode(untyped n);
 			default: null; //unrecognized node
 		}
 	}
