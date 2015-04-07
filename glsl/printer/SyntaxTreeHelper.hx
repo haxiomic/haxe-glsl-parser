@@ -68,6 +68,8 @@ class RootPrinter{
 		var pretty = (indentWith != null);
 		var str = '';
 		for(d in n.declarations){
+			//@! special rules for different types
+			//@! don't printing trailing newline
 			str += d.print(indentWith, 0) + (pretty ? '\n' : '');
 		}
 		return Utils.indent(str, indentWith, indentLevel);
@@ -81,10 +83,13 @@ class TypeSpecifierPrinter{
 			default:
 		}
 		var str = '';
-		str += (n.invariant ? 'invariant' + ' ' : '');
-		str += (n.qualifier != null ? n.qualifier.print() + ' ' : '');
-		str += (n.precision != null ? n.precision.print() + ' ' : '');
-		str += (n.dataType != null ? n.dataType.print() + ' ' : '');
+		//qualifiers
+		var qualifiers:Array<String> = [];
+		if(n.invariant) qualifiers.push('invariant');
+		if(n.storage != null) qualifiers.push(n.storage.print());
+		if(n.precision != null) qualifiers.push(n.precision.print());
+		if(n.dataType  != null) qualifiers.push(n.dataType.print());
+		str += qualifiers.join(' ');
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -92,26 +97,33 @@ class StructSpecifierPrinter{
 	static public function print(n:StructSpecifier, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
 		var str = '';
+		//qualifiers
+		var qualifiers:Array<String> = [];
+		if(n.invariant) qualifiers.push('invariant');
+		if(n.storage != null) qualifiers.push(n.storage.print());
+		if(n.precision != null) qualifiers.push(n.precision.print());
+		str += qualifiers.join(' ') + (qualifiers.length > 0 ? ' ' : '');
+		//add struct declaration
 		var name = n.name != null ? n.name : '';
 		str += 'struct $name{' + (pretty ? '\n' : '');
 		//add fields
-		for(f in n.fieldDeclarations){
-			str += f.print(indentWith, 1) + (pretty ? '\n' : '');
-		}
-		str += '}';
+		str += n.fieldDeclarations.map(function(fd)
+			return fd.print(indentWith, 1)
+		).join(pretty ? '\n' : '');
+		//close
+		str += (pretty ? '\n' : '') + '}';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class StructFieldDeclarationPrinter{
 	static public function print(n:StructFieldDeclaration, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		var str = n.typeSpecifier.print(indentWith, 0);
-		for(i in 0...n.declarators.length){
-			var dr = n.declarators[i];
-			str += (pretty ? (i > 0 ? ' ' : '') : '') +//pretty leading space
-					dr.print(indentWith, 0) +
-					(i < n.declarators.length - 1 ? ',' : '');//trailing comma
-		}
+		var str = n.typeSpecifier.print(indentWith, 0) + ' ';
+
+		str += n.declarators.map(function(dr)
+			return dr.print(indentWith)
+		).join(pretty ? ', ' : ',');
+
 		str += ';';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
@@ -137,7 +149,7 @@ class ExpressionPrinter{
 			case ArrayElementSelectionExpressionNode(n): n.print(indentWith, indentLevel);
 			case FunctionCallNode(n):                    n.print(indentWith, indentLevel);
 			case DeclarationNode(n):                     n.print(indentWith, indentLevel);
-			case ConstructorNode(n):                     n.print(indentWith, indentLevel);
+			case ConstructorNode(n):                     n.print(indentWith, indentLevel);//extends FunctionCall
 			case null, _:
 				throw 'cannot print Expression $n';
 		}
@@ -146,22 +158,27 @@ class ExpressionPrinter{
 class IdentifierPrinter{
 	static public function print(n:Identifier, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		var str = n.parenWrap ? '(${n.name})' : n.name;
+		var str = n.name;
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class PrimitivePrinter{
 	static public function print(n:Primitive<Dynamic>, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		var str = n.parenWrap ? '(${n.raw})' : n.raw;
+		var str = n.raw;
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class BinaryExpressionPrinter{
 	static public function print(n:BinaryExpression, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(BinaryExpression)';
 		var str = '';
+		str += n.left.print(indentWith);
+		str += (pretty ? ' ' + n.op.print() + ' ' : n.op.print());
+		str += n.right.print(indentWith);
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -170,6 +187,7 @@ class UnaryExpressionPrinter{
 		var pretty = (indentWith != null);
 		return 'NOT-IMPLEMENTED(UnaryExpression)';
 		var str = '';
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -178,6 +196,7 @@ class SequenceExpressionPrinter{
 		var pretty = (indentWith != null);
 		return 'NOT-IMPLEMENTED(SequenceExpression)';
 		var str = '';
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -186,46 +205,62 @@ class ConditionalExpressionPrinter{
 		var pretty = (indentWith != null);
 		return 'NOT-IMPLEMENTED(ConditionalExpression)';
 		var str = '';
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class AssignmentExpressionPrinter{
 	static public function print(n:AssignmentExpression, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(AssignmentExpression)';
 		var str = '';
+		str += n.left.print(indentWith);
+		str += (pretty ? ' ' + n.op.print() + ' ' : n.op.print());
+		str += n.right.print(indentWith);
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class FieldSelectionExpressionPrinter{
 	static public function print(n:FieldSelectionExpression, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(FieldSelectionExpression)';
-		var str = '';
+		var str = n.left.print(indentWith) + '.' + n.field.print(indentWith);
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class ArrayElementSelectionExpressionPrinter{
 	static public function print(n:ArrayElementSelectionExpression, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(ArrayElementSelectionExpression)';
-		var str = '';
+		var str = n.left.print(indentWith) + '[' + n.arrayIndexExpression.print(indentWith) + ']';
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class FunctionCallPrinter{
 	static public function print(n:FunctionCall, indentWith:String, indentLevel:Int = 0):String{
+		switch n.toEnum(){
+			case ConstructorNode(n): return n.print(indentWith, indentLevel);
+			default:
+		}
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(FunctionCall)';
-		var str = '';
+		var str = n.name + '(';
+		str += n.parameters.map(function(e)
+			return e.print(indentWith)
+		).join(pretty ? ', ' : ',');
+		str += ')';
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class ConstructorPrinter{
 	static public function print(n:Constructor, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(Constructor)';
-		var str = '';
+		var str = n.dataType.print() + '(';
+		str += n.parameters.map(function(e)
+			return e.print(indentWith)
+		).join(pretty ? ', ' : ',');
+		str += ')';
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -234,9 +269,8 @@ class DeclarationPrinter{
 		return switch n.toEnum(){
 			case PrecisionDeclarationNode(n): n.print(indentWith, indentLevel);
 			case VariableDeclarationNode(n):  n.print(indentWith, indentLevel);
-			case ParameterDeclarationNode(n): n.print(indentWith, indentLevel);
-			case FunctionDefinitionNode(n):   n.print(indentWith, indentLevel);
 			case FunctionPrototypeNode(n):    n.print(indentWith, indentLevel);
+			case FunctionDefinitionNode(n):   n.print(indentWith, indentLevel);
 			case null, _:
 				throw 'cannot print Declaration $n';
 		}
@@ -245,8 +279,8 @@ class DeclarationPrinter{
 class PrecisionDeclarationPrinter{
 	static public function print(n:PrecisionDeclaration, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(PrecisionDeclaration)';
-		var str = '';
+		var str = 'precision ${n.precision.print()} ${n.dataType.print()};';
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -254,20 +288,17 @@ class VariableDeclarationPrinter{
 	static public function print(n:VariableDeclaration, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
 		var str = n.typeSpecifier.print(indentWith, 0) + (n.declarators.length > 0 ? ' ' : '');
-		for(i in 0...n.declarators.length){
-			var dr = n.declarators[i];
-			str += (pretty ? (i > 0 ? ' ' : '') : '') +//pretty leading space
-					dr.print(indentWith, 0) +
-					(i < n.declarators.length - 1 ? ',' : '');//trailing comma
-		}
+		str += n.declarators.map(function(dr)
+			return dr.print(indentWith)
+		).join(pretty ? ', ' : ',');
 		str += ';';
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class DeclaratorPrinter{
 	static public function print(n:Declarator, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		// return 'NOT-IMPLEMENTED(Declarator)';
 		var str = '';
 		str += n.name
 			+ (n.arraySizeExpression != null ? '['+n.arraySizeExpression.print(indentWith, 0)+']' : '')
@@ -278,48 +309,68 @@ class DeclaratorPrinter{
 class ParameterDeclarationPrinter{
 	static public function print(n:ParameterDeclaration, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(ParameterDeclaration)';
 		var str = '';
+		str += (n.parameterQualifier != null ? n.parameterQualifier.print() + ' ' : '');
+		str += n.typeSpecifier.print(indentWith) + ' ';
+		str += n.name;
+		str += (n.arraySizeExpression != null ? '['+n.arraySizeExpression.print(indentWith)+']' : '');
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class FunctionDefinitionPrinter{
 	static public function print(n:FunctionDefinition, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(FunctionDefinition)';
-		var str = '';
+		var str = n.header.print(indentWith) + '{' + (pretty ? '\n' : '');
+		str += n.body.print(indentWith, 1);
+		str += (pretty ? '\n' : '') + '}';//FunctionDefinition is technically not a declaration, but an external_declaration, so it doesn't require a semicolon
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class FunctionPrototypePrinter{
 	static public function print(n:FunctionPrototype, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(FunctionPrototype)';
-		var str = '';
+		var str = n.header.print(indentWith) + ';';
+		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class FunctionHeaderPrinter{
 	static public function print(n:FunctionHeader, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(FunctionHeader)';
-		var str = '';
+		var str = n.returnType.print(indentWith) + ' ' + n.name + '(';
+		str += n.parameters.map(function(p)
+			return p.print(indentWith)
+		).join(pretty ? ', ' : ',');
+		str += ')';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class StatementPrinter{
 	static public function print(n:Statement, indentWith:String, indentLevel:Int = 0):String{
-		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(Statement)';
-		var str = '';
-		return Utils.indent(str, indentWith, indentLevel);
+		return switch n.toEnum(){
+			case CompoundStatementNode(n):    n.print(indentWith, indentLevel);
+			case DeclarationStatementNode(n): n.print(indentWith, indentLevel);
+			case ExpressionStatementNode(n):  n.print(indentWith, indentLevel);
+			case IterationStatementNode(n):   n.print(indentWith, indentLevel);
+			case WhileStatementNode(n):       n.print(indentWith, indentLevel);
+			case DoWhileStatementNode(n):     n.print(indentWith, indentLevel);
+			case ForStatementNode(n):         n.print(indentWith, indentLevel);
+			case IfStatementNode(n):          n.print(indentWith, indentLevel);
+			case JumpStatementNode(n):        n.print(indentWith, indentLevel);
+			case ReturnStatementNode(n):      n.print(indentWith, indentLevel);
+			case null, _:
+				throw 'cannot print StatementPrinter $n';
+		}
 	}
 }
 class CompoundStatementPrinter{
 	static public function print(n:CompoundStatement, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(CompoundStatement)';
 		var str = '';
+		str += n.statementList.map(function(smt)
+			return smt.print(indentWith)
+		).join(pretty ? '\n' : '');
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -334,8 +385,7 @@ class DeclarationStatementPrinter{
 class ExpressionStatementPrinter{
 	static public function print(n:ExpressionStatement, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(ExpressionStatement)';
-		var str = '';
+		var str = n.expression.print(indentWith) + ';';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -511,8 +561,8 @@ class ParameterQualifierPrinter{
 		}
 	}
 }
-class TypeQualifierPrinter{
-	static public function print(e:TypeQualifier):String{
+class StorageQualifierPrinter{
+	static public function print(e:StorageQualifier):String{
 		return switch e{
 			case ATTRIBUTE: 'attribute';
 			case UNIFORM:   'uniform';

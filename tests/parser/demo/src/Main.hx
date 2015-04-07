@@ -3,8 +3,11 @@ package;
 import glsl.parser.Preprocessor;
 import glsl.parser.Parser;
 import glsl.parser.Tokenizer;
+import glsl.SyntaxTree.Node;
 import js.Browser;
 import js.html.DOMElement;
+
+using glsl.printer.SyntaxTreeHelper;
 
 class Main{
 	var jsonContainer:DOMElement;
@@ -36,36 +39,50 @@ class Main{
 		parseAndEvaluate();
 	}
 
+	var warnings = [];
 	function parseAndEvaluate(){
 		var input = Editor.getValue();
 
-		var warnings = [];
-
 		try{
-			var tokens = glsl.parser.Tokenizer.tokenize(input);
-			warnings = warnings.concat(Tokenizer.warnings);
+			warnings = [];
 			
-			tokens = glsl.parser.Preprocessor.process(tokens);
-			warnings = warnings.concat(Preprocessor.warnings);
+			var ast = parse(input);
 
-			var ast = Parser.parseTokens(tokens);
-			warnings = warnings.concat(Parser.warnings);
+			// displayAST(ast);
+			// var globals = Extract.extractGlobalVariables(ast);
+			// warnings = warnings.concat(globals.warnings);
+			// trace('Extracted globals:\n$globals');
+			// //print variable values
+			// for(v in globals.variables){
+			// 	trace('${v.name} = ${v.value}');
+			// }
 
-			displayAST(ast);
+			var pretty = ast.print('\t');
+			var plain = ast.print(null);
+			trace('#\n\n\n');
 
-			var globals = Extract.extractGlobalVariables(ast);
-			warnings = warnings.concat(globals.warnings);
-			trace('Extracted globals:\n$globals');
-			//print variable values
-			for(v in globals.variables){
-				trace('${v.name} = ${v.value}');
+			trace('-- Pretty --');
+			trace(pretty);
+			trace('-- Plain --');
+			trace(plain);
+
+			trace('-- Trying Second Parse -- ');
+			var pretty2 = parse(pretty).print('\t');
+			var plain2 = parse(pretty).print(null);
+			var prettyMatch = pretty == pretty2;
+			var plainMatch = plain == plain2;
+			trace('pretty match: '+prettyMatch);
+			trace('plain match: '+plainMatch);
+			if(!plainMatch){
+				trace('-- Pretty2 --');
+				trace(pretty2);
+			}
+			if(!prettyMatch){
+				trace('-- Plain2 --');
+				trace(plain2);
 			}
 
-			trace(' - Pretty Print -');
-			trace(glsl.printer.SyntaxTreeHelper.NodePrinter.print(ast, '+'));
-			trace(' - Plain Print -');
-			trace(glsl.printer.SyntaxTreeHelper.NodePrinter.print(ast, null));
-
+			displayAST(ast);
 		}catch(e:Dynamic){
 			warnings = warnings.concat([e]);
 			jsonContainer.innerHTML = '';
@@ -76,6 +93,18 @@ class Main{
 		showErrors(warnings);
 
 		inputChanged = false;
+	}
+
+	function parse(input:String):Node{
+		var tokens = glsl.parser.Tokenizer.tokenize(input);
+		warnings = warnings.concat(Tokenizer.warnings);
+		
+		tokens = glsl.parser.Preprocessor.process(tokens);
+		warnings = warnings.concat(Preprocessor.warnings);
+
+		var ast = Parser.parseTokens(tokens);
+		warnings = warnings.concat(Parser.warnings);
+		return ast;
 	}
 
 	function displayAST(ast:Dynamic){

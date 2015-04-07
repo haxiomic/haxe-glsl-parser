@@ -27,12 +27,12 @@ class Root extends Node{
 
 class TypeSpecifier extends Node{
 	var dataType:DataType;
-	var qualifier:TypeQualifier;
+	var storage:StorageQualifier;
 	var precision:PrecisionQualifier;
 	var invariant:Bool;
-	function new(dataType:DataType, ?qualifier:TypeQualifier, ?precision:PrecisionQualifier, invariant:Bool = false){
+	function new(dataType:DataType, ?storage:StorageQualifier, ?precision:PrecisionQualifier, invariant:Bool = false){
 		this.dataType = dataType;
-		this.qualifier = qualifier;
+		this.storage = storage;
 		this.precision = precision;
 		this.invariant = invariant;
 		super();
@@ -199,6 +199,7 @@ class FunctionCall extends Expression{
 	}
 }
 
+//@! could use tighter binding between name and dataType
 class Constructor extends FunctionCall implements TypedExpression{
 	var dataType:DataType;
 	function new(dataType:DataType, ?parameters:Array<Expression>){
@@ -228,6 +229,14 @@ class PrecisionDeclaration extends Declaration{
 	}
 }
 
+class FunctionPrototype extends Declaration{
+	var header:FunctionHeader;
+	function new(header:FunctionHeader){
+		this.header = header;
+		super();
+	}
+}
+
 class VariableDeclaration extends Declaration{
 	var typeSpecifier:TypeSpecifier;
 	var declarators:Array<Declarator>;
@@ -250,7 +259,7 @@ class Declarator extends Node{
 	}
 }
 
-class ParameterDeclaration extends Declaration{
+class ParameterDeclaration extends Node{
 	var name:String;
 	var parameterQualifier:ParameterQualifier;
 	var typeSpecifier:TypeSpecifier;
@@ -264,20 +273,14 @@ class ParameterDeclaration extends Declaration{
 	}
 }
 
+//in the syntax, FunctionDefinition is actually an external_declaration rather than a declaration
+//in this form, they've been combined and to .global is used to signify an external_declaration
 class FunctionDefinition extends Declaration{
 	var header:FunctionHeader;
 	var body:CompoundStatement;
 	function new(header:FunctionHeader, body:CompoundStatement){
 		this.header = header;
 		this.body = body;
-		super();
-	}
-}
-
-class FunctionPrototype extends Declaration{
-	var header:FunctionHeader;
-	function new(header:FunctionHeader){
-		this.header = header;
 		super();
 	}
 }
@@ -479,7 +482,7 @@ enum ParameterQualifier{
 	INOUT;
 }
 
-enum TypeQualifier{
+enum StorageQualifier{
 	CONST;
 	ATTRIBUTE;
 	VARYING;

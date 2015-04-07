@@ -92,7 +92,7 @@ class Eval{
 				var v:Variable = getVariable(n.name);
 
 				if(v != null){
-					if(constant && !v.qualifier.equals(TypeQualifier.CONST)){
+					if(constant && !v.storage.equals(StorageQualifier.CONST)){
 						warn('using non-constant variable ${v.name} in constant expression'); 
 					}
 
@@ -146,7 +146,7 @@ class Eval{
 
 			case AssignmentExpressionNode(n):
 				var leftVar = resolveVariable(n.left, constant);
-				if(leftVar.qualifier.equals(TypeQualifier.CONST)){
+				if(leftVar.storage.equals(StorageQualifier.CONST)){
 					warn('cannot assign value to constant variable ${leftVar.name}');
 				}
 
@@ -193,7 +193,7 @@ class Eval{
 						var field:VariableDefinition = {
 							name: n.name,
 							dataType: typeSpec.dataType, 
-							qualifier: typeSpec.qualifier,
+							storage: typeSpec.storage,
 							precision: typeSpec.precision,
 							invariant: typeSpec.invariant
 						};
@@ -252,20 +252,20 @@ class Eval{
 			variable = {
 				name: dr.name,
 				dataType: declaration.typeSpecifier.dataType,
-				qualifier: declaration.typeSpecifier.qualifier,
+				storage: declaration.typeSpecifier.storage,
 				precision: declaration.typeSpecifier.precision,
 				invariant: declaration.typeSpecifier.invariant,
 				value: null
 			}
 
-			var isConstant = declaration.typeSpecifier.qualifier.equals(TypeQualifier.CONST);
+			var isConstant = declaration.typeSpecifier.storage.equals(StorageQualifier.CONST);
 
 			//set value if there's an initializer
 			if(dr.initializer != null){
 				//not all variables need to be initialized
-				switch declaration.typeSpecifier.qualifier{
-					case TypeQualifier.ATTRIBUTE, TypeQualifier.VARYING, TypeQualifier.UNIFORM:
-						warn('variables with qualifier \'${declaration.typeSpecifier.qualifier} cannot be initialized\'');
+				switch declaration.typeSpecifier.storage{
+					case StorageQualifier.ATTRIBUTE, StorageQualifier.VARYING, StorageQualifier.UNIFORM:
+						warn('variables with storage qualifier \'${declaration.typeSpecifier.storage} cannot be initialized\'');
 					case null, _:
 						//initialize by evaluating expression
 						var value = evaluateExpr(dr.initializer, isConstant);
@@ -279,9 +279,9 @@ class Eval{
 			}else{
 				//const variables must be explicitly initialized
 				//non-qualified variables are implicitly initialized to 0 state
-				switch declaration.typeSpecifier.qualifier{
-					case TypeQualifier.CONST:
-						warn('variables with qualifier \'const\' must be initialized');
+				switch declaration.typeSpecifier.storage{
+					case StorageQualifier.CONST:
+						warn('variables with storage qualifier \'const\' must be initialized');
 						variable.value = variable.dataType.construct(null); //0 state
 					case null:
 						variable.value = variable.dataType.construct(null);	//0 state
@@ -330,7 +330,7 @@ class Eval{
 
 		if(variable == null) return null;
 
-		if(constant && !variable.qualifier.equals(TypeQualifier.CONST)){
+		if(constant && !variable.storage.equals(StorageQualifier.CONST)){
 			warn('using non-constant variable ${variable.name} in constant expression');
 		}
 
@@ -367,7 +367,7 @@ class Eval{
 			name: name,
 			value: inst,
 			dataType: dataType,
-			qualifier: TypeQualifier.CONST,
+			storage: StorageQualifier.CONST,
 			precision: precision,
 			invariant: false
 		}
@@ -393,7 +393,7 @@ enum GLSLInstance{
 typedef VariableDefinition = {
 	var name:String;
 	var dataType:DataType;
-	var qualifier:TypeQualifier;
+	var storage:StorageQualifier;
 	var precision:PrecisionQualifier;
 	var invariant:Bool;
 	@:optional var arraySize:Int;

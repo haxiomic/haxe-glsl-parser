@@ -21,7 +21,7 @@ class StructInstance implements ICompositeInstance{
 			var field:Variable = {
 				name: f.name,
 				dataType: f.dataType,
-				qualifier: f.qualifier,
+				storage: f.storage,
 				precision: f.precision,
 				invariant: f.invariant,
 				arraySize: f.arraySize,

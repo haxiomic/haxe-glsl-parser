@@ -158,10 +158,10 @@ class TreeBuilder{
 
 						if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
 							//even though invariant varying isn't allowed, set anyway and catch in the validator
-							pd.typeSpecifier.qualifier = TypeQualifier.VARYING;
+							pd.typeSpecifier.storage = StorageQualifier.VARYING;
 							pd.typeSpecifier.invariant = true;
 						}else{
-							pd.typeSpecifier.qualifier = cast ev(1);
+							pd.typeSpecifier.storage = cast ev(1);
 						}
 						return pd;
 			case 108: var pd = cast(n(2), ParameterDeclaration); //parameter_declaration ::= parameter_qualifier parameter_declarator
@@ -172,10 +172,10 @@ class TreeBuilder{
 
 						if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
 							//even though invariant varying isn't allowed, set anyway and catch in the validator
-							pd.typeSpecifier.qualifier = TypeQualifier.VARYING;
+							pd.typeSpecifier.storage = StorageQualifier.VARYING;
 							pd.typeSpecifier.invariant = true;
 						}else{
-							pd.typeSpecifier.qualifier = cast ev(1);
+							pd.typeSpecifier.storage = cast ev(1);
 						}
 						return pd;
 			case 110: var pd = cast(n(2), ParameterDeclaration); //parameter_declaration ::= parameter_qualifier parameter_type_specifier
@@ -202,17 +202,17 @@ class TreeBuilder{
 			case 126: return s(1); //fully_specified_type ::= type_specifier
 			case 127: var ts = cast(n(2), TypeSpecifier); //fully_specified_type ::= type_qualifier type_specifier
 						if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
-							ts.qualifier = TypeQualifier.VARYING;
+							ts.storage = StorageQualifier.VARYING;
 							ts.invariant = true;
 						}else{
-							ts.qualifier = cast ev(1);
+							ts.storage = cast ev(1);
 						}
 						return s(2);
-			case 128: return TypeQualifier.CONST; //type_qualifier ::= CONST
-			case 129: return TypeQualifier.ATTRIBUTE; //type_qualifier ::= ATTRIBUTE
-			case 130: return TypeQualifier.VARYING; //type_qualifier ::= VARYING
+			case 128: return StorageQualifier.CONST; //type_qualifier ::= CONST
+			case 129: return StorageQualifier.ATTRIBUTE; //type_qualifier ::= ATTRIBUTE
+			case 130: return StorageQualifier.VARYING; //type_qualifier ::= VARYING
 			case 131: return Instructions.SET_INVARIANT_VARYING; //type_qualifier ::= INVARIANT VARYING
-			case 132: return TypeQualifier.UNIFORM; //type_qualifier ::= UNIFORM
+			case 132: return StorageQualifier.UNIFORM; //type_qualifier ::= UNIFORM
 			case 133: return s(1); //type_specifier ::= type_specifier_no_prec
 			case 134: var ts = cast(n(2), TypeSpecifier);ts.precision = cast ev(1); return ts; //type_specifier ::= precision_qualifier type_specifier_no_prec
 			case 135: return new TypeSpecifier(DataType.VOID); //type_specifier_no_prec ::= VOID
