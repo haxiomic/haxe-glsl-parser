@@ -59,7 +59,7 @@ class NodePrinter{
 			case JumpStatementNode(n):                   n.print(indentWith, indentLevel);
 			case ReturnStatementNode(n):                 n.print(indentWith, indentLevel);
 			case null, _:
-				throw 'cannot print Node $n';
+				throw 'Node cannot be printed: $n';
 		}
 	}
 }
@@ -151,7 +151,7 @@ class ExpressionPrinter{
 			case DeclarationNode(n):                     n.print(indentWith, indentLevel);
 			case ConstructorNode(n):                     n.print(indentWith, indentLevel);//extends FunctionCall
 			case null, _:
-				throw 'cannot print Expression $n';
+				throw 'Expression cannot be printed: $n';
 		}
 	}
 }
@@ -185,8 +185,9 @@ class BinaryExpressionPrinter{
 class UnaryExpressionPrinter{
 	static public function print(n:UnaryExpression, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(UnaryExpression)';
 		var str = '';
+		if(n.isPrefix) str += n.op.print() + n.arg.print(indentWith);
+		else str += n.arg.print(indentWith) + n.op.print();
 		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
@@ -194,17 +195,21 @@ class UnaryExpressionPrinter{
 class SequenceExpressionPrinter{
 	static public function print(n:SequenceExpression, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(SequenceExpression)';
-		var str = '';
-		if(n.parenWrap) str = '($str)';
+		var str = n.expressions.map(function (e)
+			return e.print(indentWith)
+		).join(pretty ? ', ' : ',');
+		str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class ConditionalExpressionPrinter{
 	static public function print(n:ConditionalExpression, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(ConditionalExpression)';
-		var str = '';
+		var str = n.test.print(indentWith)
+				+ (pretty ? ' ? ' : '?')
+				+ n.consequent.print(indentWith)
+				+ (pretty ? ' : ' : ':')
+				+ n.alternate.print(indentWith);
 		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
@@ -272,7 +277,7 @@ class DeclarationPrinter{
 			case FunctionPrototypeNode(n):    n.print(indentWith, indentLevel);
 			case FunctionDefinitionNode(n):   n.print(indentWith, indentLevel);
 			case null, _:
-				throw 'cannot print Declaration $n';
+				throw 'Declaration cannot be printed: $n';
 		}
 	}
 }
@@ -320,9 +325,9 @@ class ParameterDeclarationPrinter{
 class FunctionDefinitionPrinter{
 	static public function print(n:FunctionDefinition, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		var str = n.header.print(indentWith) + '{' + (pretty ? '\n' : '');
-		str += n.body.print(indentWith, 1);
-		str += (pretty ? '\n' : '') + '}';//FunctionDefinition is technically not a declaration, but an external_declaration, so it doesn't require a semicolon
+		var str = n.header.print(indentWith);
+		str += n.body.print(indentWith);
+		//FunctionDefinition is technically not a declaration, but an external_declaration, so it doesn't require a semicolon
 		if(n.parenWrap) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
@@ -360,7 +365,7 @@ class StatementPrinter{
 			case JumpStatementNode(n):        n.print(indentWith, indentLevel);
 			case ReturnStatementNode(n):      n.print(indentWith, indentLevel);
 			case null, _:
-				throw 'cannot print StatementPrinter $n';
+				throw 'Statement cannot be printed: $n';
 		}
 	}
 }
@@ -368,17 +373,18 @@ class CompoundStatementPrinter{
 	static public function print(n:CompoundStatement, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
 		var str = '';
+		str += '{' + (pretty ? '\n' : '');
 		str += n.statementList.map(function(smt)
-			return smt.print(indentWith)
+			return smt.print(indentWith, 1)
 		).join(pretty ? '\n' : '');
+		str += (pretty ? '\n' : '') + '}';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class DeclarationStatementPrinter{
 	static public function print(n:DeclarationStatement, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(DeclarationStatement)';
-		var str = '';
+		var str = n.declaration.print(indentWith);
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -391,24 +397,27 @@ class ExpressionStatementPrinter{
 }
 class IterationStatementPrinter{
 	static public function print(n:IterationStatement, indentWith:String, indentLevel:Int = 0):String{
-		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(IterationStatement)';
-		var str = '';
-		return Utils.indent(str, indentWith, indentLevel);
+		return switch n.toEnum(){
+			case WhileStatementNode(n):   n.print(indentWith, indentLevel);
+			case DoWhileStatementNode(n): n.print(indentWith, indentLevel);
+			case ForStatementNode(n):     n.print(indentWith, indentLevel);
+			case null, _:
+				throw 'IterationStatement cannot be printed: $n';
+		}
 	}
 }
 class WhileStatementPrinter{
 	static public function print(n:WhileStatement, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(WhileStatement)';
-		var str = '';
+		var str = 'while(' + n.test.print(indentWith) + ')';
+		str += n.body.print(indentWith);
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class DoWhileStatementPrinter{
 	static public function print(n:DoWhileStatement, indentWith:String, indentLevel:Int = 0):String{
-		var pretty = (indentWith != null);
 		return 'NOT-IMPLEMENTED(DoWhileStatement)';
+		var pretty = (indentWith != null);
 		var str = '';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
@@ -424,24 +433,37 @@ class ForStatementPrinter{
 class IfStatementPrinter{
 	static public function print(n:IfStatement, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(IfStatement)';
-		var str = '';
+		var compoundConsequent = n.consequent.toEnum().match(CompoundStatementNode(_));
+		var str = 'if(' + n.test.print(indentWith) + ')';
+		str += (pretty && !compoundConsequent ? ' ' : ''); //trailing space
+		str += n.consequent.print(indentWith);
+		str += (pretty && !compoundConsequent ? '\n' : '');
+		if(n.alternate != null){
+			var compoundAlternate = n.alternate.toEnum().match(CompoundStatementNode(_));
+			str += 'else';
+			str += (!compoundAlternate ? ' ' : ''); //trailing space
+			str += n.alternate.print(indentWith);
+			str += (pretty ? '\n' : '');
+		}
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class JumpStatementPrinter{
 	static public function print(n:JumpStatement, indentWith:String, indentLevel:Int = 0):String{
+		switch n.toEnum(){
+			case ReturnStatementNode(n): n.print(indentWith, indentLevel);
+			default:
+		}
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(JumpStatement)';
-		var str = '';
+		var str = n.mode.print();
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class ReturnStatementPrinter{
 	static public function print(n:ReturnStatement, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(ReturnStatement)';
-		var str = '';
+		var str = n.mode.print();
+		if(n.returnExpression != null) str += ' ' + n.returnExpression.print(indentWith);
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }

@@ -285,7 +285,7 @@ class TreeBuilder{
 			case 199: return [e(1), e(3)]; //for_rest_statement ::= conditionopt SEMICOLON expression
 			case 200: return new JumpStatement(JumpMode.CONTINUE); //jump_statement ::= CONTINUE SEMICOLON
 			case 201: return new JumpStatement(JumpMode.BREAK); //jump_statement ::= BREAK SEMICOLON
-			case 202: return new JumpStatement(JumpMode.RETURN); //jump_statement ::= RETURN SEMICOLON
+			case 202: return new ReturnStatement(null); //jump_statement ::= RETURN SEMICOLON
 			case 203: return new ReturnStatement(cast n(2)); //jump_statement ::= RETURN expression SEMICOLON
 			case 204: return new JumpStatement(JumpMode.DISCARD); //jump_statement ::= DISCARD SEMICOLON
 			case 205: return [n(1)]; //translation_unit ::= external_declaration

@@ -3,6 +3,10 @@
 	Loosely following Mozilla Parser AST API and Mesa GLSL Compiler AST
 
 	@author George Corney
+
+	@! todo
+	- Node, Expression, Declaration, IterationStatement
+		should be interfaces not classes
 */
 
 package glsl;
@@ -389,9 +393,9 @@ class JumpStatement extends Statement{
 }
 
 class ReturnStatement extends JumpStatement{
-	var returnValue:Expression;
-	function new(returnValue:Expression){
-		this.returnValue = returnValue;
+	var returnExpression:Expression;
+	function new(returnExpression:Expression){
+		this.returnExpression = returnExpression;
 		super(RETURN);
 	}
 }
