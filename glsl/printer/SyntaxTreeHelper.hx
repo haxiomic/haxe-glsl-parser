@@ -67,11 +67,37 @@ class RootPrinter{
 	static public function print(n:Root, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
 		var str = '';
+		var lastDEnum:NodeEnum = null;
 		for(d in n.declarations){
-			//@! special rules for different types
-			//@! don't printing trailing newline
-			str += d.print(indentWith, 0) + (pretty ? '\n' : '');
+
+			var unit:String = d.print(indentWith, 0) + (pretty ? '\n' : '');
+			//type-specific layout rules
+			if(pretty){
+				//compare last and current nodes
+				unit = switch [lastDEnum, d.toEnum()]{
+					case [null, FunctionDefinitionNode(_)] |
+						 [FunctionDefinitionNode(_), FunctionDefinitionNode(_)]: 
+						unit + '\n';
+					case [_, FunctionDefinitionNode(_)]:
+						'\n' + unit + '\n';
+					case [PrecisionDeclarationNode(_), PrecisionDeclarationNode(_)]:
+						unit;
+					case [PrecisionDeclarationNode(_), _]:
+						'\n' + unit;
+					case [VariableDeclarationNode(_), VariableDeclarationNode(_)]:
+						unit;
+					case [VariableDeclarationNode(_), _]:
+						'\n' + unit;
+					case [null, _]:
+						unit;
+					default: unit;
+				}
+				lastDEnum = d.toEnum();
+			}
+
+			str += unit;
 		}
+		str = StringTools.rtrim(str);
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -391,7 +417,8 @@ class DeclarationStatementPrinter{
 class ExpressionStatementPrinter{
 	static public function print(n:ExpressionStatement, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		var str = n.expression.print(indentWith) + ';';
+		var str = n.expression != null ? n.expression.print(indentWith) : '';
+		str += ';';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -416,17 +443,29 @@ class WhileStatementPrinter{
 }
 class DoWhileStatementPrinter{
 	static public function print(n:DoWhileStatement, indentWith:String, indentLevel:Int = 0):String{
-		return 'NOT-IMPLEMENTED(DoWhileStatement)';
 		var pretty = (indentWith != null);
-		var str = '';
+		var compoundBody = n.body.toEnum().match(CompoundStatementNode(_));
+		var str = 'do';
+		str += (!compoundBody ? ' ' : ''); //trailing space
+		str += n.body.print(indentWith);
+		str += (!compoundBody && pretty ? '\n' : ''); //trailing space
+		str += 'while(' + n.test.print(indentWith) + ')';
+		str += ';';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
 class ForStatementPrinter{
 	static public function print(n:ForStatement, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		return 'NOT-IMPLEMENTED(ForStatement)';
-		var str = '';
+		var str = 'for';
+		str += '('
+			+ n.init.print(indentWith)
+			+ (pretty ? ' ' : '')
+			+ n.test.print(indentWith)
+			+ (pretty ? '; ' : ';')
+			+ n.update.print(indentWith)
+			+ ')';
+		str += n.body.print(indentWith);
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -443,7 +482,6 @@ class IfStatementPrinter{
 			str += 'else';
 			str += (!compoundAlternate ? ' ' : ''); //trailing space
 			str += n.alternate.print(indentWith);
-			str += (pretty ? '\n' : '');
 		}
 		return Utils.indent(str, indentWith, indentLevel);
 	}
@@ -456,6 +494,7 @@ class JumpStatementPrinter{
 		}
 		var pretty = (indentWith != null);
 		var str = n.mode.print();
+		str += ';';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -464,6 +503,7 @@ class ReturnStatementPrinter{
 		var pretty = (indentWith != null);
 		var str = n.mode.print();
 		if(n.returnExpression != null) str += ' ' + n.returnExpression.print(indentWith);
+		str += ';';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
