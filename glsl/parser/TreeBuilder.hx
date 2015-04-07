@@ -194,7 +194,7 @@ class TreeBuilder{
 			case 118: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, null, null)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER
 			case 119: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, null, e(5))); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 120: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, e(5), null)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER EQUAL initializer
-			case 121: return new VariableDeclaration(cast n(1), [new Declarator(null, null, null)]); //single_declaration ::= fully_specified_type
+			case 121: return new VariableDeclaration(cast n(1), []); //single_declaration ::= fully_specified_type
 			case 122: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, null, null)]); //single_declaration ::= fully_specified_type IDENTIFIER
 			case 123: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, null, e(4))]); //single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
 			case 124: return new VariableDeclaration(cast n(1), [new Declarator(t(2).data, e(4), null)]); //single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer
