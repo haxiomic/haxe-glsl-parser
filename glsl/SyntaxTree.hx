@@ -5,31 +5,31 @@
 	@author George Corney
 
 	@! todo
-	- Node, Expression, Declaration, IterationStatement
-		should be interfaces not classes
+	- Expression, Should be interfaces not classes
+		Done:
+		- Node
+		- IterationStatement
+		- Statement
+		- Declaration
+	- ! datatype printing with AST printer
 */
 
 package glsl;
 
 import Type.ValueType.TClass;
 
-@:publicFields
-class Node{
-	var nodeName:String;
-	function new(){
-		this.nodeName = Type.getClassName(Type.getClass(this)).split('.').pop();
-	}
-}
+interface Node{}
 
-class Root extends Node{
+@:publicFields
+class Root implements Node{
 	var declarations:TranslationUnit;
 	public function new(declarations:TranslationUnit){
 		this.declarations = declarations;
-		super();
 	}
 }
 
-class TypeSpecifier extends Node{
+@:publicFields
+class TypeSpecifier implements Node{
 	var dataType:DataType;
 	var storage:StorageQualifier;
 	var precision:PrecisionQualifier;
@@ -39,10 +39,10 @@ class TypeSpecifier extends Node{
 		this.storage = storage;
 		this.precision = precision;
 		this.invariant = invariant;
-		super();
 	}
 }
 
+@:publicFields
 class StructSpecifier extends TypeSpecifier{
 	var fieldDeclarations:StructFieldDeclarationList;
 	var name:String;
@@ -55,30 +55,31 @@ class StructSpecifier extends TypeSpecifier{
 
 typedef StructFieldDeclarationList = Array<StructFieldDeclaration>;
 
-class StructFieldDeclaration extends Node{ //@! extend Declaration? Is global meaningful here?
+@:publicFields
+class StructFieldDeclaration implements Node{
 	var typeSpecifier:TypeSpecifier;
 	var declarators:StructDeclaratorList;
 	function new(typeSpecifier:TypeSpecifier, declarators:StructDeclaratorList){
 		this.typeSpecifier = typeSpecifier;
 		this.declarators = declarators;
-		super();
 	}
 }
 
 typedef StructDeclaratorList = Array<StructDeclarator>;
 
-class StructDeclarator extends Node{
+@:publicFields
+class StructDeclarator implements Node{
 	var name:String;
 	var arraySizeExpression:Expression;
 	function new(name:String, ?arraySizeExpression:Expression){
 		this.name = name;
 		this.arraySizeExpression = arraySizeExpression;
-		super();
 	}
 }
 
-//Expressions
-class Expression extends Node{
+
+@:publicFields//Expressions
+interface Expression extends Node{
 	var parenWrap:Bool;
 }
 
@@ -86,23 +87,24 @@ interface TypedExpression{
 	var dataType:DataType;
 }
 
-class Identifier extends Expression{
+@:publicFields
+class Identifier implements Expression{
 	var name:String;
+	var parenWrap:Bool = false;
 	function new(name:String) {
 		this.name = name;
-		super();
 	}
 }
 
-class Primitive<T> extends Expression implements TypedExpression{
+@:publicFields
+class Primitive<T> implements Expression implements TypedExpression{
 	var value(default, set):T;
 	var raw:String;
 	var dataType:DataType;
-
+	var parenWrap:Bool = false;
 	function new(value:T, dataType:DataType){
 		this.dataType = dataType;
 		this.value = value;
-		super();
 	}
 
 	private function set_value(v:T):T{
@@ -117,93 +119,102 @@ class Primitive<T> extends Expression implements TypedExpression{
 
 }
 
-class BinaryExpression extends Expression{
+@:publicFields
+class BinaryExpression implements Expression{
 	var op:BinaryOperator;
 	var left:Expression;
 	var right:Expression;
+	var parenWrap:Bool = false;
 	function new(op:BinaryOperator, left:Expression, right:Expression){
 		this.op = op;
 		this.left = left;
 		this.right = right;
-		super();
 	}
 }
 
-class UnaryExpression extends Expression{
+@:publicFields
+class UnaryExpression implements Expression{
 	var op:UnaryOperator;
 	var arg:Expression;
 	var isPrefix:Bool;
+	var parenWrap:Bool = false;
 	function new(op:UnaryOperator, arg:Expression, isPrefix:Bool){
 		this.op = op;
 		this.arg = arg;
 		this.isPrefix = isPrefix;
-		super();
 	}
 }
 
-class SequenceExpression extends Expression{
+@:publicFields
+class SequenceExpression implements Expression{
 	var expressions:Array<Expression>;
+	var parenWrap:Bool = false;
 	function new(expressions:Array<Expression>){
 		this.expressions = expressions;
-		super();
 	}
 }
 
-class ConditionalExpression extends Expression{
+@:publicFields
+class ConditionalExpression implements Expression{
 	var test:Expression;
 	var consequent:Expression;
 	var alternate:Expression;
+	var parenWrap:Bool = false;
 	function new(test:Expression, consequent:Expression, alternate:Expression){
 		this.test = test;
 		this.consequent = consequent;
 		this.alternate = alternate;
-		super();
 	}
 }
 
-class AssignmentExpression extends Expression{
+@:publicFields
+class AssignmentExpression implements Expression{
 	var op:AssignmentOperator;
 	var left:Expression;
 	var right:Expression;
+	var parenWrap:Bool = false;
 	function new(op:AssignmentOperator, left:Expression, right:Expression){
 		this.op = op;
 		this.left = left;
 		this.right = right;
-		super();
 	}
 }
 
-class FieldSelectionExpression extends Expression{
+@:publicFields
+class FieldSelectionExpression implements Expression{
 	var left:Expression;
 	var field:Identifier;
+	var parenWrap:Bool = false;
 	function new(left:Expression, field:Identifier){
 		this.left = left;
 		this.field = field;
-		super();
 	}
 }
 
-class ArrayElementSelectionExpression extends Expression{
+@:publicFields
+class ArrayElementSelectionExpression implements Expression{
 	var left:Expression;
 	var arrayIndexExpression:Expression;
+	var parenWrap:Bool = false;
 	function new(left:Expression, arrayIndexExpression:Expression){
 		this.left = left;
 		this.arrayIndexExpression = arrayIndexExpression;
-		super();	
 	}
 }
 
-class FunctionCall extends Expression{
+@:publicFields
+class FunctionCall implements Expression{
 	var name:String;
 	var parameters:Array<Expression>;
+	var parenWrap:Bool = false;
 	function new(name:String, ?parameters:Array<Expression>){
 		this.name = name;
 		this.parameters = parameters != null ? parameters : [];
-		super();
 	}
 }
 
-//@! could use tighter binding between name and dataType
+
+@:publicFields//@! could use tighter binding between name and dataType
 class Constructor extends FunctionCall implements TypedExpression{
 	var dataType:DataType;
 	function new(dataType:DataType, ?parameters:Array<Expression>){
@@ -216,42 +227,47 @@ class Constructor extends FunctionCall implements TypedExpression{
 	}
 }
 
-//Declarations
-class Declaration extends Expression{
-	var global:Bool;
+
+@:publicFields//Declarations
+interface Declaration extends Node{
+	var external:Bool;
 }
 
 typedef TranslationUnit = Array<Declaration>;
 
-class PrecisionDeclaration extends Declaration{
+@:publicFields
+class PrecisionDeclaration implements Declaration{
 	var precision:PrecisionQualifier;
 	var dataType:DataType;
+	var external:Bool = false;
 	function new(precision:PrecisionQualifier, dataType:DataType){
 		this.precision = precision;
 		this.dataType = dataType;
-		super();
 	}
 }
 
-class FunctionPrototype extends Declaration{
+@:publicFields
+class FunctionPrototype implements Declaration{
 	var header:FunctionHeader;
+	var external:Bool = false;
 	function new(header:FunctionHeader){
 		this.header = header;
-		super();
 	}
 }
 
-class VariableDeclaration extends Declaration{
+@:publicFields
+class VariableDeclaration implements Declaration{
 	var typeSpecifier:TypeSpecifier;
 	var declarators:Array<Declarator>;
+	var external:Bool = false;
 	function new(typeSpecifier:TypeSpecifier, declarators:Array<Declarator>){
 		this.typeSpecifier = typeSpecifier;
 		this.declarators = declarators;
-		super();
 	}
 }
 
-class Declarator extends Node{
+@:publicFields
+class Declarator implements Node{
 	var name:String;
 	var initializer:Expression;
 	var arraySizeExpression:Expression;
@@ -259,11 +275,11 @@ class Declarator extends Node{
 		this.name = name;
 		this.initializer = initializer;
 		this.arraySizeExpression = arraySizeExpression;
-		super();
 	}
 }
 
-class ParameterDeclaration extends Node{
+@:publicFields
+class ParameterDeclaration implements Node{
 	var name:String;
 	var parameterQualifier:ParameterQualifier;
 	var typeSpecifier:TypeSpecifier;
@@ -273,23 +289,24 @@ class ParameterDeclaration extends Node{
 		this.typeSpecifier = typeSpecifier;
 		this.parameterQualifier = parameterQualifier;
 		this.arraySizeExpression = arraySizeExpression;
-		super();
 	}
 }
 
 //in the syntax, FunctionDefinition is actually an external_declaration rather than a declaration
-//in this form, they've been combined and to .global is used to signify an external_declaration
-class FunctionDefinition extends Declaration{
+
+@:publicFields//in this form, they've been combined and to .global is used to signify an external_declaration
+class FunctionDefinition implements Declaration{
 	var header:FunctionHeader;
 	var body:CompoundStatement;
+	var external:Bool = true;
 	function new(header:FunctionHeader, body:CompoundStatement){
 		this.header = header;
 		this.body = body;
-		super();
 	}
 }
 
-class FunctionHeader extends Node{
+@:publicFields
+class FunctionHeader implements Node{
 	var name:String;
 	var returnType:TypeSpecifier;
 	var parameters:Array<ParameterDeclaration>;
@@ -297,106 +314,122 @@ class FunctionHeader extends Node{
 		this.name = name;
 		this.returnType = returnType;
 		this.parameters = parameters != null ? parameters : [];
-		super();
 	}
 }
 
-//Statements
-class Statement extends Node{
+
+@:publicFields//Statements
+interface Statement extends Node{
 	var newScope:Bool;
-	function new(newScope:Bool){
-		this.newScope = newScope;
-		super();
-	}
 }
 
 typedef StatementList = Array<Statement>;
 
-class CompoundStatement extends Statement{
+@:publicFields
+class CompoundStatement implements Statement{
 	var statementList:StatementList;
+	var newScope:Bool;
 	function new(statementList:StatementList, newScope:Bool){
 		this.statementList = statementList;
-		super(newScope);
+		this.newScope = newScope;
 	}
 }
 
-class DeclarationStatement extends Statement{
+@:publicFields
+class DeclarationStatement implements Statement{
 	var declaration:Declaration;
+	var newScope:Bool;
 	function new(declaration:Declaration){
 		this.declaration = declaration;
-		super(false);
+		this.newScope = false;
 	}
 }
 
-class ExpressionStatement extends Statement{
+@:publicFields
+class ExpressionStatement implements Statement{
 	var expression:Expression;
+	var newScope:Bool;
 	function new(expression:Expression){
 		this.expression = expression;
-		super(false);
+		this.newScope = false;
 	}
 }
 
-class IterationStatement extends Statement{
-	var body:Statement;
-	function new(body:Statement){
-		this.body = body;
-		super(false);
-	}
-}
-
-class WhileStatement extends IterationStatement{
-	var test:Expression;
-	function new(test:Expression, body:Statement){
-		this.test = test;
-		super(body);
-	}
-}
-
-class DoWhileStatement extends IterationStatement{
-	var test:Expression;
-	function new(test:Expression, body:Statement){
-		this.test = test;
-		super(body);
-	}
-}
-
-class ForStatement extends IterationStatement{
-	var init:Statement;
-	var test:Expression;
-	var update:Expression;
-	function new(init:Statement, test:Expression, update:Expression, body:Statement){
-		this.init = init;
-		this.test = test;
-		this.update = update;
-		super(body);
-	}
-}
-
-class IfStatement extends Statement{
+@:publicFields
+class IfStatement implements Statement{
 	var test:Expression;
 	var consequent:Statement;
 	var alternate:Statement;
+	var newScope:Bool;
 	function new(test:Expression, consequent:Statement, alternate:Statement){
 		this.test = test;
 		this.consequent = consequent;
 		this.alternate = alternate;
-		super(false);
+		this.newScope = false;
 	}
 }
 
-class JumpStatement extends Statement{
+@:publicFields
+class JumpStatement implements Statement{
 	var mode:JumpMode;
+	var newScope:Bool;
 	function new(mode:JumpMode){
 		this.mode = mode;
-		super(false);
+		this.newScope = false;
 	}
 }
 
+@:publicFields
 class ReturnStatement extends JumpStatement{
 	var returnExpression:Expression;
 	function new(returnExpression:Expression){
 		this.returnExpression = returnExpression;
 		super(RETURN);
+	}
+}
+
+interface IterationStatement extends Statement{
+	var body:Statement;
+	var newScope:Bool;
+}
+
+@:publicFields
+class WhileStatement implements IterationStatement{
+	var test:Expression;
+	var body:Statement;
+	var newScope:Bool;
+	function new(test:Expression, body:Statement){
+		this.test = test;
+		this.body = body;
+		this.newScope = false;
+	}
+}
+
+@:publicFields
+class DoWhileStatement implements IterationStatement{
+	var test:Expression;
+	var body:Statement;
+	var newScope:Bool;
+	function new(test:Expression, body:Statement){
+		this.test = test;
+		this.body = body;
+		this.newScope = false;
+	}
+}
+
+@:publicFields
+class ForStatement implements IterationStatement{
+	var init:Statement;
+	var test:Expression;
+	var update:Expression;
+	var body:Statement;
+	var newScope:Bool;
+	function new(init:Statement, test:Expression, update:Expression, body:Statement){
+		this.init = init;
+		this.test = test;
+		this.update = update;
+		this.body = body;
+		this.newScope = false;
 	}
 }
 
@@ -533,6 +566,7 @@ enum NodeEnum{
 	ReturnStatementNode(n:ReturnStatement);
 }
 
+@:publicFields
 class NodeEnumHelper{
 	static public function toEnum(n:Node):NodeEnum{
 		return switch (Type.typeof(n)) {
