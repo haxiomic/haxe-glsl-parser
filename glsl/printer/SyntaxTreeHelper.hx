@@ -71,7 +71,8 @@ class RootPrinter{
 		for(d in n.declarations){
 
 			var unit:String = d.print(indentWith, 0) + (pretty ? '\n' : '');
-			//type-specific layout rules
+			//node-specific layout rules
+			//backward-facing @! more intuitive if forward-facing?
 			if(pretty){
 				//compare last and current nodes
 				unit = switch [lastDEnum, d.toEnum()]{
@@ -400,9 +401,28 @@ class CompoundStatementPrinter{
 		var pretty = (indentWith != null);
 		var str = '';
 		str += '{' + (pretty ? '\n' : '');
-		str += n.statementList.map(function(smt)
-			return smt.print(indentWith, 1)
-		).join(pretty ? '\n' : '');
+		// str += n.statementList.map(function(smt)
+		// 	return smt.print(indentWith, 1)
+		// ).join(pretty ? '\n' : '');
+		for(i in 0...n.statementList.length){
+			var smt = n.statementList[i];
+			var smtStr = smt.print(indentWith, 1) + (pretty ? '\n' : '');
+			//node-specific rules
+			if(pretty){
+				var currentNodeEnum = smt.toEnum();
+				var nextNodeEnum = n.statementList[i + 1].toEnum();
+				//if current and next are different node types, add newline
+				if(nextNodeEnum == null){
+					smtStr = StringTools.rtrim(smtStr);//remove trailing whitespace
+				}else if(
+						currentNodeEnum.getIndex() != nextNodeEnum.getIndex() ||
+						Std.is(smt, IterationStatement)
+					){
+					smtStr = smtStr + '\n';					
+				}
+			}
+			str += smtStr;
+		}
 		str += (pretty ? '\n' : '') + '}';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
@@ -476,8 +496,8 @@ class IfStatementPrinter{
 		var str = 'if(' + n.test.print(indentWith) + ')';
 		str += (pretty && !compoundConsequent ? ' ' : ''); //trailing space
 		str += n.consequent.print(indentWith);
-		str += (pretty && !compoundConsequent ? '\n' : '');
 		if(n.alternate != null){
+			str += (pretty && !compoundConsequent ? '\n' : '');
 			var compoundAlternate = n.alternate.toEnum().match(CompoundStatementNode(_));
 			str += 'else';
 			str += (!compoundAlternate ? ' ' : ''); //trailing space

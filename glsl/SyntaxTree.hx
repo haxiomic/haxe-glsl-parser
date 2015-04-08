@@ -572,7 +572,7 @@ class NodeEnumHelper{
 			case TClass(IfStatement)                     : IfStatementNode(untyped n);
 			case TClass(JumpStatement)                   : JumpStatementNode(untyped n);
 			case TClass(ReturnStatement)                 : ReturnStatementNode(untyped n);
-			default: null; //unrecognized node
+			case null, _: null; //unrecognized node
 		}
 	}
 }
