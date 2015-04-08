@@ -1,5 +1,8 @@
 #Todo
 ------
+- create preprocess/ and postprocess/
+- isolate core parser for resuse by preprocessor
+
 - We probably need a preprocessor expression parser that includes the defined operator
 - Preprocessor_directive tokens need to be part of the SyntaxTree to make passing on PP tokens possible
 - Error reporting needs redoing from the top - if token has pos info, this should be integrated into to nodes

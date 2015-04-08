@@ -386,9 +386,7 @@ class CompoundStatementPrinter{
 		var pretty = (indentWith != null);
 		var str = '';
 		str += '{' + (pretty ? '\n' : '');
-		// str += n.statementList.map(function(smt)
-		// 	return smt.print(indentWith, 1)
-		// ).join(pretty ? '\n' : '');
+		//enumerate statements
 		for(i in 0...n.statementList.length){
 			var smt = n.statementList[i];
 			var smtStr = smt.print(indentWith, 1) + (pretty ? '\n' : '');
