@@ -290,8 +290,8 @@ class TreeBuilder{
 			case 204: return new JumpStatement(JumpMode.DISCARD); //jump_statement ::= DISCARD SEMICOLON
 			case 205: return [n(1)]; //translation_unit ::= external_declaration
 			case 206: a(1).push(cast n(2)); return s(1); //translation_unit ::= translation_unit external_declaration
-			case 207: cast(n(1), Declaration).global = true; return s(1); //external_declaration ::= function_definition
-			case 208: cast(n(1), Declaration).global = true; return s(1); //external_declaration ::= declaration
+			case 207: cast(n(1), Declaration).external = true; return s(1); //external_declaration ::= function_definition
+			case 208: cast(n(1), Declaration).external = true; return s(1); //external_declaration ::= declaration
 			case 209: return new FunctionDefinition(cast n(1), cast n(2)); //function_definition ::= function_prototype compound_statement_no_new_scope
 		}
 		
