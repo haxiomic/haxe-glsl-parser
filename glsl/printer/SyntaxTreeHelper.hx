@@ -67,38 +67,24 @@ class RootPrinter{
 	static public function print(n:Root, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
 		var str = '';
-		var lastDEnum:NodeEnum = null;
-		for(d in n.declarations){
-
+		for(i in 0...n.declarations.length){
+			var d = n.declarations[i];
 			var unit:String = d.print(indentWith, 0) + (pretty ? '\n' : '');
-			//node-specific layout rules
-			//backward-facing @! more intuitive if forward-facing?
+			//node-specific rules
 			if(pretty){
-				//compare last and current nodes
-				unit = switch [lastDEnum, d.toEnum()]{
-					case [null, FunctionDefinitionNode(_)] |
-						 [FunctionDefinitionNode(_), FunctionDefinitionNode(_)]: 
-						unit + '\n';
-					case [_, FunctionDefinitionNode(_)]:
-						'\n' + unit + '\n';
-					case [PrecisionDeclarationNode(_), PrecisionDeclarationNode(_)]:
-						unit;
-					case [PrecisionDeclarationNode(_), _]:
-						'\n' + unit;
-					case [VariableDeclarationNode(_), VariableDeclarationNode(_)]:
-						unit;
-					case [VariableDeclarationNode(_), _]:
-						'\n' + unit;
-					case [null, _]:
-						unit;
-					default: unit;
+				//group similar nodes, (excluding FunctionDefinitions)
+				var currentNodeEnum = d.toEnum();
+				var nextNodeEnum = n.declarations[i+1].toEnum();
+				if(nextNodeEnum == null){
+					unit = StringTools.rtrim(unit);
+				}else if(currentNodeEnum.getIndex() != nextNodeEnum.getIndex() ||
+						currentNodeEnum.match(FunctionDefinitionNode(_))){
+					unit += '\n';
 				}
-				lastDEnum = d.toEnum();
 			}
 
 			str += unit;
 		}
-		str = StringTools.rtrim(str);
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -110,7 +96,6 @@ class TypeSpecifierPrinter{
 			default:
 		}
 		var str = '';
-		//qualifiers
 		var qualifiers:Array<String> = [];
 		if(n.invariant) qualifiers.push('invariant');
 		if(n.storage != null) qualifiers.push(n.storage.print());
@@ -411,13 +396,12 @@ class CompoundStatementPrinter{
 			if(pretty){
 				var currentNodeEnum = smt.toEnum();
 				var nextNodeEnum = n.statementList[i + 1].toEnum();
+				//group similar statements:
 				//if current and next are different node types, add newline
 				if(nextNodeEnum == null){
 					smtStr = StringTools.rtrim(smtStr);//remove trailing whitespace
-				}else if(
-						currentNodeEnum.getIndex() != nextNodeEnum.getIndex() ||
-						Std.is(smt, IterationStatement)
-					){
+				}else if(currentNodeEnum.getIndex() != nextNodeEnum.getIndex() ||
+						Std.is(smt, IterationStatement)){
 					smtStr = smtStr + '\n';					
 				}
 			}
