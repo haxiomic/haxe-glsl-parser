@@ -3,15 +3,6 @@
 	Loosely following Mozilla Parser AST API and Mesa GLSL Compiler AST
 
 	@author George Corney
-
-	@! todo
-	- Expression, Should be interfaces not classes
-		Done:
-		- Node
-		- IterationStatement
-		- Statement
-		- Declaration
-	- ! datatype printing with AST printer
 */
 
 package glsl;
@@ -202,8 +193,12 @@ class ArrayElementSelectionExpression implements Expression{
 	}
 }
 
+interface ExpressionParameters{
+	var parameters:Array<Expression>;
+}
+
 @:publicFields
-class FunctionCall implements Expression{
+class FunctionCall implements Expression implements ExpressionParameters{
 	var name:String;
 	var parameters:Array<Expression>;
 	var parenWrap:Bool = false;
@@ -214,16 +209,14 @@ class FunctionCall implements Expression{
 }
 
 
-@:publicFields//@! could use tighter binding between name and dataType
-class Constructor extends FunctionCall implements TypedExpression{
+@:publicFields
+class Constructor implements Expression implements ExpressionParameters implements TypedExpression{
 	var dataType:DataType;
+	var parameters:Array<Expression>;
+	var parenWrap:Bool = false;
 	function new(dataType:DataType, ?parameters:Array<Expression>){
 		this.dataType = dataType;
-		var name = switch (this.dataType) {
-			case USER_TYPE(n): n;
-			case _: this.dataType.getName().toLowerCase();
-		}
-		super(name, parameters);
+		this.parameters = parameters != null ? parameters : [];
 	}
 }
 

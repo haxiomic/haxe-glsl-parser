@@ -46,8 +46,8 @@ class TreeBuilder{
 			case 16: return s(1); //function_call_generic ::= function_call_header_no_parameters RIGHT_PAREN
 			case 17: return s(1); //function_call_header_no_parameters ::= function_call_header VOID
 			case 18: return s(1); //function_call_header_no_parameters ::= function_call_header
-			case 19: cast(n(1), FunctionCall).parameters.push(cast n(2)); return s(1); //function_call_header_with_parameters ::= function_call_header assignment_expression
-			case 20: cast(n(1), FunctionCall).parameters.push(cast n(3)); return s(1); //function_call_header_with_parameters ::= function_call_header_with_parameters COMMA assignment_expression
+			case 19: cast(n(1), ExpressionParameters).parameters.push(cast n(2)); return s(1); //function_call_header_with_parameters ::= function_call_header assignment_expression
+			case 20: cast(n(1), ExpressionParameters).parameters.push(cast n(3)); return s(1); //function_call_header_with_parameters ::= function_call_header_with_parameters COMMA assignment_expression
 			case 21: return s(1); //function_call_header ::= function_identifier LEFT_PAREN
 			case 22: return new Constructor(cast ev(1)); //function_identifier ::= constructor_identifier
 			case 23: return new FunctionCall(t(1).data); //function_identifier ::= IDENTIFIER
