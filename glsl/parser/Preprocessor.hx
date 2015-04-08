@@ -11,66 +11,25 @@
 	- all builtinMacros should be unresolvable but with a force-resolve fallback?
 
 	#Notes
+	- by default directives are not removed except for if-switches (when resolvable)
 	- operates on glsl tokens and uses its own tokenizer for constant expressions
-	- only alters source if it's sure it's correct in doing so and leaves compiler hint tokens untouched
 
-	------------------------------
-		Directives
-			#
-			#define
-			#undef
-			#if
-			#ifdef
-			#ifndef
-			#else
-			#elif
-			#endif
-			#error
-			#pragma
-			#extension
-			#version
-			#line
-
-		Operators
-			defined - used as either:
-				defined identifier
-				defined ( identifier )
-
-		Predefined Macros
-			__LINE__  - will substitute a decimal integer constant that is one more than the number of preceding newlines in the current source string.
-
-			__FILE__ - will substitute a decimal integer constant that says which source string number is currently being processed.
-
-			__VERSION__ - will substitute a decimal integer reflecting the version number of the OpenGL ES shading language. (100 in this case for version 1.00)
-
-			GL_ES - will be defined and set to 1
-	------------------------------
-
-	- Some preprocessor directives can only be evaluated on the target platform
-	- Preprocessor directives should be stored on root note with position information so that they
-		can be printed with the AST
-	- Operators and predefined macros should remain as identifier tokens
-
-	- define with a regular variable creates a new const in place? (in contrast to macro function definitions)
-		alternatively, just paste the content in place?
-	- define is literally just handling arbitrary text rather than expressions
-	- macro functions identifiers can be found by tokenizing the function content
+	--------------------
+	#Dev Notes
+	- some preprocessor directives can only be evaluated on the target platform
 
 	- if's process only a simple subset of expressions and also paste in defines in place
 		(tokenize content to find identifiers)
 
-	- Can regular Composite variables be used in preprocessor expressions?
+	- can regular composite variables be used in preprocessor expressions?
 		> in #define, yes, any nonsense can be used - it's just pasting the text string in place
-		> in #if, no, only Primitives may be used
+		> in #if, no, only preprocessor constant expressions are allowed
 
 	- "Undefined identifiers not consumed by the defined operator do not default to '0'. Use of such
 	identifiers causes an error."
 
-	- A separate operator function table _may_ be necessary to handle C-style operations
-		(ie, 0 may be interchangeable with false for example)
-
 	- defined operator is only available in macro expressions!
-		-> this probably necessitates a specialized preprocessor expression grammar
+		-> this necessitates a specialized preprocessor expression grammar and evaluator
 */
 
 package glsl.parser;
@@ -93,6 +52,7 @@ class Preprocessor{
 
 	static var tokens:Array<Token>;
 	static var i:Int;
+	static var force:Bool = false;
 
 	static var builtinMacros:Map<String, PPMacro> = [
 		'__VERSION__' => UnresolveableMacro(BuiltinMacroObject( function() return Std.string(version) )),
@@ -102,10 +62,11 @@ class Preprocessor{
 	];
 	static var userDefinedMacros:Map<String, PPMacro>;
 
-	static public function process(inputTokens:Array<Token>):Array<Token>{
+	static public function process(inputTokens:Array<Token>, force:Bool = false):Array<Token>{
 		//init state machine variables
 		tokens = inputTokens;
 		i = 0;
+		Preprocessor.force = force;
 		userDefinedMacros = new Map<String, PPMacro>();
 		warnings = [];
 
@@ -150,31 +111,33 @@ class Preprocessor{
 			case 'define':
 				//define macro
 				evaluateMacroDefinition(directive.content);
-				tokens.deleteTokens(i);
+				if(force) tokens.deleteTokens(i);
 
 			case 'undef':
 				var macroName = readMacroName(directive.content);
 				undefineMacro(macroName);
-				tokens.deleteTokens(i);
+				if(force) tokens.deleteTokens(i);
 
 			case 'if', 'ifdef', 'ifndef':
 				processIfSwitch();
 
 			case 'else', 'elif', 'endif':
+				if(force) tokens.deleteTokens(i);
 				throw 'unexpected #${directive.title}';
 
 			case 'error':
+				if(force) tokens.deleteTokens(i);
 				throw Error('${directive.content}', t);
-				// tokens.deleteTokens(i);
 
 			case 'pragma':
 				if(~/^\s*STDGL(\s+|$)/.match(directive.content))
 					throw 'pragmas beginning with STDGL are reserved';
 
 				pragmas.push(directive.content); 
-				// tokens.deleteTokens(i); pragmas should not be removed so they can be used by another compiler
+				if(force) tokens.deleteTokens(i); //#pragma generally should not be removed so it can be used by another compiler
 
 			case 'extension': // @! todo
+				if(force) tokens.deleteTokens(i);
 				throw 'directive #extension is not yet supported';
 
 			case 'version':
@@ -186,7 +149,9 @@ class Preprocessor{
 					if(matched){
 						var numStr = versionNumRegex.matched(1);
 						version = Std.parseInt(versionNumRegex.matched(1));
-						// tokens.deleteTokens(i); don't remove version, this information may be necessary in a later compilation step
+
+						// tokens.deleteTokens(i); 
+						if(force) tokens.deleteTokens(i); //#version generally should not be removed so it can be used by another compiler
 					}else{
 						switch directive.content {
 							case '':
@@ -200,10 +165,12 @@ class Preprocessor{
 				}
 
 			case 'line':      // @! todo
+				if(force) tokens.deleteTokens(i);
 				throw 'directive #line is not yet supported';
 				//change all the following line's tokens line numbers to specified line number
 
 			default:
+				if(force) tokens.deleteTokens(i);
 				throw 'unknown directive #\'${directive.title}\'';
 		}
 	}
@@ -397,7 +364,9 @@ class Preprocessor{
 	static function isMacroDefined(id:String):Bool{
 		var m = getMacro(id);
 		switch m{
-			case UnresolveableMacro(_): throw 'cannot resolve macro definition \'$id\'';
+			case UnresolveableMacro(fm): 
+				if(force && fm != null) return true;
+				else throw 'cannot resolve macro definition \'$id\'';
 			case null: return false;
 			case _: return true;
 		}
@@ -542,7 +511,7 @@ enum PPMacro{
 	UserMacroFunction(content:String, parameters:Array<String>);
 	BuiltinMacroObject(func:Void -> String);//function():Array<Token>
 	BuiltinMacroFunction(func:Array<Array<Token>> -> String, parameterCount:Int);//function(args):Array<Token>
-	UnresolveableMacro(force:PPMacro); 
+	UnresolveableMacro(ppMacro:PPMacro); 
 }
 
 enum PPError{
@@ -573,97 +542,100 @@ class PPTokensHelper{
 			return newTokens;
 		}
 
-		//we have a PPMacro
-		switch ppMacro {
-			case UserMacroObject(content):
-				var newTokens = tokenizeContent(content);
-				//delete identifier token (current token)
-				tokens.deleteTokens(i, 1);
-				//insert tokenized content
-				tokens.insertTokens(i, newTokens);
-
-				return ppMacro;
-
-			case UserMacroFunction(content, parameters):
-				try{
-					//get function arguments
-					var functionCall = tokens.readFunctionCall(i);
-					//ensure number of arguments match
-					if(functionCall.args.length != parameters.length){
-						switch functionCall.args.length > parameters.length{
-							case true: throw 'too many arguments for macro';
-							case false: throw 'not enough arguments for macro';
-						}
-					}
-
+		function resolveMacro(ppMacro:PPMacro){
+			switch ppMacro {
+				case UserMacroObject(content):
 					var newTokens = tokenizeContent(content);
-
-					//map parameter name to function call arguments
-					var parameterMap = new Map<String, PPMacro>();
-					for(i in 0...parameters.length){
-						if(!parameterMap.exists(parameters[i]))
-							parameterMap.set(parameters[i], UserMacroObject(functionCall.args[i].print()));
-					}
-
-					//replace IDENTIFIERS with function parameters
-					for(j in 0...newTokens.length){
-						if(newTokens[j].type.isIdentifierType()){
-							expandIdentifier(newTokens, j, parameterMap);
-						}
-					}
-
-					//delete function call
-					tokens.deleteTokens(i, functionCall.len);
+					//delete identifier token (current token)
+					tokens.deleteTokens(i, 1);
 					//insert tokenized content
 					tokens.insertTokens(i, newTokens);
 
 					return ppMacro;
 
-				}catch(e:Dynamic){
-					//identifier isn't a function call; ignore
-				}
-			case BuiltinMacroObject(func):
-				var newTokens = tokenizeContent(func());
-				//delete identifier token (current token)
-				tokens.deleteTokens(i, 1);
-				//insert tokenized content
-				tokens.insertTokens(i, newTokens);
-
-				return ppMacro;
-
-			case BuiltinMacroFunction(func, requiredParameterCount):
-				try{
-					//get arguments
-					var functionCall = tokens.readFunctionCall(i);
-					//ensure number of arguments match
-					if(functionCall.args.length != requiredParameterCount){
-						switch functionCall.args.length > requiredParameterCount{
-							case true: throw 'too many arguments for macro';
-							case false: throw 'not enough arguments for macro';
+				case UserMacroFunction(content, parameters):
+					try{
+						//get function arguments
+						var functionCall = tokens.readFunctionCall(i);
+						//ensure number of arguments match
+						if(functionCall.args.length != parameters.length){
+							switch functionCall.args.length > parameters.length{
+								case true: throw 'too many arguments for macro';
+								case false: throw 'not enough arguments for macro';
+							}
 						}
+
+						var newTokens = tokenizeContent(content);
+
+						//map parameter name to function call arguments
+						var parameterMap = new Map<String, PPMacro>();
+						for(i in 0...parameters.length){
+							if(!parameterMap.exists(parameters[i]))
+								parameterMap.set(parameters[i], UserMacroObject(functionCall.args[i].print()));
+						}
+
+						//replace IDENTIFIERS with function parameters
+						for(j in 0...newTokens.length){
+							if(newTokens[j].type.isIdentifierType()){
+								expandIdentifier(newTokens, j, parameterMap);
+							}
+						}
+
+						//delete function call
+						tokens.deleteTokens(i, functionCall.len);
+						//insert tokenized content
+						tokens.insertTokens(i, newTokens);
+
+						return ppMacro;
+
+					}catch(e:Dynamic){
+						//identifier isn't a function call; ignore
 					}
-
-					var newTokens = tokenizeContent(func(functionCall.args));
-
-					//delete operator call
-					tokens.deleteTokens(i, functionCall.len);
+				case BuiltinMacroObject(func):
+					var newTokens = tokenizeContent(func());
+					//delete identifier token (current token)
+					tokens.deleteTokens(i, 1);
 					//insert tokenized content
 					tokens.insertTokens(i, newTokens);
 
 					return ppMacro;
 
-				}catch(e:Dynamic){
-					//identifier isn't a function call; ignore
-				}
+				case BuiltinMacroFunction(func, requiredParameterCount):
+					try{
+						//get arguments
+						var functionCall = tokens.readFunctionCall(i);
+						//ensure number of arguments match
+						if(functionCall.args.length != requiredParameterCount){
+							switch functionCall.args.length > requiredParameterCount{
+								case true: throw 'too many arguments for macro';
+								case false: throw 'not enough arguments for macro';
+							}
+						}
 
-			case UnresolveableMacro(_):
-				throw 'cannot resolve macro';
+						var newTokens = tokenizeContent(func(functionCall.args));
 
-			default:
-				throw 'unhandled macro object $ppMacro';
+						//delete operator call
+						tokens.deleteTokens(i, functionCall.len);
+						//insert tokenized content
+						tokens.insertTokens(i, newTokens);
+
+						return ppMacro;
+
+					}catch(e:Dynamic){
+						//identifier isn't a function call; ignore
+					}
+
+				case UnresolveableMacro(forceMacro):
+					if(Preprocessor.force && forceMacro != null) return resolveMacro(forceMacro);
+					else throw 'cannot resolve macro';
+				default:
+					throw 'unhandled macro object $ppMacro';
+			}
+
+			return null;
 		}
 
-		return null;
+		return resolveMacro(ppMacro);
 	}
 
 	static public function readFunctionCall(tokens:Array<Token>, start:Int):MacroFunctionCall{
