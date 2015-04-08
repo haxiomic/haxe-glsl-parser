@@ -6,16 +6,13 @@
 
 	@! Todo
 	- create custom expression tokenizer
+	- define warning levels?
+		- so major warnings can be distinguished from inconsequential ones
+	- all builtinMacros should be unresolvable but with a force-resolve fallback?
 
 	#Notes
-	Preprocessor operates on glsl tokens and uses its own tokenizer for constant expressions
-
-	Gentle: Preprocessor only alters source if it's sure it's correct in doing so
-
-	Preprocessor syntax is handled by regex (is simple enough to allow this)
-
-	Unresolveable macros should result in tokens being left unchanged
-	-> If a directive can be completely handled, it is removed from the token array, otherwise it is left untouched
+	- operates on glsl tokens and uses its own tokenizer for constant expressions
+	- only alters source if it's sure it's correct in doing so and leaves compiler hint tokens untouched
 
 	------------------------------
 		Directives
@@ -98,10 +95,10 @@ class Preprocessor{
 	static var i:Int;
 
 	static var builtinMacros:Map<String, PPMacro> = [
-		'__VERSION__' => BuiltinMacroObject( function() return Std.string(version) ), //@! maybe this should be unresolvable
-		'__LINE__' => BuiltinMacroObject( function() return Std.string(tokens[i].line) ), //line of current token
-		'__FILE__' => UnresolveableMacro, //@! this should be left to the real compiler (however, it's not a critical issue)
-		'GL_ES' => UnresolveableMacro
+		'__VERSION__' => UnresolveableMacro(BuiltinMacroObject( function() return Std.string(version) )),
+		'__LINE__' => UnresolveableMacro(BuiltinMacroObject( function() return Std.string(tokens[i].line) )), //line of current token
+		'__FILE__' => UnresolveableMacro(BuiltinMacroObject( function() return '0' )),
+		'GL_ES' => UnresolveableMacro(BuiltinMacroObject( function() return '1' )) //1 for ES platforms
 	];
 	static var userDefinedMacros:Map<String, PPMacro>;
 
@@ -168,14 +165,14 @@ class Preprocessor{
 
 			case 'error':
 				throw Error('${directive.content}', t);
-				tokens.deleteTokens(i);
+				// tokens.deleteTokens(i);
 
 			case 'pragma':
 				if(~/^\s*STDGL(\s+|$)/.match(directive.content))
 					throw 'pragmas beginning with STDGL are reserved';
 
-				pragmas.push(directive.content);
-				//pragmas should not be removed (since the parser is preprocessor friendly)
+				pragmas.push(directive.content); 
+				// tokens.deleteTokens(i); pragmas should not be removed so they can be used by another compiler
 
 			case 'extension': // @! todo
 				throw 'directive #extension is not yet supported';
@@ -189,7 +186,7 @@ class Preprocessor{
 					if(matched){
 						var numStr = versionNumRegex.matched(1);
 						version = Std.parseInt(versionNumRegex.matched(1));
-						tokens.deleteTokens(i);
+						// tokens.deleteTokens(i); don't remove version, this information may be necessary in a later compilation step
 					}else{
 						switch directive.content {
 							case '':
@@ -302,10 +299,11 @@ class Preprocessor{
 
 			//select block by first testFunc returning true
 			for(b in testBlocks){
-				if(b.testFunc()){
+				try if(b.testFunc()){
 					newTokens = tokens.slice(b.start, b.end);
 					break;
 				}
+				catch(msg:String) throw Warn(msg, tokens[b.start - 1]);
 			}
 			//remove entire if-switch
 			tokens.deleteTokens(start, end - start + 1);
@@ -350,7 +348,7 @@ class Preprocessor{
 	static function defineMacro(id:String, ppMacro:PPMacro){
 		var existingMacro = getMacro(id);
 		switch existingMacro {
-			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _) | UnresolveableMacro: throw 'redefinition of predefined macro';
+			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _) | UnresolveableMacro(_): throw 'redefinition of predefined macro';
 			case UserMacroObject(_), UserMacroFunction(_, _): throw 'macro redefinition';
 			case null:
 		}
@@ -390,7 +388,7 @@ class Preprocessor{
 	static function undefineMacro(id:String){
 		var existingMacro = getMacro(id);
 		switch existingMacro {
-			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _) | UnresolveableMacro: throw 'cannot undefine predefined macro';
+			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _) | UnresolveableMacro(_): throw 'cannot undefine predefined macro';
 			case UserMacroObject(_) | UserMacroFunction(_, _): userDefinedMacros.remove(id);
 			case null:
 		}
@@ -399,7 +397,7 @@ class Preprocessor{
 	static function isMacroDefined(id:String):Bool{
 		var m = getMacro(id);
 		switch m{
-			case UnresolveableMacro: throw 'cannot resolve macro definition';
+			case UnresolveableMacro(_): throw 'cannot resolve macro definition \'$id\'';
 			case null: return false;
 			case _: return true;
 		}
@@ -544,7 +542,7 @@ enum PPMacro{
 	UserMacroFunction(content:String, parameters:Array<String>);
 	BuiltinMacroObject(func:Void -> String);//function():Array<Token>
 	BuiltinMacroFunction(func:Array<Array<Token>> -> String, parameterCount:Int);//function(args):Array<Token>
-	UnresolveableMacro; 
+	UnresolveableMacro(force:PPMacro); 
 }
 
 enum PPError{
@@ -658,7 +656,7 @@ class PPTokensHelper{
 					//identifier isn't a function call; ignore
 				}
 
-			case UnresolveableMacro:
+			case UnresolveableMacro(_):
 				throw 'cannot resolve macro';
 
 			default:
