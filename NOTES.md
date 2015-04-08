@@ -1,5 +1,6 @@
 #Todo
 ------
+- add preprocessor directives to the syntax
 - create preprocess/ and postprocess/
 - isolate core parser for resuse by preprocessor
 

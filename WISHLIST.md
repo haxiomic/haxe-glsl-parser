@@ -3,5 +3,10 @@
 - Validator
 - Minifier with DCE
 - Optimizer
-- Lazy typing prepass (automatically resolve type mismatches where possible (ie 1.0*3))
+	https://www.opengl.org/wiki/GLSL_Optimizations
+	http://stackoverflow.com/questions/10880742/glsl-compiler-optimization-of-redundant-assignments-across-functions
+	https://github.com/aras-p/glsl-optimizer/tree/master/src/glsl
+- LazyGLSL: 
+	- typing prepass (automatically resolve type mismatches where possible (ie 1.0*3))
+	- add missing function prototypes
 - Complete Eval (currently just constant expressions)
