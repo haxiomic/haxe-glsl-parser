@@ -3,6 +3,10 @@
 	Loosely following Mozilla Parser AST API and Mesa GLSL Compiler AST
 
 	@author George Corney
+
+	@! todo
+		- nodeName (use macro?)
+		- resolve newScope
 */
 
 package glsl;
@@ -287,7 +291,7 @@ class ParameterDeclaration implements Node{
 
 //in the syntax, FunctionDefinition is actually an external_declaration rather than a declaration
 
-@:publicFields//in this form, they've been combined and to .global is used to signify an external_declaration
+@:publicFields//in this form, they've been combined and to .external is used to signify an external_declaration
 class FunctionDefinition implements Declaration{
 	var header:FunctionHeader;
 	var body:CompoundStatement;
@@ -331,20 +335,18 @@ class CompoundStatement implements Statement{
 @:publicFields
 class DeclarationStatement implements Statement{
 	var declaration:Declaration;
-	var newScope:Bool;
+	var newScope:Bool = false;
 	function new(declaration:Declaration){
 		this.declaration = declaration;
-		this.newScope = false;
 	}
 }
 
 @:publicFields
 class ExpressionStatement implements Statement{
 	var expression:Expression;
-	var newScope:Bool;
+	var newScope:Bool = false;
 	function new(expression:Expression){
 		this.expression = expression;
-		this.newScope = false;
 	}
 }
 
@@ -353,22 +355,20 @@ class IfStatement implements Statement{
 	var test:Expression;
 	var consequent:Statement;
 	var alternate:Statement;
-	var newScope:Bool;
+	var newScope:Bool = false;
 	function new(test:Expression, consequent:Statement, alternate:Statement){
 		this.test = test;
 		this.consequent = consequent;
 		this.alternate = alternate;
-		this.newScope = false;
 	}
 }
 
 @:publicFields
 class JumpStatement implements Statement{
 	var mode:JumpMode;
-	var newScope:Bool;
+	var newScope:Bool = false;
 	function new(mode:JumpMode){
 		this.mode = mode;
-		this.newScope = false;
 	}
 }
 
@@ -390,11 +390,10 @@ interface IterationStatement extends Statement{
 class WhileStatement implements IterationStatement{
 	var test:Expression;
 	var body:Statement;
-	var newScope:Bool;
+	var newScope:Bool = false;
 	function new(test:Expression, body:Statement){
 		this.test = test;
 		this.body = body;
-		this.newScope = false;
 	}
 }
 
@@ -402,11 +401,10 @@ class WhileStatement implements IterationStatement{
 class DoWhileStatement implements IterationStatement{
 	var test:Expression;
 	var body:Statement;
-	var newScope:Bool;
+	var newScope:Bool = false;
 	function new(test:Expression, body:Statement){
 		this.test = test;
 		this.body = body;
-		this.newScope = false;
 	}
 }
 
@@ -416,16 +414,27 @@ class ForStatement implements IterationStatement{
 	var test:Expression;
 	var update:Expression;
 	var body:Statement;
-	var newScope:Bool;
+	var newScope:Bool = false;
 	function new(init:Statement, test:Expression, update:Expression, body:Statement){
 		this.init = init;
 		this.test = test;
 		this.update = update;
 		this.body = body;
-		this.newScope = false;
 	}
 }
 
+//non-spec preprocessor directive support to allow code to pass through parser unharmed
+@:publicFields
+class PreprocessorDirective implements Declaration implements Statement{
+	var content:String;
+	var external:Bool = true;
+	var newScope:Bool = false;
+	function new(content:String){
+		this.content = content;
+	}
+}
+
+//Enums
 enum BinaryOperator{
 	STAR;
 	SLASH;
@@ -557,6 +566,8 @@ enum NodeEnum{
 	IfStatementNode(n:IfStatement);
 	JumpStatementNode(n:JumpStatement);
 	ReturnStatementNode(n:ReturnStatement);
+	//non-spec
+	PreprocessorDirectiveNode(n:PreprocessorDirective);
 }
 
 @:publicFields
@@ -599,6 +610,8 @@ class NodeEnumHelper{
 			case TClass(IfStatement)                     : IfStatementNode(untyped n);
 			case TClass(JumpStatement)                   : JumpStatementNode(untyped n);
 			case TClass(ReturnStatement)                 : ReturnStatementNode(untyped n);
+			//non-spec
+			case TClass(PreprocessorDirective)           : PreprocessorDirectiveNode(untyped n);
 			case null, _: null; //unrecognized node
 		}
 	}

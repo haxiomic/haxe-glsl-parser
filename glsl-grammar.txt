@@ -1,5 +1,5 @@
-//GLSL ES 1.0 Grammar
-//Taken from https://www.khronos.org/files/opengles_shading_language.pdf
+// GLSL ES 1.0 Grammar
+// Taken from https://www.khronos.org/files/opengles_shading_language.pdf  
 
 variable_identifier:
     IDENTIFIER
@@ -293,6 +293,7 @@ simple_statement:
     selection_statement
     iteration_statement
     jump_statement
+    preprocessor_directive //non-spec
 
 compound_statement_with_scope:
     LEFT_BRACE RIGHT_BRACE
@@ -356,6 +357,11 @@ translation_unit:
 external_declaration:
     function_definition
     declaration
+    preprocessor_directive //non-spec
 
 function_definition:
     function_prototype compound_statement_no_new_scope
+
+//non-spec support for preprocessor directives in the AST
+preprocessor_directive:
+    PREPROCESSOR_DIRECTIVE

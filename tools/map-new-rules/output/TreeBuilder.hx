@@ -259,7 +259,6 @@ class TreeBuilder{
 			case 173: return s(1); //simple_statement ::= selection_statement
 			case 174: return s(1); //simple_statement ::= iteration_statement
 			case 175: return s(1); //simple_statement ::= jump_statement
-			case 176: return s(1); //simple_statement ::= preprocessor_directive
 			case 177: return new CompoundStatement([], true); //compound_statement_with_scope ::= LEFT_BRACE RIGHT_BRACE
 			case 178: return new CompoundStatement(cast a(2), true); //compound_statement_with_scope ::= LEFT_BRACE statement_list RIGHT_BRACE
 			case 179: return s(1); /*@! scope change? */ //statement_with_scope ::= compound_statement_no_new_scope
@@ -293,9 +292,7 @@ class TreeBuilder{
 			case 207: a(1).push(cast n(2)); return s(1); //translation_unit ::= translation_unit external_declaration
 			case 208: cast(n(1), Declaration).external = true; return s(1); //external_declaration ::= function_definition
 			case 209: cast(n(1), Declaration).external = true; return s(1); //external_declaration ::= declaration
-			case 210: cast(n(1), Declaration).external = true; return s(1); //external_declaration ::= preprocessor_directive
 			case 211: return new FunctionDefinition(cast n(1), cast n(2)); //function_definition ::= function_prototype compound_statement_no_new_scope
-			case 212: return new PreprocessorDirective(t(1).data); //preprocessor_directive ::= PREPROCESSOR_DIRECTIVE
 		}
 		
 		Parser.warn('unhandled reduce rule number $ruleno');

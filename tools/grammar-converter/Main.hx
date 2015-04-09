@@ -7,7 +7,6 @@ class Main{
 	static function main() {
 		var grammar = sys.io.File.getContent(grammarFile);
 
-
 		var tokens = GrammarTokenizer.tokenize(grammar);
 
 		// /*print tokens */ for(t in tokens) trace(t.type);

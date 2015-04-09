@@ -1,13 +1,10 @@
 /*
 
 	Syntax Tree Printer
-
-	- in progress
-
-	#Nodes every node must first consider subtypes
-
 	@author George Corney
 
+	@!todo
+		- faster indentation?
 */
 
 package glsl.printer;
@@ -69,18 +66,26 @@ class RootPrinter{
 		var str = '';
 		for(i in 0...n.declarations.length){
 			var d = n.declarations[i];
-			var unit:String = d.print(indentWith, 0) + (pretty ? '\n' : '');
+			var unit:String = d.print(indentWith, 0);
 			//node-specific rules
+			var currentNodeEnum = d.toEnum();
+			var nextNodeEnum = n.declarations[i+1].toEnum();
 			if(pretty){
 				//group similar nodes, (excluding FunctionDefinitions)
-				var currentNodeEnum = d.toEnum();
-				var nextNodeEnum = n.declarations[i+1].toEnum();
-				if(nextNodeEnum == null){
-					unit = StringTools.rtrim(unit);
-				}else if(currentNodeEnum.getIndex() != nextNodeEnum.getIndex() ||
-						currentNodeEnum.match(FunctionDefinitionNode(_))){
-					unit += '\n';
+				if(nextNodeEnum != null){
+					unit = unit + '\n';
+					if(
+						currentNodeEnum.getIndex() != nextNodeEnum.getIndex() ||
+						currentNodeEnum.match(FunctionDefinitionNode(_))
+					)
+						unit = unit + '\n';
 				}
+			}else{
+				//preprocessor tokens need to have their own line
+				if(currentNodeEnum.match(PreprocessorDirectiveNode(_)))
+					unit = unit + '\n';
+				else if(nextNodeEnum != null && nextNodeEnum.match(PreprocessorDirectiveNode(_)))
+					unit = unit + '\n';
 			}
 
 			str += unit;
@@ -283,10 +288,11 @@ class ConstructorPrinter{
 class DeclarationPrinter{
 	static public function print(n:Declaration, indentWith:String, indentLevel:Int = 0):String{
 		return switch n.toEnum(){
-			case PrecisionDeclarationNode(n): n.print(indentWith, indentLevel);
-			case VariableDeclarationNode(n):  n.print(indentWith, indentLevel);
-			case FunctionPrototypeNode(n):    n.print(indentWith, indentLevel);
-			case FunctionDefinitionNode(n):   n.print(indentWith, indentLevel);
+			case PrecisionDeclarationNode(n):  n.print(indentWith, indentLevel);
+			case VariableDeclarationNode(n):   n.print(indentWith, indentLevel);
+			case FunctionPrototypeNode(n):     n.print(indentWith, indentLevel);
+			case FunctionDefinitionNode(n):    n.print(indentWith, indentLevel);
+			case PreprocessorDirectiveNode(n): n.print(indentWith, indentLevel);
 			case null, _:
 				throw 'Declaration cannot be printed: $n';
 		}
@@ -361,16 +367,17 @@ class FunctionHeaderPrinter{
 class StatementPrinter{
 	static public function print(n:Statement, indentWith:String, indentLevel:Int = 0):String{
 		return switch n.toEnum(){
-			case CompoundStatementNode(n):    n.print(indentWith, indentLevel);
-			case DeclarationStatementNode(n): n.print(indentWith, indentLevel);
-			case ExpressionStatementNode(n):  n.print(indentWith, indentLevel);
-			case IterationStatementNode(n):   n.print(indentWith, indentLevel);
-			case WhileStatementNode(n):       n.print(indentWith, indentLevel);
-			case DoWhileStatementNode(n):     n.print(indentWith, indentLevel);
-			case ForStatementNode(n):         n.print(indentWith, indentLevel);
-			case IfStatementNode(n):          n.print(indentWith, indentLevel);
-			case JumpStatementNode(n):        n.print(indentWith, indentLevel);
-			case ReturnStatementNode(n):      n.print(indentWith, indentLevel);
+			case CompoundStatementNode(n):     n.print(indentWith, indentLevel);
+			case DeclarationStatementNode(n):  n.print(indentWith, indentLevel);
+			case ExpressionStatementNode(n):   n.print(indentWith, indentLevel);
+			case IterationStatementNode(n):    n.print(indentWith, indentLevel);
+			case WhileStatementNode(n):        n.print(indentWith, indentLevel);
+			case DoWhileStatementNode(n):      n.print(indentWith, indentLevel);
+			case ForStatementNode(n):          n.print(indentWith, indentLevel);
+			case IfStatementNode(n):           n.print(indentWith, indentLevel);
+			case JumpStatementNode(n):         n.print(indentWith, indentLevel);
+			case ReturnStatementNode(n):       n.print(indentWith, indentLevel);
+			case PreprocessorDirectiveNode(n): n.print(indentWith, indentLevel);
 			case null, _:
 				throw 'Statement cannot be printed: $n';
 		}
@@ -384,19 +391,29 @@ class CompoundStatementPrinter{
 		//enumerate statements
 		for(i in 0...n.statementList.length){
 			var smt = n.statementList[i];
-			var smtStr = smt.print(indentWith, 1) + (pretty ? '\n' : '');
+			var smtStr = smt.print(indentWith, 1);
 			//node-specific rules
+			var currentNodeEnum = smt.toEnum();
+			var nextNodeEnum = n.statementList[i + 1].toEnum();
 			if(pretty){
-				var currentNodeEnum = smt.toEnum();
-				var nextNodeEnum = n.statementList[i + 1].toEnum();
 				//group similar statements:
 				//if current and next are different node types, add newline
-				if(nextNodeEnum == null){
-					smtStr = StringTools.rtrim(smtStr);//remove trailing whitespace
-				}else if(currentNodeEnum.getIndex() != nextNodeEnum.getIndex() ||
-						Std.is(smt, IterationStatement)){
-					smtStr = smtStr + '\n';					
+				if(nextNodeEnum != null){
+					smtStr = smtStr + '\n';
+					if(
+						currentNodeEnum.getIndex() != nextNodeEnum.getIndex() ||
+					  	Std.is(smt, IterationStatement)
+					)
+						smtStr = smtStr + '\n';
 				}
+			}else{
+				//preprocessor tokens need to have their own line
+				var previousNodeEnum = n.statementList[i - 1].toEnum();
+				if(currentNodeEnum.match(PreprocessorDirectiveNode(_))){
+					smtStr = smtStr + '\n';
+					if(previousNodeEnum == null) smtStr = '\n' + smtStr;
+				}else if(nextNodeEnum != null && nextNodeEnum.match(PreprocessorDirectiveNode(_)))
+					smtStr = smtStr + '\n';
 			}
 			str += smtStr;
 		}
@@ -501,6 +518,15 @@ class ForStatementPrinter{
 			+ n.update.print(indentWith)
 			+ ')';
 		str += n.body.print(indentWith);
+		return Utils.indent(str, indentWith, indentLevel);
+	}
+}
+//non-spec preprocessor nodes
+@:publicFields
+class PreprocessorDirectivePrinter{
+	static public function print(n:PreprocessorDirective, indentWith:String, indentLevel:Int = 0):String{
+		var pretty = (indentWith != null);
+		var str = n.content;
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }

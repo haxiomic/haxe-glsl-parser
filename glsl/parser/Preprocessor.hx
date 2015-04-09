@@ -5,6 +5,9 @@
 	@author George Corney
 
 	@! Todo
+	- should actively remove tokens as much as possible
+		remove at the end
+		(this means reading the contents of unresolvable ifs)
 	- create custom expression tokenizer
 	- define warning levels?
 		- so major warnings can be distinguished from inconsequential ones

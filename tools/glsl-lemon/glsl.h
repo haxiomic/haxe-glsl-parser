@@ -89,3 +89,4 @@
 #define BREAK                           89
 #define RETURN                          90
 #define DISCARD                         91
+#define PREPROCESSOR_DIRECTIVE          92
