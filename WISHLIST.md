@@ -9,5 +9,6 @@
 - LazyGLSL: 
 	- typing prepass (automatically resolve type mismatches where possible (ie 1.0*3))
 	- add missing function prototypes
-        - type inference for function returns and function parameters
+    - default function arguments
+    - type inference for function returns and function parameters?
 - Complete Eval (currently just constant expressions)

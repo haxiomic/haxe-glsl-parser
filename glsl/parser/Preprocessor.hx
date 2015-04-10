@@ -100,6 +100,10 @@ class Preprocessor{
 			i++;
 		}
 
+		//@! remove directives if possible
+		//#, #define, #undef, #error?
+		//only leave in place if unresolved tokens exist
+
 		return tokens;
 	}
 
@@ -113,7 +117,8 @@ class Preprocessor{
 			case '':
 			case 'define':
 				//define macro
-				evaluateMacroDefinition(directive.content);
+				var definition = evaluateMacroDefinition(directive.content);
+				defineMacro(definition.name, definition.ppMacro);
 				if(force) tokens.deleteTokens(i);
 
 			case 'undef':
@@ -394,7 +399,7 @@ class Preprocessor{
 	}
 
 	//MACRO_NAME(args)? content?
-	static function evaluateMacroDefinition(definitionString:String):PPMacro{
+	static function evaluateMacroDefinition(definitionString:String):MacroDefinition{
 		if(macroNameReg.match(definitionString)){
 			var macroName = macroNameReg.matched(1);
 			var macroContent = '';
@@ -445,8 +450,10 @@ class Preprocessor{
 					userMacro = UserMacroObject(StringTools.trim(macroContent));
 			}
 
-			defineMacro(macroName, userMacro);
-			return userMacro;
+			return {
+				name: macroName,
+				ppMacro: userMacro
+			}
 		}else{
 			throw 'invalid macro definition';
 		}
@@ -507,6 +514,11 @@ typedef MacroFunctionCall = {
 	var args:Array<Array<Token>>;
 	var start:Int;
 	var len:Int;
+}
+
+typedef MacroDefinition = {
+	var name:String;
+	var ppMacro:PPMacro;
 }
 
 enum PPMacro{
@@ -660,7 +672,7 @@ class PPTokensHelper{
 			//read args, taking care to match parentheses
 			var argBuffer:Array<Token> = [];
 			var level = 1;
-			inline function pushArgs(){
+			inline function pushArg(){
 				args.push(argBuffer);
 				argBuffer = []; //flush arg buffer
 			}
@@ -671,13 +683,13 @@ class PPTokensHelper{
 				switch t.type{
 					case TokenType.LEFT_PAREN: level++;
 					case TokenType.RIGHT_PAREN: level--;
-					case TokenType.COMMA: if(level == 1) pushArgs(); else argBuffer.push(t);
+					case TokenType.COMMA: if(level == 1) pushArg(); else argBuffer.push(t);
 					case null: throw '$t has no token type';
 					case _: argBuffer.push(t);
 				}
 				//close parenthesis reached
 				if(level <= 0){
-					pushArgs();
+					pushArg();
 					break;
 				}
 			}while(true);

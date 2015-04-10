@@ -13,7 +13,9 @@ package glsl;
 
 import Type.ValueType.TClass;
 
-interface Node{}
+interface Node{
+	// var nodeName:String;
+}
 
 @:publicFields
 class Root implements Node{
@@ -73,7 +75,6 @@ class StructDeclarator implements Node{
 }
 
 
-@:publicFields//Expressions
 interface Expression extends Node{
 	var parenWrap:Bool;
 }
@@ -224,8 +225,6 @@ class Constructor implements Expression implements ExpressionParameters implemen
 	}
 }
 
-
-@:publicFields//Declarations
 interface Declaration extends Node{
 	var external:Bool;
 }
@@ -314,8 +313,6 @@ class FunctionHeader implements Node{
 	}
 }
 
-
-@:publicFields//Statements
 interface Statement extends Node{
 	var newScope:Bool;
 }
