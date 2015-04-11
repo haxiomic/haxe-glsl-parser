@@ -320,7 +320,7 @@ class DeclaratorPrinter{
 	static public function print(n:Declarator, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
 		var str = '';
-		str += n.name
+		str += (n.name != null ? n.name : '')
 			+ (n.arraySizeExpression != null ? '['+n.arraySizeExpression.print(indentWith, 0)+']' : '')
 			+ (n.initializer != null ? (pretty ? ' = ' : '=') + n.initializer.print(indentWith, 0) : '');
 		return Utils.indent(str, indentWith, indentLevel);
@@ -329,11 +329,12 @@ class DeclaratorPrinter{
 class ParameterDeclarationPrinter{
 	static public function print(n:ParameterDeclaration, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		var str = '';
-		str += (n.parameterQualifier != null ? n.parameterQualifier.print() + ' ' : '');
-		str += n.typeSpecifier.print(indentWith) + ' ';
-		str += n.name;
-		str += (n.arraySizeExpression != null ? '['+n.arraySizeExpression.print(indentWith)+']' : '');
+		var parts:Array<String> = [];
+		if(n.parameterQualifier != null) parts.push(n.parameterQualifier.print());
+		if(n.typeSpecifier != null) parts.push(n.typeSpecifier.print(indentWith));
+		if(n.name != null) parts.push(n.name);
+		if(n.arraySizeExpression != null) parts.push('['+n.arraySizeExpression.print(indentWith)+']');
+		var str = parts.join(' ');
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
