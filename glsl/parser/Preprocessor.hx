@@ -589,7 +589,7 @@ class PPTokensHelper{
 								parameterMap.set(parameters[i], UserMacroObject(functionCall.args[i].print()));
 						}
 
-						//replace IDENTIFIERS with function parameters
+						//replace identifier tokens with corresponding function arguments
 						for(j in 0...newTokens.length){
 							if(newTokens[j].type.isIdentifierType()){
 								expandIdentifier(newTokens, j, parameterMap);
@@ -740,7 +740,7 @@ class PPTokensHelper{
 	}
 
 	static public inline function isIdentifierType(type:TokenType){
-		return identifierTokens.indexOf(type) > 0;
+		return identifierTokens.indexOf(type) >= 0;
 	}
 
 	static var identifierTokens:Array<TokenType> = [
