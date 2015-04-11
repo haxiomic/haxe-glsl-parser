@@ -159,7 +159,7 @@ var module;
 
         return disclosure("{", nodeName != "" ? nodeName : "...", "}", "object", function (onNameClick) {
 
-            onNameClick = typeof onNameClick !== 'undefined' ? onNameClick : function(){};
+            onNameClick = typeof onNameClick !== "undefined" ? onNameClick : function(){};
 
             var os = span("object");
 
@@ -173,6 +173,9 @@ var module;
                 var k = keys[i];
                 
                 if(ignoredKeys.indexOf(k) != -1) continue;
+                
+                //hide unset values
+                if(json[k] == null || typeof json[k] == "undefined") continue;
 
                 append(os, themetext(null, indent+"    ", "key", ''+k+'', "object syntax", ': '),
                        _renderjson(json[k], indent+"    ", true, show_level-1, max_string, sort_objects),

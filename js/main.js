@@ -683,7 +683,6 @@ var glsl_PreprocessorDirective = function(content) {
 	this.external = true;
 	this.content = content;
 	this.nodeName = "PreprocessorDirective";
-	this.nodeName = "PreprocessorDirective";
 };
 glsl_PreprocessorDirective.__name__ = true;
 glsl_PreprocessorDirective.__interfaces__ = [glsl_Statement,glsl_Declaration];
