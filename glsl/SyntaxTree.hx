@@ -5,21 +5,25 @@
 	@author George Corney
 
 	@! todo
+		- toEnum() macro
 		- nodeName (use macro?)
-		- resolve newScope
 */
 
 package glsl;
 
+import haxe.macro.Context;
+import haxe.macro.Expr;
 import Type.ValueType.TClass;
 
+#if !macro @:autoBuild(glsl.SyntaxTree.NodeBuildMacro.build()) #end
 interface Node{
-	// var nodeName:String;
+	var nodeName:String;
 }
 
 @:publicFields
 class Root implements Node{
 	var declarations:TranslationUnit;
+	var nodeName:String;
 	public function new(declarations:TranslationUnit){
 		this.declarations = declarations;
 	}
@@ -31,6 +35,7 @@ class TypeSpecifier implements Node{
 	var storage:StorageQualifier;
 	var precision:PrecisionQualifier;
 	var invariant:Bool;
+	var nodeName:String;
 	function new(dataType:DataType, ?storage:StorageQualifier, ?precision:PrecisionQualifier, invariant:Bool = false){
 		this.dataType = dataType;
 		this.storage = storage;
@@ -56,6 +61,7 @@ typedef StructFieldDeclarationList = Array<StructFieldDeclaration>;
 class StructFieldDeclaration implements Node{
 	var typeSpecifier:TypeSpecifier;
 	var declarators:StructDeclaratorList;
+	var nodeName:String;
 	function new(typeSpecifier:TypeSpecifier, declarators:StructDeclaratorList){
 		this.typeSpecifier = typeSpecifier;
 		this.declarators = declarators;
@@ -68,6 +74,7 @@ typedef StructDeclaratorList = Array<StructDeclarator>;
 class StructDeclarator implements Node{
 	var name:String;
 	var arraySizeExpression:Expression;
+	var nodeName:String;
 	function new(name:String, ?arraySizeExpression:Expression){
 		this.name = name;
 		this.arraySizeExpression = arraySizeExpression;
@@ -87,6 +94,7 @@ interface TypedExpression{
 class Identifier implements Expression{
 	var name:String;
 	var parenWrap:Bool = false;
+	var nodeName:String;
 	function new(name:String) {
 		this.name = name;
 	}
@@ -98,6 +106,7 @@ class Primitive<T> implements Expression implements TypedExpression{
 	var raw:String;
 	var dataType:DataType;
 	var parenWrap:Bool = false;
+	var nodeName:String;
 	function new(value:T, dataType:DataType){
 		this.dataType = dataType;
 		this.value = value;
@@ -121,6 +130,7 @@ class BinaryExpression implements Expression{
 	var left:Expression;
 	var right:Expression;
 	var parenWrap:Bool = false;
+	var nodeName:String;
 	function new(op:BinaryOperator, left:Expression, right:Expression){
 		this.op = op;
 		this.left = left;
@@ -134,6 +144,7 @@ class UnaryExpression implements Expression{
 	var arg:Expression;
 	var isPrefix:Bool;
 	var parenWrap:Bool = false;
+	var nodeName:String;
 	function new(op:UnaryOperator, arg:Expression, isPrefix:Bool){
 		this.op = op;
 		this.arg = arg;
@@ -145,6 +156,7 @@ class UnaryExpression implements Expression{
 class SequenceExpression implements Expression{
 	var expressions:Array<Expression>;
 	var parenWrap:Bool = false;
+	var nodeName:String;
 	function new(expressions:Array<Expression>){
 		this.expressions = expressions;
 	}
@@ -156,6 +168,7 @@ class ConditionalExpression implements Expression{
 	var consequent:Expression;
 	var alternate:Expression;
 	var parenWrap:Bool = false;
+	var nodeName:String;
 	function new(test:Expression, consequent:Expression, alternate:Expression){
 		this.test = test;
 		this.consequent = consequent;
@@ -169,6 +182,7 @@ class AssignmentExpression implements Expression{
 	var left:Expression;
 	var right:Expression;
 	var parenWrap:Bool = false;
+	var nodeName:String;
 	function new(op:AssignmentOperator, left:Expression, right:Expression){
 		this.op = op;
 		this.left = left;
@@ -181,6 +195,7 @@ class FieldSelectionExpression implements Expression{
 	var left:Expression;
 	var field:Identifier;
 	var parenWrap:Bool = false;
+	var nodeName:String;
 	function new(left:Expression, field:Identifier){
 		this.left = left;
 		this.field = field;
@@ -192,6 +207,7 @@ class ArrayElementSelectionExpression implements Expression{
 	var left:Expression;
 	var arrayIndexExpression:Expression;
 	var parenWrap:Bool = false;
+	var nodeName:String;
 	function new(left:Expression, arrayIndexExpression:Expression){
 		this.left = left;
 		this.arrayIndexExpression = arrayIndexExpression;
@@ -207,6 +223,7 @@ class FunctionCall implements Expression implements ExpressionParameters{
 	var name:String;
 	var parameters:Array<Expression>;
 	var parenWrap:Bool = false;
+	var nodeName:String;
 	function new(name:String, ?parameters:Array<Expression>){
 		this.name = name;
 		this.parameters = parameters != null ? parameters : [];
@@ -219,6 +236,7 @@ class Constructor implements Expression implements ExpressionParameters implemen
 	var dataType:DataType;
 	var parameters:Array<Expression>;
 	var parenWrap:Bool = false;
+	var nodeName:String;
 	function new(dataType:DataType, ?parameters:Array<Expression>){
 		this.dataType = dataType;
 		this.parameters = parameters != null ? parameters : [];
@@ -236,6 +254,7 @@ class PrecisionDeclaration implements Declaration{
 	var precision:PrecisionQualifier;
 	var dataType:DataType;
 	var external:Bool = false;
+	var nodeName:String;
 	function new(precision:PrecisionQualifier, dataType:DataType){
 		this.precision = precision;
 		this.dataType = dataType;
@@ -246,6 +265,7 @@ class PrecisionDeclaration implements Declaration{
 class FunctionPrototype implements Declaration{
 	var header:FunctionHeader;
 	var external:Bool = false;
+	var nodeName:String;
 	function new(header:FunctionHeader){
 		this.header = header;
 	}
@@ -256,6 +276,7 @@ class VariableDeclaration implements Declaration{
 	var typeSpecifier:TypeSpecifier;
 	var declarators:Array<Declarator>;
 	var external:Bool = false;
+	var nodeName:String;
 	function new(typeSpecifier:TypeSpecifier, declarators:Array<Declarator>){
 		this.typeSpecifier = typeSpecifier;
 		this.declarators = declarators;
@@ -267,6 +288,7 @@ class Declarator implements Node{
 	var name:String;
 	var initializer:Expression;
 	var arraySizeExpression:Expression;
+	var nodeName:String;
 	function new(name:String, ?initializer:Expression, ?arraySizeExpression:Expression){
 		this.name = name;
 		this.initializer = initializer;
@@ -280,6 +302,7 @@ class ParameterDeclaration implements Node{
 	var parameterQualifier:ParameterQualifier;
 	var typeSpecifier:TypeSpecifier;
 	var arraySizeExpression:Expression;
+	var nodeName:String;
 	function new(name:String, typeSpecifier:TypeSpecifier, ?parameterQualifier:ParameterQualifier, ?arraySizeExpression:Expression){
 		this.name = name;
 		this.typeSpecifier = typeSpecifier;
@@ -295,6 +318,7 @@ class FunctionDefinition implements Declaration{
 	var header:FunctionHeader;
 	var body:CompoundStatement;
 	var external:Bool = true;
+	var nodeName:String;
 	function new(header:FunctionHeader, body:CompoundStatement){
 		this.header = header;
 		this.body = body;
@@ -306,6 +330,7 @@ class FunctionHeader implements Node{
 	var name:String;
 	var returnType:TypeSpecifier;
 	var parameters:Array<ParameterDeclaration>;
+	var nodeName:String;
 	function new(name:String, returnType:TypeSpecifier, ?parameters:Array<ParameterDeclaration>){
 		this.name = name;
 		this.returnType = returnType;
@@ -314,7 +339,7 @@ class FunctionHeader implements Node{
 }
 
 interface Statement extends Node{
-	var newScope:Bool;
+	private var newScope:Bool; //@! not certain if newScope is being handled correctly - needs review
 }
 
 typedef StatementList = Array<Statement>;
@@ -322,7 +347,8 @@ typedef StatementList = Array<Statement>;
 @:publicFields
 class CompoundStatement implements Statement{
 	var statementList:StatementList;
-	var newScope:Bool;
+	private var newScope:Bool;
+	var nodeName:String;
 	function new(statementList:StatementList, newScope:Bool){
 		this.statementList = statementList;
 		this.newScope = newScope;
@@ -332,7 +358,8 @@ class CompoundStatement implements Statement{
 @:publicFields
 class DeclarationStatement implements Statement{
 	var declaration:Declaration;
-	var newScope:Bool = false;
+	private var newScope:Bool = false;
+	var nodeName:String;
 	function new(declaration:Declaration){
 		this.declaration = declaration;
 	}
@@ -341,7 +368,8 @@ class DeclarationStatement implements Statement{
 @:publicFields
 class ExpressionStatement implements Statement{
 	var expression:Expression;
-	var newScope:Bool = false;
+	private var newScope:Bool = false;
+	var nodeName:String;
 	function new(expression:Expression){
 		this.expression = expression;
 	}
@@ -352,7 +380,8 @@ class IfStatement implements Statement{
 	var test:Expression;
 	var consequent:Statement;
 	var alternate:Statement;
-	var newScope:Bool = false;
+	private var newScope:Bool = false;
+	var nodeName:String;
 	function new(test:Expression, consequent:Statement, alternate:Statement){
 		this.test = test;
 		this.consequent = consequent;
@@ -363,7 +392,8 @@ class IfStatement implements Statement{
 @:publicFields
 class JumpStatement implements Statement{
 	var mode:JumpMode;
-	var newScope:Bool = false;
+	private var newScope:Bool = false;
+	var nodeName:String;
 	function new(mode:JumpMode){
 		this.mode = mode;
 	}
@@ -380,14 +410,15 @@ class ReturnStatement extends JumpStatement{
 
 interface IterationStatement extends Statement{
 	var body:Statement;
-	var newScope:Bool;
+	private var newScope:Bool;
 }
 
 @:publicFields
 class WhileStatement implements IterationStatement{
 	var test:Expression;
 	var body:Statement;
-	var newScope:Bool = false;
+	private var newScope:Bool = false;
+	var nodeName:String;
 	function new(test:Expression, body:Statement){
 		this.test = test;
 		this.body = body;
@@ -398,7 +429,8 @@ class WhileStatement implements IterationStatement{
 class DoWhileStatement implements IterationStatement{
 	var test:Expression;
 	var body:Statement;
-	var newScope:Bool = false;
+	private var newScope:Bool = false;
+	var nodeName:String;
 	function new(test:Expression, body:Statement){
 		this.test = test;
 		this.body = body;
@@ -411,7 +443,8 @@ class ForStatement implements IterationStatement{
 	var test:Expression;
 	var update:Expression;
 	var body:Statement;
-	var newScope:Bool = false;
+	private var newScope:Bool = false;
+	var nodeName:String;
 	function new(init:Statement, test:Expression, update:Expression, body:Statement){
 		this.init = init;
 		this.test = test;
@@ -425,7 +458,8 @@ class ForStatement implements IterationStatement{
 class PreprocessorDirective implements Declaration implements Statement{
 	var content:String;
 	var external:Bool = true;
-	var newScope:Bool = false;
+	private var newScope:Bool = false;
+	var nodeName:String;
 	function new(content:String){
 		this.content = content;
 	}
@@ -613,3 +647,24 @@ class NodeEnumHelper{
 		}
 	}
 }
+
+#if macro
+class NodeBuildMacro{
+	macro static public function build():Array<Field>{
+		var fields = Context.getBuildFields();
+		var localClass = Context.getLocalClass().get();
+		//ignore interfaces
+		if(localClass.isInterface) return fields;
+		//get class name
+		var className = localClass.name;
+		//set nodeName by appending expression to new()
+		for(f in fields) switch f{
+			case {name: 'new', kind: FFun({expr: { expr: EBlock(exprArray) }})}:
+				exprArray.push(macro nodeName = $v{className});
+			default:
+		}
+
+		return fields;
+	}
+}
+#end

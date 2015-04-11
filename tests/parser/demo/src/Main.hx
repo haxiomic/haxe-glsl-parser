@@ -47,6 +47,8 @@ class Main{
 			warnings = [];
 			
 			var ast = parse(input);
+			displayAST(ast);
+			
 
 			// displayAST(ast);
 			// var globals = Extract.extractGlobalVariables(ast);
@@ -57,32 +59,31 @@ class Main{
 			// 	trace('${v.name} = ${v.value}');
 			// }
 
-			var pretty = ast.print('\t');
-			var plain = ast.print(null);
-			trace('#\n\n\n');
+			// var pretty = ast.print('\t');
+			// var plain = ast.print(null);
+			// trace('#\n\n\n');
 
-			trace('-- Pretty --');
-			trace(pretty);
-			trace('-- Plain --');
-			trace(plain);
+			// trace('-- Pretty --');
+			// trace(pretty);
+			// trace('-- Plain --');
+			// trace(plain);
 
-			trace('-- Trying Second Parse -- ');
-			var pretty2 = parse(pretty).print('\t');
-			var plain2 = parse(pretty).print(null);
-			var prettyMatch = pretty == pretty2;
-			var plainMatch = plain == plain2;
-			trace('pretty match: '+prettyMatch);
-			trace('plain match: '+plainMatch);
-			if(!plainMatch){
-				trace('-- Pretty2 --');
-				trace(pretty2);
-			}
-			if(!prettyMatch){
-				trace('-- Plain2 --');
-				trace(plain2);
-			}
+			// trace('-- Trying Second Parse -- ');
+			// var pretty2 = parse(pretty).print('\t');
+			// var plain2 = parse(pretty).print(null);
+			// var prettyMatch = pretty == pretty2;
+			// var plainMatch = plain == plain2;
+			// trace('pretty match: '+prettyMatch);
+			// trace('plain match: '+plainMatch);
+			// if(!plainMatch){
+			// 	trace('-- Pretty2 --');
+			// 	trace(pretty2);
+			// }
+			// if(!prettyMatch){
+			// 	trace('-- Plain2 --');
+			// 	trace(plain2);
+			// }
 
-			displayAST(ast);
 		}catch(e:Dynamic){
 			warnings = warnings.concat([e]);
 			jsonContainer.innerHTML = '';
