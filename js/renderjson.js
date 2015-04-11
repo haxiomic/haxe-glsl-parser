@@ -86,28 +86,41 @@ var module;
                                                    a.onclick = function() { callback(); return false; };
                                                    return a; };
 
+    var ignoredKeys = [
+      'nodeName',
+      'newScope'
+    ];
+
     function _renderjson(json, indent, dont_indent, show_level, max_string, sort_objects) {
         var my_indent = dont_indent ? "" : indent;
 
         var disclosure = function(open, placeholder, close, type, builder) {
             var content;
             var empty = span(type);
-            var show = function() { if (!content) append(empty.parentNode,
-                                                         content = prepend(builder(),
-                                                                           A(renderjson.hide, "disclosure hide",
-                                                                             function() { content.style.display="none";
-                                                                                          empty.style.display="inline"; } )));
-                                    content.style.display="inline";
-                                    empty.style.display="none"; };
-            append(empty,
-                   A(renderjson.show, "disclosure show", show),
-                   themetext(type+ " syntax", open),
-                   A(placeholder, null, show),
-                   themetext(type+ " syntax", close));
+            var show = function() { 
+              if (!content){
+                content = builder(function(){
+                  content.style.display="none";
+                  empty.style.display="inline"; 
+                });
+                append(empty.parentNode, content);
+              }
+              content.onNameClick = function(){
+                console.log('hello world');
+                content.style.display="none";
+                empty.style.display="inline";
+              }
+              content.style.display="inline";
+              empty.style.display="none"; };
+              append(empty,
+                     A(renderjson.show, "disclosure show", show),
+                     themetext(type+ " syntax", open),
+                     A(placeholder, null, show),
+                     themetext(type+ " syntax", close));
 
-            var el = append(span(), text(my_indent.slice(0,-1)), empty);
-            if (show_level > 0)
-                show();
+              var el = append(span(), text(my_indent.slice(0,-1)), empty);
+              if (show_level > 0)
+                  show();
             return el;
         };
 
@@ -141,15 +154,27 @@ var module;
         if (isempty(json))
             return themetext(null, my_indent, "object syntax", "{}");
 
-        return disclosure("{", "...", "}", "object", function () {
-            var os = append(span("object"), themetext("object syntax", "{", null, "\n"));
+        //@! patch: adds node name to disclosure and object opening
+        var nodeName = json.hasOwnProperty("nodeName") ? json["nodeName"] : "";
+
+        return disclosure("{", nodeName != "" ? nodeName : "...", "}", "object", function (onNameClick) {
+
+            onNameClick = typeof onNameClick !== 'undefined' ? onNameClick : function(){};
+
+            var os = span("object");
+
+            append(os, A(nodeName, "node-name", onNameClick), themetext("object syntax", "{", null, "\n"));
+
             for (var k in json) var last = k;
             var keys = Object.keys(json);
             if (sort_objects)
                 keys = keys.sort();
             for (var i in keys) {
                 var k = keys[i];
-                append(os, themetext(null, indent+"    ", "key", '"'+k+'"', "object syntax", ': '),
+                
+                if(ignoredKeys.indexOf(k) != -1) continue;
+
+                append(os, themetext(null, indent+"    ", "key", ''+k+'', "object syntax", ': '),
                        _renderjson(json[k], indent+"    ", true, show_level-1, max_string, sort_objects),
                        k != last ? themetext("syntax", ",") : [],
                        text("\n"));
