@@ -13,6 +13,7 @@ package glsl;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;
+import haxe.macro.Type.ClassType;
 import Type.ValueType.TClass;
 
 #if !macro @:autoBuild(glsl.SyntaxTree.NodeBuildMacro.build()) #end
@@ -650,13 +651,20 @@ class NodeEnumHelper{
 
 #if macro
 class NodeBuildMacro{
+	static var touched:Array<String> = [];
+
 	macro static public function build():Array<Field>{
 		var fields = Context.getBuildFields();
 		var localClass = Context.getLocalClass().get();
+
 		//ignore interfaces
 		if(localClass.isInterface) return fields;
 		//get class name
 		var className = localClass.name;
+		//have we operated on this type before?
+		if(touched.indexOf(getClassId(localClass)) != -1) return fields;
+		touched.push(getClassId(localClass));
+
 		//set nodeName by appending expression to new()
 		for(f in fields) switch f{
 			case {name: 'new', kind: FFun({expr: { expr: EBlock(exprArray) }})}:
@@ -665,6 +673,10 @@ class NodeBuildMacro{
 		}
 
 		return fields;
+	}
+
+	static inline function getClassId(c:ClassType):String{
+		return c.name + c.module;
 	}
 }
 #end

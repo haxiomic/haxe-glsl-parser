@@ -103,6 +103,8 @@ class Preprocessor{
 		//@! remove directives if possible
 		//#, #define, #undef, #error?
 		//only leave in place if unresolved tokens exist
+		//requires some clever method of identifying and removing tokens 
+		//(since a tokens index will probably change over the course of the preprocessor)
 
 		return tokens;
 	}
