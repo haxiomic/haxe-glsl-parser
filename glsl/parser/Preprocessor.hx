@@ -10,7 +10,7 @@
 		(this means reading the contents of unresolvable ifs)
 	- create custom expression tokenizer
 	- define warning levels?
-		- so major warnings can be distinguished from inconsequential ones
+		- so major warnings can be distinguished from inconsequential ones (like unresolvable macro)
 	- all builtinMacros should be unresolvable but with a force-resolve fallback?
 
 	#Notes
@@ -103,8 +103,12 @@ class Preprocessor{
 		//@! remove directives if possible
 		//#, #define, #undef, #error?
 		//only leave in place if unresolved tokens exist
-		//requires some clever method of identifying and removing tokens 
 		//(since a tokens index will probably change over the course of the preprocessor)
+		//perhaps set token data to null and build a new list of tokens ignoring tokens with null data
+		//this means we may leave some #defines and #undefs in the code, which risks syntax errors
+
+		//alternatively, delete directives straight away and make sure untouched regions get fully expanded
+		//this means we interact with areas of code that would normally be untouched by preprocessor
 
 		return tokens;
 	}
@@ -190,7 +194,7 @@ class Preprocessor{
 
 		/*/ @!
 		 *  when an #if expression's macros are expanded, the #if should be modified with the fully expanded form
-		 *  so that if the switch cannot be resolved, the expression only references unresolved macros
+		 *  so that if the if-switch cannot be resolved, the expression only references unresolved macros
 		 *  resolved macros will have been removed!
 		/*/
 
@@ -279,8 +283,9 @@ class Preprocessor{
 				try if(b.testFunc()){
 					newTokens = tokens.slice(b.start, b.end);
 					break;
+				}catch(msg:String){
+					throw Warn(msg, tokens[b.start - 1]);
 				}
-				catch(msg:String) throw Warn(msg, tokens[b.start - 1]);
 			}
 			//remove entire if-switch
 			tokens.deleteTokens(start, end - start + 1);
@@ -308,9 +313,10 @@ class Preprocessor{
 	}
 
 	static function processIdentifier(){
-		if(tokens.expandIdentifier(i) != null){ //identifier processed
-			//step back one token to allow the first new token to be preprocessed
-			Preprocessor.i--;
+		var expanded = tokens.expandIdentifier(i);
+		if(expanded != null){
+			//identifier processed, skip over the new tokens
+			Preprocessor.i += expanded.length;
 		}
 	}
 
@@ -334,32 +340,6 @@ class Preprocessor{
 		if(ppMacro == null) throw 'null macro definitions are not allowed';
 
 		userDefinedMacros.set(id, ppMacro);
-
-		//check for recursion and undefine macro if discovered
-		switch ppMacro{
-			case UserMacroObject(content), UserMacroFunction(content, _):
-				var macroTokens = Tokenizer.tokenize(content);
-				var j = 0;
-				//expand macros and search for ppMacro
-				while(j < macroTokens.length){
-					if(macroTokens[j].type.isIdentifierType()){
-						var processedPPMacro:PPMacro = null;
-						try{
-							processedPPMacro = macroTokens.expandIdentifier(j);
-						}catch(e:Dynamic){}//supress expandIdentifier warnings
-
-						if(processedPPMacro != null) j--;//macro expanded, step back once to process new tokens
-						if(ppMacro.equals(processedPPMacro)){
-							//macro contains itself - remove and throw
-							undefineMacro(id);
-							throw 'macro contains recursion';
-						}
-					}
-					j++;
-				}
-
-			default:
-		}
 	}
 
 	static function undefineMacro(id:String){
@@ -539,10 +519,24 @@ enum PPError{
 @:access(glsl.parser.Preprocessor)
 class PPTokensHelper{
 
-	static public function expandIdentifier(tokens:Array<Token>, i:Int, ?overrideMap:Map<String, PPMacro>):PPMacro{
+	static public function expandIdentifiers(tokens:Array<Token>, ?overrideMap:Map<String, PPMacro>, ?ignore:Array<String>):Array<Token>{
+		for(j in 0...tokens.length){
+			if(tokens[j].type.isIdentifierType()){
+				expandIdentifier(tokens, j, overrideMap, ignore);
+			}
+		}
+		return tokens;
+	}
+
+	static public function expandIdentifier(tokens:Array<Token>, i:Int, ?overrideMap:Map<String, PPMacro>, ?ignore:Array<String>):Array<Token>{
 		var token = tokens[i];
 		//could be an operator or a macro
-		var ppMacro = overrideMap == null ? Preprocessor.getMacro(token.data) : overrideMap.get(token.data);
+		var id = token.data;
+		//check ignore tokens
+		if(ignore != null && ignore.indexOf(id) != -1) return null;
+		if(overrideMap != null) trace(overrideMap, id);
+		//search for macro with id
+		var ppMacro = overrideMap == null ? Preprocessor.getMacro(id) : overrideMap.get(id);
 		if(ppMacro == null) return null;
 
 		inline function tokenizeContent(content:String){
@@ -556,19 +550,29 @@ class PPTokensHelper{
 				t.line = token.line;
 				t.column = token.column;
 			}
+
 			return newTokens;
+		}
+
+		inline function expand(tokens:Array<Token>){
+			//@! expand tokens, pass ignore.push(id);
+			if(ignore == null) ignore = [id];
+			else ignore.push(id);
+			expandIdentifiers(tokens, overrideMap, ignore);
 		}
 
 		function resolveMacro(ppMacro:PPMacro){
 			switch ppMacro {
 				case UserMacroObject(content):
 					var newTokens = tokenizeContent(content);
+					//expand identifiers @!
+					expand(newTokens);
 					//delete identifier token (current token)
 					tokens.deleteTokens(i, 1);
 					//insert tokenized content
 					tokens.insertTokens(i, newTokens);
 
-					return ppMacro;
+					return newTokens;
 
 				case UserMacroFunction(content, parameters):
 					try{
@@ -592,18 +596,17 @@ class PPTokensHelper{
 						}
 
 						//replace identifier tokens with corresponding function arguments
-						for(j in 0...newTokens.length){
-							if(newTokens[j].type.isIdentifierType()){
-								expandIdentifier(newTokens, j, parameterMap);
-							}
-						}
+						//this uses the override identifier map
+						expandIdentifiers(newTokens, parameterMap);
+						//expand remaining identifiers @!
+						expand(newTokens);
 
 						//delete function call
 						tokens.deleteTokens(i, functionCall.len);
 						//insert tokenized content
 						tokens.insertTokens(i, newTokens);
 
-						return ppMacro;
+						return newTokens;
 
 					}catch(e:Dynamic){
 						//identifier isn't a function call; ignore
@@ -615,7 +618,7 @@ class PPTokensHelper{
 					//insert tokenized content
 					tokens.insertTokens(i, newTokens);
 
-					return ppMacro;
+					return newTokens;
 
 				case BuiltinMacroFunction(func, requiredParameterCount):
 					try{
@@ -636,7 +639,7 @@ class PPTokensHelper{
 						//insert tokenized content
 						tokens.insertTokens(i, newTokens);
 
-						return ppMacro;
+						return newTokens;
 
 					}catch(e:Dynamic){
 						//identifier isn't a function call; ignore
