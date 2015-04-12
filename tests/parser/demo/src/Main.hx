@@ -59,14 +59,14 @@ class Main{
 			// 	trace('${v.name} = ${v.value}');
 			// }
 
-			// var pretty = ast.print('\t');
-			// var plain = ast.print(null);
+			var pretty = ast.print('\t');
+			var plain = ast.print(null);
 			// trace('#\n\n\n');
 
-			// trace('-- Pretty --');
-			// trace(pretty);
-			// trace('-- Plain --');
-			// trace(plain);
+			trace('-- Pretty --');
+			trace(pretty);
+			trace('-- Plain --');
+			trace(plain);
 
 			// trace('-- Trying Second Parse -- ');
 			// var pretty2 = parse(pretty).print('\t');

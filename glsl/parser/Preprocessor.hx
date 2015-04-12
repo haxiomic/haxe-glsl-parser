@@ -5,6 +5,8 @@
 	@author George Corney
 
 	@! Todo
+	- function bug https://www.shadertoy.com/view/ltBGWh
+
 	- should actively remove tokens as much as possible
 		remove at the end
 		(this means reading the contents of unresolvable ifs)
@@ -520,9 +522,11 @@ enum PPError{
 class PPTokensHelper{
 
 	static public function expandIdentifiers(tokens:Array<Token>, ?overrideMap:Map<String, PPMacro>, ?ignore:Array<String>):Array<Token>{
-		for(j in 0...tokens.length){
+		var len = tokens.length;//token length will change
+		for(j in 0...len){
 			if(tokens[j].type.isIdentifierType()){
 				expandIdentifier(tokens, j, overrideMap, ignore);
+				len = tokens.length;
 			}
 		}
 		return tokens;
@@ -534,7 +538,6 @@ class PPTokensHelper{
 		var id = token.data;
 		//check ignore tokens
 		if(ignore != null && ignore.indexOf(id) != -1) return null;
-		if(overrideMap != null) trace(overrideMap, id);
 		//search for macro with id
 		var ppMacro = overrideMap == null ? Preprocessor.getMacro(id) : overrideMap.get(id);
 		if(ppMacro == null) return null;
@@ -550,7 +553,7 @@ class PPTokensHelper{
 				t.line = token.line;
 				t.column = token.column;
 			}
-
+			
 			return newTokens;
 		}
 
@@ -594,7 +597,6 @@ class PPTokensHelper{
 							if(!parameterMap.exists(parameters[i]))
 								parameterMap.set(parameters[i], UserMacroObject(functionCall.args[i].print()));
 						}
-
 						//replace identifier tokens with corresponding function arguments
 						//this uses the override identifier map
 						expandIdentifiers(newTokens, parameterMap);

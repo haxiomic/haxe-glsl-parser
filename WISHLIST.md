@@ -2,6 +2,7 @@
 
 - Validator
 - Minifier with DCE
+	Examples https://code.google.com/p/glsl-unit/wiki/UsingTheCompiler
 - Optimizer
 	https://www.opengl.org/wiki/GLSL_Optimizations
 	http://stackoverflow.com/questions/10880742/glsl-compiler-optimization-of-redundant-assignments-across-functions
