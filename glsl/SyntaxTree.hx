@@ -6,7 +6,6 @@
 
 	@! todo
 		- toEnum() macro
-		- nodeName (use macro?)
 */
 
 package glsl;
@@ -676,7 +675,7 @@ class NodeBuildMacro{
 	}
 
 	static inline function getClassId(c:ClassType):String{
-		return c.name + c.module;
+		return c.name +'.'+ c.module;
 	}
 }
 #end

@@ -5,8 +5,6 @@
 	@author George Corney
 
 	@! Todo
-	- function bug https://www.shadertoy.com/view/ltBGWh
-
 	- should actively remove tokens as much as possible
 		remove at the end
 		(this means reading the contents of unresolvable ifs)
@@ -108,6 +106,12 @@ class Preprocessor{
 		//(since a tokens index will probably change over the course of the preprocessor)
 		//perhaps set token data to null and build a new list of tokens ignoring tokens with null data
 		//this means we may leave some #defines and #undefs in the code, which risks syntax errors
+		//if preprocessor was an instance, we could run the preprocessor loop, catching and ignoring all errors and warnings
+		//whilst tracking touched macros with macro handling
+		//(preprocessor has to be a separate instance so #defines and #undefs are isolated)
+		//->
+		//instantize preprocessor, add callbacks in macro handling functions
+		//run preprocessor on all code blocks, record macro access
 
 		//alternatively, delete directives straight away and make sure untouched regions get fully expanded
 		//this means we interact with areas of code that would normally be untouched by preprocessor

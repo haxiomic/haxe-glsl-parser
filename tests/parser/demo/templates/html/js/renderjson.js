@@ -177,7 +177,7 @@ var module;
                 //hide unset values
                 if(json[k] == null || typeof json[k] == "undefined") continue;
 
-                append(os, themetext(null, indent+"    ", "key", ''+k+'', "object syntax", ': '),
+                append(os, themetext(null, indent+"    ", "key", ''+k+'', "key syntax", ': '),
                        _renderjson(json[k], indent+"    ", true, show_level-1, max_string, sort_objects),
                        k != last ? themetext("syntax", ",") : [],
                        text("\n"));

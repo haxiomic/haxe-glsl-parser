@@ -129,7 +129,9 @@ class Tokenizer{
 		}
 
 		//identify type references
-		//this is somewhat of a hack but the spec requires type references to be identified before grammar parsing
+		//it is somewhat of a hack to do this in the tokenizer but the spec requires
+		//type references to be identified before grammar parsing
+		//@! this currently doesn't account for scoping!
 		for(j in 0...tokens.length){
 			var t = tokens[j];
 
@@ -149,6 +151,7 @@ class Tokenizer{
 
 			if(userDefinedTypes.indexOf(t.data) != -1){
 				//check if next token is identifier or left paren
+				//in this case it must be referencing
 				var nextTokenType = null;
 				var k = j+1;
 				while(k < tokens.length && nextTokenType == null){
@@ -276,7 +279,7 @@ class Tokenizer{
 			var tt:TokenType = null;
 			//in order of priority
 			//check if it's a keyword
-			tt = literalKeywordMap.get(buf);
+			tt = keywordMap.get(buf);
 			//check if it's a field selection
 			if(tt == null && previousTokenType() == DOT) tt = FIELD_SELECTION;
 			//otherwise it must be an identifier
@@ -510,7 +513,7 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
 		'<' => LEFT_ANGLE, '>' => RIGHT_ANGLE, '|' => VERTICAL_BAR, '^' => CARET, '&' => AMPERSAND, '?' => QUESTION
 	];
 
-	static var literalKeywordMap:Map<String, TokenType> = [
+	static var keywordMap:Map<String, TokenType> = [
 		'attribute'           => ATTRIBUTE,
 		'uniform'             => UNIFORM,
 		'varying'             => VARYING,
