@@ -106,7 +106,6 @@ var module;
                 append(empty.parentNode, content);
               }
               content.onNameClick = function(){
-                console.log('hello world');
                 content.style.display="none";
                 empty.style.display="inline";
               }
@@ -132,22 +131,50 @@ var module;
                 return append(span("string"), themetext(null, my_indent, "string", JSON.stringify(json)));
             });
 
-        if (typeof(json) != "object") // Strings, numbers and bools
+        if (typeof(json) != "object"){ // Strings, numbers and bools
             return themetext(null, my_indent, typeof(json), JSON.stringify(json));
+        }
 
         if (json.constructor == Array) {
             if (json.length == 0) return themetext(null, my_indent, "array syntax", "[]");
 
-            return disclosure("[", " ... ", "]", "array", function () {
-                var as = append(span("array"), themetext("array syntax", "[", null, "\n"));
-                for (var i=0; i<json.length; i++)
-                    append(as,
-                           _renderjson(json[i], indent+"    ", false, show_level-1, max_string, sort_objects),
-                           i != json.length-1 ? themetext("syntax", ",") : [],
-                           text("\n"));
-                append(as, themetext(null, indent, "array syntax", "]"));
-                return as;
-            });
+            if(json.__enum__){//enum object
+              var parameters = [];
+              var i = 2;
+              while(i<json.length){
+                parameters.push(json[i]);
+                i++;
+              }
+
+              if(!parameters.length)//plain enum
+                return themetext(null, my_indent, "enum", json[0]);
+              else{//enum with parameters
+
+                var parameterRJO = [];
+                for (var i=0; i<parameters.length; i++){
+                  parameterRJO.push(_renderjson(parameters[i], indent, true, show_level-1, max_string, sort_objects));
+                  if(i < parameters.length - 1)
+                    parameterRJO.push(themetext("syntax", ", "));
+                }
+
+                return append(span(""), 
+                  themetext(null, my_indent, "enum", json[0]+'('),
+                  parameterRJO,
+                  themetext(null, my_indent, "enum", ')')
+                );
+              }
+            }else{
+              return disclosure("[", " ... ", "]", "array", function () {
+                  var as = append(span("array"), themetext("array syntax", "[", null, "\n"));
+                  for (var i=0; i<json.length; i++)
+                      append(as,
+                             _renderjson(json[i], indent+"    ", false, show_level-1, max_string, sort_objects),
+                             i != json.length-1 ? themetext("syntax", ",") : [],
+                             text("\n"));
+                  append(as, themetext(null, indent, "array syntax", "]"));
+                  return as;
+              });
+            }
         }
 
         // object
@@ -177,8 +204,10 @@ var module;
                 //hide unset values
                 if(json[k] == null || typeof json[k] == "undefined") continue;
 
+                var obj = json[k];
+
                 append(os, themetext(null, indent+"    ", "key", ''+k+'', "key syntax", ': '),
-                       _renderjson(json[k], indent+"    ", true, show_level-1, max_string, sort_objects),
+                       _renderjson(obj, indent+"    ", true, show_level-1, max_string, sort_objects),
                        k != last ? themetext("syntax", ",") : [],
                        text("\n"));
             }
