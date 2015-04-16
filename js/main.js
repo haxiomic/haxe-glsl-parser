@@ -92,6 +92,12 @@ Main.prototype = {
 			this.warnings = [];
 			var ast = this.parse(input);
 			this.displayAST(ast);
+			var pretty = glsl_printer_NodePrinter.print(ast,"\t");
+			var plain = glsl_printer_NodePrinter.print(ast,null);
+			console.log("-- Pretty --");
+			console.log(pretty);
+			console.log("-- Plain --");
+			console.log(plain);
 		} catch( e ) {
 			if (e instanceof js__$Boot_HaxeError) e = e.val;
 			this.warnings = this.warnings.concat([e]);
@@ -1949,7 +1955,8 @@ glsl_parser_Preprocessor.processIfSwitch = function() {
 	}
 };
 glsl_parser_Preprocessor.processIdentifier = function() {
-	if(glsl_parser_PPTokensHelper.expandIdentifier(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i) != null) glsl_parser_Preprocessor.i--;
+	var expanded = glsl_parser_PPTokensHelper.expandIdentifier(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i);
+	if(expanded != null) glsl_parser_Preprocessor.i += expanded.length;
 };
 glsl_parser_Preprocessor.getMacro = function(id) {
 	var ppMacro;
@@ -1978,51 +1985,6 @@ glsl_parser_Preprocessor.defineMacro = function(id,ppMacro) {
 	if(ppMacro == null) throw new js__$Boot_HaxeError("null macro definitions are not allowed");
 	var _this = glsl_parser_Preprocessor.userDefinedMacros;
 	if(__map_reserved[id] != null) _this.setReserved(id,ppMacro); else _this.h[id] = ppMacro;
-	switch(ppMacro[1]) {
-	case 0:
-		var content = ppMacro[2];
-		var macroTokens = glsl_parser_Tokenizer.tokenize(content);
-		var j = 0;
-		while(j < macroTokens.length) {
-			if(HxOverrides.indexOf(glsl_parser_PPTokensHelper.identifierTokens,macroTokens[j].type,0) >= 0) {
-				var processedPPMacro = null;
-				try {
-					processedPPMacro = glsl_parser_PPTokensHelper.expandIdentifier(macroTokens,j);
-				} catch( e ) {
-					if (e instanceof js__$Boot_HaxeError) e = e.val;
-				}
-				if(processedPPMacro != null) j--;
-				if(Type.enumEq(ppMacro,processedPPMacro)) {
-					glsl_parser_Preprocessor.undefineMacro(id);
-					throw new js__$Boot_HaxeError("macro contains recursion");
-				}
-			}
-			j++;
-		}
-		break;
-	case 1:
-		var content1 = ppMacro[2];
-		var macroTokens1 = glsl_parser_Tokenizer.tokenize(content1);
-		var j1 = 0;
-		while(j1 < macroTokens1.length) {
-			if(HxOverrides.indexOf(glsl_parser_PPTokensHelper.identifierTokens,macroTokens1[j1].type,0) >= 0) {
-				var processedPPMacro1 = null;
-				try {
-					processedPPMacro1 = glsl_parser_PPTokensHelper.expandIdentifier(macroTokens1,j1);
-				} catch( e1 ) {
-					if (e1 instanceof js__$Boot_HaxeError) e1 = e1.val;
-				}
-				if(processedPPMacro1 != null) j1--;
-				if(Type.enumEq(ppMacro,processedPPMacro1)) {
-					glsl_parser_Preprocessor.undefineMacro(id);
-					throw new js__$Boot_HaxeError("macro contains recursion");
-				}
-			}
-			j1++;
-		}
-		break;
-	default:
-	}
 };
 glsl_parser_Preprocessor.undefineMacro = function(id) {
 	var existingMacro = glsl_parser_Preprocessor.getMacro(id);
@@ -2131,24 +2093,31 @@ glsl_parser_PPError.Warn = function(msg,info) { var $x = ["Warn",0,msg,info]; $x
 glsl_parser_PPError.Error = function(msg,info) { var $x = ["Error",1,msg,info]; $x.__enum__ = glsl_parser_PPError; $x.toString = $estr; return $x; };
 var glsl_parser_PPTokensHelper = function() { };
 glsl_parser_PPTokensHelper.__name__ = true;
-glsl_parser_PPTokensHelper.expandIdentifier = function(tokens,i,overrideMap) {
-	var token = tokens[i];
-	var tmp;
-	if(overrideMap == null) tmp = glsl_parser_Preprocessor.getMacro(token.data); else {
-		var tmp2;
-		var key = token.data;
-		if(__map_reserved[key] != null) tmp2 = overrideMap.getReserved(key); else tmp2 = overrideMap.h[key];
-		tmp = tmp2;
+glsl_parser_PPTokensHelper.expandIdentifiers = function(tokens,overrideMap,ignore) {
+	var len = tokens.length;
+	var _g = 0;
+	while(_g < len) {
+		var j = _g++;
+		if(HxOverrides.indexOf(glsl_parser_PPTokensHelper.identifierTokens,tokens[j].type,0) >= 0) {
+			glsl_parser_PPTokensHelper.expandIdentifier(tokens,j,overrideMap,ignore);
+			len = tokens.length;
+		}
 	}
-	var ppMacro = tmp;
+	return tokens;
+};
+glsl_parser_PPTokensHelper.expandIdentifier = function(tokens,i,overrideMap,ignore) {
+	var token = tokens[i];
+	var id = token.data;
+	if(ignore != null && HxOverrides.indexOf(ignore,id,0) != -1) return null;
+	var ppMacro = overrideMap == null?glsl_parser_Preprocessor.getMacro(id):__map_reserved[id] != null?overrideMap.getReserved(id):overrideMap.h[id];
 	if(ppMacro == null) return null;
-	var tmp1;
+	var tmp;
 	var resolveMacro1 = null;
 	resolveMacro1 = function(ppMacro1) {
 		switch(ppMacro1[1]) {
 		case 0:
 			var content = ppMacro1[2];
-			var tmp3;
+			var tmp1;
 			var newTokens1 = glsl_parser_Tokenizer.tokenize(content,function(warning) {
 				throw new js__$Boot_HaxeError("" + warning);
 			},function(error) {
@@ -2161,11 +2130,13 @@ glsl_parser_PPTokensHelper.expandIdentifier = function(tokens,i,overrideMap) {
 				t.line = token.line;
 				t.column = token.column;
 			}
-			tmp3 = newTokens1;
-			var newTokens = tmp3;
+			tmp1 = newTokens1;
+			var newTokens = tmp1;
+			if(ignore == null) ignore = [id]; else ignore.push(id);
+			glsl_parser_PPTokensHelper.expandIdentifiers(newTokens,overrideMap,ignore);
 			glsl_parser_PPTokensHelper.deleteTokens(tokens,i,1);
 			glsl_parser_PPTokensHelper.insertTokens(tokens,i,newTokens);
-			return ppMacro1;
+			return newTokens;
 		case 1:
 			var parameters = ppMacro1[3];
 			var content1 = ppMacro1[2];
@@ -2182,7 +2153,7 @@ glsl_parser_PPTokensHelper.expandIdentifier = function(tokens,i,overrideMap) {
 						break;
 					}
 				}
-				var tmp4;
+				var tmp2;
 				var newTokens3 = glsl_parser_Tokenizer.tokenize(content1,function(warning1) {
 					throw new js__$Boot_HaxeError("" + warning1);
 				},function(error1) {
@@ -2195,64 +2166,61 @@ glsl_parser_PPTokensHelper.expandIdentifier = function(tokens,i,overrideMap) {
 					t1.line = token.line;
 					t1.column = token.column;
 				}
-				tmp4 = newTokens3;
-				var newTokens2 = tmp4;
+				tmp2 = newTokens3;
+				var newTokens2 = tmp2;
 				var parameterMap = new haxe_ds_StringMap();
 				var _g11 = 0;
 				var _g3 = parameters.length;
 				while(_g11 < _g3) {
 					var i1 = _g11++;
-					var tmp5;
-					var key1 = parameters[i1];
-					if(__map_reserved[key1] != null) tmp5 = parameterMap.existsReserved(key1); else tmp5 = parameterMap.h.hasOwnProperty(key1);
-					if(!tmp5) {
+					var tmp3;
+					var key = parameters[i1];
+					if(__map_reserved[key] != null) tmp3 = parameterMap.existsReserved(key); else tmp3 = parameterMap.h.hasOwnProperty(key);
+					if(!tmp3) {
 						var value = glsl_parser_PPMacro.UserMacroObject(glsl_printer_TokenArrayPrinter.print(functionCall.args[i1]));
-						var key2 = parameters[i1];
-						if(__map_reserved[key2] != null) parameterMap.setReserved(key2,value); else parameterMap.h[key2] = value;
+						var key1 = parameters[i1];
+						if(__map_reserved[key1] != null) parameterMap.setReserved(key1,value); else parameterMap.h[key1] = value;
 					}
 				}
-				var _g12 = 0;
-				var _g4 = newTokens2.length;
-				while(_g12 < _g4) {
-					var j = _g12++;
-					if(HxOverrides.indexOf(glsl_parser_PPTokensHelper.identifierTokens,newTokens2[j].type,0) >= 0) glsl_parser_PPTokensHelper.expandIdentifier(newTokens2,j,parameterMap);
-				}
+				glsl_parser_PPTokensHelper.expandIdentifiers(newTokens2,parameterMap);
+				if(ignore == null) ignore = [id]; else ignore.push(id);
+				glsl_parser_PPTokensHelper.expandIdentifiers(newTokens2,overrideMap,ignore);
 				glsl_parser_PPTokensHelper.deleteTokens(tokens,i,functionCall.len);
 				glsl_parser_PPTokensHelper.insertTokens(tokens,i,newTokens2);
-				return ppMacro1;
+				return newTokens2;
 			} catch( e ) {
 				if (e instanceof js__$Boot_HaxeError) e = e.val;
 			}
 			break;
 		case 2:
 			var func = ppMacro1[2];
-			var tmp6;
+			var tmp4;
 			var content2 = func();
 			var newTokens5 = glsl_parser_Tokenizer.tokenize(content2,function(warning2) {
 				throw new js__$Boot_HaxeError("" + warning2);
 			},function(error2) {
 				throw new js__$Boot_HaxeError("" + error2);
 			});
-			var _g5 = 0;
-			while(_g5 < newTokens5.length) {
-				var t2 = newTokens5[_g5];
-				++_g5;
+			var _g4 = 0;
+			while(_g4 < newTokens5.length) {
+				var t2 = newTokens5[_g4];
+				++_g4;
 				t2.line = token.line;
 				t2.column = token.column;
 			}
-			tmp6 = newTokens5;
-			var newTokens4 = tmp6;
+			tmp4 = newTokens5;
+			var newTokens4 = tmp4;
 			glsl_parser_PPTokensHelper.deleteTokens(tokens,i,1);
 			glsl_parser_PPTokensHelper.insertTokens(tokens,i,newTokens4);
-			return ppMacro1;
+			return newTokens4;
 		case 3:
 			var requiredParameterCount = ppMacro1[3];
 			var func1 = ppMacro1[2];
 			try {
 				var functionCall1 = glsl_parser_PPTokensHelper.readFunctionCall(tokens,i);
 				if(functionCall1.args.length != requiredParameterCount) {
-					var _g6 = functionCall1.args.length > requiredParameterCount;
-					switch(_g6) {
+					var _g5 = functionCall1.args.length > requiredParameterCount;
+					switch(_g5) {
 					case true:
 						throw new js__$Boot_HaxeError("too many arguments for macro");
 						break;
@@ -2261,25 +2229,25 @@ glsl_parser_PPTokensHelper.expandIdentifier = function(tokens,i,overrideMap) {
 						break;
 					}
 				}
-				var tmp7;
+				var tmp5;
 				var content3 = func1(functionCall1.args);
 				var newTokens7 = glsl_parser_Tokenizer.tokenize(content3,function(warning3) {
 					throw new js__$Boot_HaxeError("" + warning3);
 				},function(error3) {
 					throw new js__$Boot_HaxeError("" + error3);
 				});
-				var _g7 = 0;
-				while(_g7 < newTokens7.length) {
-					var t3 = newTokens7[_g7];
-					++_g7;
+				var _g6 = 0;
+				while(_g6 < newTokens7.length) {
+					var t3 = newTokens7[_g6];
+					++_g6;
 					t3.line = token.line;
 					t3.column = token.column;
 				}
-				tmp7 = newTokens7;
-				var newTokens6 = tmp7;
+				tmp5 = newTokens7;
+				var newTokens6 = tmp5;
 				glsl_parser_PPTokensHelper.deleteTokens(tokens,i,functionCall1.len);
 				glsl_parser_PPTokensHelper.insertTokens(tokens,i,newTokens6);
-				return ppMacro1;
+				return newTokens6;
 			} catch( e1 ) {
 				if (e1 instanceof js__$Boot_HaxeError) e1 = e1.val;
 			}
@@ -2291,8 +2259,8 @@ glsl_parser_PPTokensHelper.expandIdentifier = function(tokens,i,overrideMap) {
 		}
 		return null;
 	};
-	tmp1 = resolveMacro1;
-	var resolveMacro = tmp1;
+	tmp = resolveMacro1;
+	var resolveMacro = tmp;
 	return resolveMacro(ppMacro);
 };
 glsl_parser_PPTokensHelper.readFunctionCall = function(tokens,start) {
@@ -2598,7 +2566,7 @@ glsl_parser_Tokenizer.literalMode = function() {
 	if(glsl_parser_Tokenizer.endConditionsMap.get(glsl_parser_Tokenizer.mode)()) {
 		var tt = null;
 		var tmp;
-		var _this = glsl_parser_Tokenizer.literalKeywordMap;
+		var _this = glsl_parser_Tokenizer.keywordMap;
 		var key = glsl_parser_Tokenizer.buf;
 		if(__map_reserved[key] != null) tmp = _this.getReserved(key); else tmp = _this.h[key];
 		tt = tmp;
@@ -3683,18 +3651,19 @@ glsl_printer_DeclaratorPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
 	var str = "";
-	str += n.name + (n.arraySizeExpression != null?"[" + glsl_printer_ExpressionPrinter.print(n.arraySizeExpression,indentWith,0) + "]":"") + (n.initializer != null?(pretty?" = ":"=") + glsl_printer_ExpressionPrinter.print(n.initializer,indentWith,0):"");
+	str += (n.name != null?n.name:"") + (n.arraySizeExpression != null?"[" + glsl_printer_ExpressionPrinter.print(n.arraySizeExpression,indentWith,0) + "]":"") + (n.initializer != null?(pretty?" = ":"=") + glsl_printer_ExpressionPrinter.print(n.initializer,indentWith,0):"");
 	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
 };
 var glsl_printer_ParameterDeclarationPrinter = function() { };
 glsl_printer_ParameterDeclarationPrinter.__name__ = true;
 glsl_printer_ParameterDeclarationPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
-	var str = "";
-	str += n.parameterQualifier != null?glsl_printer_ParameterQualifierPrinter.print(n.parameterQualifier) + " ":"";
-	str += glsl_printer_TypeSpecifierPrinter.print(n.typeSpecifier,indentWith) + " ";
-	str += n.name;
-	str += n.arraySizeExpression != null?"[" + glsl_printer_ExpressionPrinter.print(n.arraySizeExpression,indentWith) + "]":"";
+	var parts = [];
+	if(n.parameterQualifier != null) parts.push(glsl_printer_ParameterQualifierPrinter.print(n.parameterQualifier));
+	if(n.typeSpecifier != null) parts.push(glsl_printer_TypeSpecifierPrinter.print(n.typeSpecifier,indentWith));
+	if(n.name != null) parts.push(n.name);
+	if(n.arraySizeExpression != null) parts.push("[" + glsl_printer_ExpressionPrinter.print(n.arraySizeExpression,indentWith) + "]");
+	var str = parts.join(" ");
 	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
 };
 var glsl_printer_FunctionDefinitionPrinter = function() { };
@@ -4977,7 +4946,7 @@ glsl_parser_Tokenizer.operatorMap = (function($this) {
 	$r = _g;
 	return $r;
 }(this));
-glsl_parser_Tokenizer.literalKeywordMap = (function($this) {
+glsl_parser_Tokenizer.keywordMap = (function($this) {
 	var $r;
 	var _g = new haxe_ds_StringMap();
 	{

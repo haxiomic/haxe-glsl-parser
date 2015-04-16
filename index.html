@@ -5,7 +5,7 @@
 
 	<style type="text/css">
 		body{
-			font-size: 1.5em;
+			font-size: 16px;
 			line-height: 1.6;
 			font-weight: 400;
 			font-family: "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -48,8 +48,11 @@
 			top: 40px;
 			bottom: 0;
 
+			font-size: 0.8em;
+
 			margin: 0;
-			padding: 20px 30px;
+			box-sizing: border-box;
+			padding: 20px;
 			overflow: scroll;
 			background-color: #F8FAFC;
 		}
@@ -96,7 +99,6 @@
 		.renderjson{
 			margin: 0;
 			padding: 0;
-			font-size: 12px;
 		}
 
 		.renderjson a {
@@ -111,20 +113,22 @@
 
 		.renderjson .disclosure.show { display: none; }
 
-		.renderjson .syntax { color: grey; }
+		.renderjson .syntax { color: rgb(215, 223, 230); }
 		.renderjson .string { 
 			color: rgb(203, 124, 46);
 			font-style: italic;
 		}
-		.renderjson .number { color: darkcyan; }
+		.renderjson .number { color: rgb(39, 144, 232); }
 		.renderjson .boolean { color: rgb(184, 121, 226); }
 		.renderjson .key    { 
 			color: rgb(59, 116, 173);
 			font-weight: bold;
 		}
 		.renderjson .keyword { color: rgb(79, 145, 210); }
-		.renderjson .object.syntax { color: rgb(92, 92, 92); }
-		.renderjson .array.syntax  { color: rgb(92, 92, 92); }
+		.renderjson .enum { color: rgb(77, 186, 149); font-style: italic; font-weight: bold; }
+		.renderjson .object.syntax { color: rgb(148, 153, 158); }
+		.renderjson .key.syntax { color: rgb(148, 153, 158); }
+		.renderjson .array.syntax  { color: rgb(148, 153, 158); }
 		.renderjson .node-name {
 			color: rgb(195, 121, 144);
 			margin: 0 5px;
