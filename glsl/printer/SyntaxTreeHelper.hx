@@ -175,7 +175,7 @@ class IdentifierPrinter{
 	static public function print(n:Identifier, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
 		var str = n.name;
-		if(n.parenWrap) str = '($str)';
+		if(n.enclosed) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -183,7 +183,7 @@ class PrimitivePrinter{
 	static public function print(n:Primitive<Dynamic>, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
 		var str = n.raw;
-		if(n.parenWrap) str = '($str)';
+		if(n.enclosed) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -194,7 +194,7 @@ class BinaryExpressionPrinter{
 		str += n.left.print(indentWith);
 		str += (pretty ? ' ' + n.op.print() + ' ' : n.op.print());
 		str += n.right.print(indentWith);
-		if(n.parenWrap) str = '($str)';
+		if(n.enclosed) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -204,7 +204,7 @@ class UnaryExpressionPrinter{
 		var str = '';
 		if(n.isPrefix) str += n.op.print() + n.arg.print(indentWith);
 		else str += n.arg.print(indentWith) + n.op.print();
-		if(n.parenWrap) str = '($str)';
+		if(n.enclosed) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -226,7 +226,7 @@ class ConditionalExpressionPrinter{
 				+ n.consequent.print(indentWith)
 				+ (pretty ? ' : ' : ':')
 				+ n.alternate.print(indentWith);
-		if(n.parenWrap) str = '($str)';
+		if(n.enclosed) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -237,7 +237,7 @@ class AssignmentExpressionPrinter{
 		str += n.left.print(indentWith);
 		str += (pretty ? ' ' + n.op.print() + ' ' : n.op.print());
 		str += n.right.print(indentWith);
-		if(n.parenWrap) str = '($str)';
+		if(n.enclosed) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -245,7 +245,7 @@ class FieldSelectionExpressionPrinter{
 	static public function print(n:FieldSelectionExpression, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
 		var str = n.left.print(indentWith) + '.' + n.field.print(indentWith);
-		if(n.parenWrap) str = '($str)';
+		if(n.enclosed) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -253,7 +253,7 @@ class ArrayElementSelectionExpressionPrinter{
 	static public function print(n:ArrayElementSelectionExpression, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
 		var str = n.left.print(indentWith) + '[' + n.arrayIndexExpression.print(indentWith) + ']';
-		if(n.parenWrap) str = '($str)';
+		if(n.enclosed) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -269,7 +269,7 @@ class FunctionCallPrinter{
 			return e.print(indentWith)
 		).join(pretty ? ', ' : ',');
 		str += ')';
-		if(n.parenWrap) str = '($str)';
+		if(n.enclosed) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }
@@ -281,7 +281,7 @@ class ConstructorPrinter{
 			return e.print(indentWith)
 		).join(pretty ? ', ' : ',');
 		str += ')';
-		if(n.parenWrap) str = '($str)';
+		if(n.enclosed) str = '($str)';
 		return Utils.indent(str, indentWith, indentLevel);
 	}
 }

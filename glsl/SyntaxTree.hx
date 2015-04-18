@@ -83,7 +83,7 @@ class StructDeclarator implements Node{
 
 
 interface Expression extends Node{
-	var parenWrap:Bool;
+	var enclosed:Bool;
 }
 
 interface TypedExpression{
@@ -93,7 +93,7 @@ interface TypedExpression{
 @:publicFields
 class Identifier implements Expression{
 	var name:String;
-	var parenWrap:Bool = false;
+	var enclosed:Bool = false;
 	var nodeName:String;
 	function new(name:String) {
 		this.name = name;
@@ -105,7 +105,7 @@ class Primitive<T> implements Expression implements TypedExpression{
 	var value(default, set):T;
 	var raw:String;
 	var dataType:DataType;
-	var parenWrap:Bool = false;
+	var enclosed:Bool = false;
 	var nodeName:String;
 	function new(value:T, dataType:DataType){
 		this.dataType = dataType;
@@ -129,7 +129,7 @@ class BinaryExpression implements Expression{
 	var op:BinaryOperator;
 	var left:Expression;
 	var right:Expression;
-	var parenWrap:Bool = false;
+	var enclosed:Bool = false;
 	var nodeName:String;
 	function new(op:BinaryOperator, left:Expression, right:Expression){
 		this.op = op;
@@ -143,7 +143,7 @@ class UnaryExpression implements Expression{
 	var op:UnaryOperator;
 	var arg:Expression;
 	var isPrefix:Bool;
-	var parenWrap:Bool = false;
+	var enclosed:Bool = false;
 	var nodeName:String;
 	function new(op:UnaryOperator, arg:Expression, isPrefix:Bool){
 		this.op = op;
@@ -155,7 +155,7 @@ class UnaryExpression implements Expression{
 @:publicFields
 class SequenceExpression implements Expression{
 	var expressions:Array<Expression>;
-	var parenWrap:Bool = false;
+	var enclosed:Bool = false;
 	var nodeName:String;
 	function new(expressions:Array<Expression>){
 		this.expressions = expressions;
@@ -167,7 +167,7 @@ class ConditionalExpression implements Expression{
 	var test:Expression;
 	var consequent:Expression;
 	var alternate:Expression;
-	var parenWrap:Bool = false;
+	var enclosed:Bool = false;
 	var nodeName:String;
 	function new(test:Expression, consequent:Expression, alternate:Expression){
 		this.test = test;
@@ -181,7 +181,7 @@ class AssignmentExpression implements Expression{
 	var op:AssignmentOperator;
 	var left:Expression;
 	var right:Expression;
-	var parenWrap:Bool = false;
+	var enclosed:Bool = false;
 	var nodeName:String;
 	function new(op:AssignmentOperator, left:Expression, right:Expression){
 		this.op = op;
@@ -194,7 +194,7 @@ class AssignmentExpression implements Expression{
 class FieldSelectionExpression implements Expression{
 	var left:Expression;
 	var field:Identifier;
-	var parenWrap:Bool = false;
+	var enclosed:Bool = false;
 	var nodeName:String;
 	function new(left:Expression, field:Identifier){
 		this.left = left;
@@ -206,7 +206,7 @@ class FieldSelectionExpression implements Expression{
 class ArrayElementSelectionExpression implements Expression{
 	var left:Expression;
 	var arrayIndexExpression:Expression;
-	var parenWrap:Bool = false;
+	var enclosed:Bool = false;
 	var nodeName:String;
 	function new(left:Expression, arrayIndexExpression:Expression){
 		this.left = left;
@@ -222,7 +222,7 @@ interface ExpressionParameters{
 class FunctionCall implements Expression implements ExpressionParameters{
 	var name:String;
 	var parameters:Array<Expression>;
-	var parenWrap:Bool = false;
+	var enclosed:Bool = false;
 	var nodeName:String;
 	function new(name:String, ?parameters:Array<Expression>){
 		this.name = name;
@@ -235,7 +235,7 @@ class FunctionCall implements Expression implements ExpressionParameters{
 class Constructor implements Expression implements ExpressionParameters implements TypedExpression{
 	var dataType:DataType;
 	var parameters:Array<Expression>;
-	var parenWrap:Bool = false;
+	var enclosed:Bool = false;
 	var nodeName:String;
 	function new(dataType:DataType, ?parameters:Array<Expression>){
 		this.dataType = dataType;
