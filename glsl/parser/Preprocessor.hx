@@ -5,16 +5,12 @@
 	@author George Corney
 
 	@! Todo
-	- should actively remove tokens as much as possible
-		remove at the end
-		(this means reading the contents of unresolvable ifs)
+
 	- create custom expression tokenizer
 	- define warning levels?
 		- so major warnings can be distinguished from inconsequential ones (like unresolvable macro)
-	- all builtinMacros should be unresolvable but with a force-resolve fallback?
 
 	#Notes
-	- by default directives are not removed except for if-switches (when resolvable)
 	- operates on glsl tokens and uses its own tokenizer for constant expressions
 
 	--------------------
@@ -46,35 +42,41 @@ using glsl.printer.TokenHelper;
 
 class Preprocessor{
 
-	static public var warnings:Array<String>;
+	var tokens:Array<Token>;
+	var i:Int;
+	var forceResolve:Bool; //force unresolvable macros to be resolved
 
-	//data gathered by the preprocessor
-	static public var version:Null<Int>;
-	static public var pragmas:Array<String>;
-	// static public var extensions:?<?> @! todo, extensions have an associated behavior parameter
+	var builtinMacros:Map<String, PPMacro>;
+	var userDefinedMacros:Map<String, PPMacro>;
 
-	static var tokens:Array<Token>;
-	static var i:Int;
-	static var force:Bool = false;
+	var onMacroDefined:String->PPMacro->Void;
+	var onMacroUndefined:String->Void;
+	var preserveMacroDefinitions:Bool = false;
 
-	static var builtinMacros:Map<String, PPMacro> = [
-		'__VERSION__' => UnresolveableMacro(BuiltinMacroObject( function() return Std.string(version) )),
-		'__LINE__' => UnresolveableMacro(BuiltinMacroObject( function() return Std.string(tokens[i].line) )), //line of current token
-		'__FILE__' => UnresolveableMacro(BuiltinMacroObject( function() return '0' )),
-		'GL_ES' => UnresolveableMacro(BuiltinMacroObject( function() return '1' )) //1 for ES platforms
-	];
-	static var userDefinedMacros:Map<String, PPMacro>;
+	var _warnings:Array<String>;
+	var _version:Null<Int>;
+	var _pragmas:Array<String>;
 
-	static public function process(inputTokens:Array<Token>, force:Bool = false):Array<Token>{
+	//Preprocessor instances should only be used by the class so the instance constructor is private
+	function new(?userDefinedMacros, ?builtinMacros){
 		//init state machine variables
-		tokens = inputTokens;
-		i = 0;
-		Preprocessor.force = force;
-		userDefinedMacros = new Map<String, PPMacro>();
-		warnings = [];
+		this.i = 0;
+		this.userDefinedMacros = userDefinedMacros != null ? userDefinedMacros : new Map<String, PPMacro>();
+		this.builtinMacros = builtinMacros != null ? builtinMacros : [
+			'__VERSION__' => UnresolveableMacro(BuiltinMacroObject( function() return Std.string(_version) )),
+			'__LINE__'    => UnresolveableMacro(BuiltinMacroObject( function() return Std.string(tokens[i].line) )), //line of current token
+			'__FILE__'    => UnresolveableMacro(BuiltinMacroObject( function() return '0' )),
+			'GL_ES'       => UnresolveableMacro(BuiltinMacroObject( function() return '1' )) //1 for ES platforms
+		];
 
-		version = 100; //default version number
-		pragmas = [];
+		this._warnings = [];
+		this._version = 100; //default version number
+		this._pragmas = [];
+	}
+
+	function _process(inputTokens:Array<Token>, forceResolve:Bool = false):Array<Token>{
+		tokens = inputTokens;
+		this.forceResolve = forceResolve;
 
 		//preprocessor loop
 		inline function tryProcess(process:Void->Void){
@@ -100,65 +102,51 @@ class Preprocessor{
 			i++;
 		}
 
-		//@! remove directives if possible
-		//#, #define, #undef, #error?
-		//only leave in place if unresolved tokens exist
-		//(since a tokens index will probably change over the course of the preprocessor)
-		//perhaps set token data to null and build a new list of tokens ignoring tokens with null data
-		//this means we may leave some #defines and #undefs in the code, which risks syntax errors
-		//if preprocessor was an instance, we could run the preprocessor loop, catching and ignoring all errors and warnings
-		//whilst tracking touched macros with macro handling
-		//(preprocessor has to be a separate instance so #defines and #undefs are isolated)
-		//->
-		//instantize preprocessor, add callbacks in macro handling functions
-		//run preprocessor on all code blocks, record macro access
-
-		//alternatively, delete directives straight away and make sure untouched regions get fully expanded
-		//this means we interact with areas of code that would normally be untouched by preprocessor
-
 		return tokens;
 	}
 
 	//process functions can alter the state machine directly
 
-	static function processDirective(){
+	function processDirective(){
 		var t = tokens[i];
 		var directive = readDirectiveData(t.data);
 
 		switch directive.title {
 			case '':
+				//empty directive is inconsequential
+				tokens.deleteTokens(i);
 			case 'define':
 				//define macro
 				var definition = evaluateMacroDefinition(directive.content);
-				defineMacro(definition.name, definition.ppMacro);
-				if(force) tokens.deleteTokens(i);
+				defineMacro(definition.id, definition.ppMacro);
+				if(!preserveMacroDefinitions) tokens.deleteTokens(i);
 
 			case 'undef':
 				var macroName = readMacroName(directive.content);
 				undefineMacro(macroName);
-				if(force) tokens.deleteTokens(i);
+				if(!preserveMacroDefinitions) tokens.deleteTokens(i);
 
 			case 'if', 'ifdef', 'ifndef':
 				processIfSwitch();
 
-			case 'else', 'elif', 'endif':
-				if(force) tokens.deleteTokens(i);
+			case 'else', 'elif', 'endif': //unmatched control directive
 				throw 'unexpected #${directive.title}';
+				// tokens.deleteTokens(i); //a later compiler might make better sense of this; don't remove
 
 			case 'error':
-				if(force) tokens.deleteTokens(i);
+				// tokens.deleteTokens(i); //should not be removed so it can be used by another compiler
 				throw Error('${directive.content}', t);
 
 			case 'pragma':
 				if(~/^\s*STDGL(\s+|$)/.match(directive.content))
 					throw 'pragmas beginning with STDGL are reserved';
 
-				pragmas.push(directive.content); 
-				if(force) tokens.deleteTokens(i); //#pragma generally should not be removed so it can be used by another compiler
+				_pragmas.push(directive.content); 
+				// tokens.deleteTokens(i); //#pragma should not be removed so it can be used by another compiler
 
 			case 'extension': // @! todo
-				if(force) tokens.deleteTokens(i);
 				throw 'directive #extension is not yet supported';
+				// tokens.deleteTokens(i); //should not be removed so it can be used by another compiler
 
 			case 'version':
 				//ensure there are no (non-skip) tokens before directive
@@ -168,10 +156,9 @@ class Preprocessor{
 					var matched = versionNumRegex.match(directive.content);
 					if(matched){
 						var numStr = versionNumRegex.matched(1);
-						version = Std.parseInt(versionNumRegex.matched(1));
+						_version = Std.parseInt(versionNumRegex.matched(1));
 
-						// tokens.deleteTokens(i); 
-						if(force) tokens.deleteTokens(i); //#version generally should not be removed so it can be used by another compiler
+						// tokens.deleteTokens(i); //#version should not be removed so it can be used by another compiler
 					}else{
 						switch directive.content {
 							case '':
@@ -184,20 +171,18 @@ class Preprocessor{
 					throw '#version directive must occur before anything else, except for comments and whitespace';
 				}
 
-			case 'line':      // @! todo
-				if(force) tokens.deleteTokens(i);
-				throw 'directive #line is not yet supported';
+			case 'line': // @! todo
+				//tokens.deleteTokens(i);
 				//change all the following line's tokens line numbers to specified line number
+				throw 'directive #line is not yet supported';
 
 			default:
-				if(force) tokens.deleteTokens(i);
+				//tokens.deleteTokens(i); //don't know what this is - best pass it on
 				throw 'unknown directive #\'${directive.title}\'';
 		}
 	}
 
-	static function processIfSwitch(){
-		var newTokens:Array<Token> = [];
-
+	function processIfSwitch(){
 		/*/ @!
 		 *  when an #if expression's macros are expanded, the #if should be modified with the fully expanded form
 		 *  so that if the if-switch cannot be resolved, the expression only references unresolved macros
@@ -211,18 +196,18 @@ class Preprocessor{
 		var directive:DirectiveData;
 		var lastTitle:String;
 
-		var testBlocks:Array<{testFunc:Void->Bool, start:Int, end:Null<Int>}> = [];
+		var branches:Array<{test:Void->Bool, start:Int, end:Null<Int>}> = [];
 
-		inline function openBlock(testFunc:Void->Bool){
-			testBlocks.push({
-				testFunc: testFunc,
+		inline function openBlock(test:Void->Bool){
+			branches.push({
+				test: test,
 				start: j + 1,
 				end: null
 			});
 		}
 
 		inline function closeBlock(){
-			testBlocks[testBlocks.length - 1].end = j - 1;
+			branches[branches.length - 1].end = j - 1;
 		}
 
 		try{
@@ -284,25 +269,105 @@ class Preprocessor{
 			//if-switch extent = i -> j (inclusive of j)
 			end = j;
 
-			//select block by first testFunc returning true
-			for(b in testBlocks){
-				try if(b.testFunc()){
-					newTokens = tokens.slice(b.start, b.end);
-					break;
+			var newTokens = new Array<Token>();
+
+			//select branch by first test() returning true
+			for(b in branches){
+				try{
+					if(b.test()){
+						//branch selected; grab tokens
+						newTokens = tokens.slice(b.start, b.end);
+						break;
+					}
 				}catch(msg:String){
+					/* 
+						branch's test() could not be resolved, it's now not known which branch should be executed,
+						this creates uncertainty on the definition of macros - the following corrects for this,
+						setting relevant macros as unresolvable and inserting additional #defines where necessary.
+					*/ 
+
+					//clone current user macro map
+					var userMacrosBefore = new Map<String, PPMacro>();
+					for(k in userDefinedMacros.keys())
+						userMacrosBefore.set(k, userDefinedMacros.get(k));
+
+					var alteredMacros = new Map<String, PPMacro>();
+
+					//preprocess branches
+					var tokensDelta = 0;//records change in length of if-switch
+					for(bi in 0...branches.length){
+						//handle branches in reverse order to prevent position conflicts
+						var c = branches[branches.length - 1 - bi];
+						var branchTokens = tokens.slice(c.start, c.end);
+						//clone user macros for child preprocessor
+						var childUserMacros = new Map<String, PPMacro>();
+						for(k in userDefinedMacros.keys())
+							childUserMacros.set(k, userDefinedMacros.get(k));
+						//create child preprocessor
+						var pp = new Preprocessor(childUserMacros, builtinMacros);
+						pp.preserveMacroDefinitions = true;
+						//attach callbacks
+						pp.onMacroDefined = function(id, ppMacro){
+							userDefinedMacros.set(id, UnresolveableMacro(ppMacro));
+						}
+						pp.onMacroUndefined = function(id){
+							//@! prevent deletion of relevant #define (or insert one?)
+							//mark macro as unresolvable
+							var existingMacro = userMacrosBefore.get(id);
+							if(existingMacro == null) return;
+
+							userDefinedMacros.set(id, UnresolveableMacro(existingMacro));
+							alteredMacros.set(id, existingMacro);
+						}
+						//preprocess and replace
+						try{
+							var lenBefore = branchTokens.length;
+							var newTokens = pp._process(branchTokens, forceResolve);
+							tokensDelta += newTokens.length - lenBefore;
+							//replace branch tokens with preprocessed tokens
+							tokens.deleteTokens(c.start, c.end - c.start);
+							tokens.insertTokens(c.start, newTokens);
+						}catch(e:Dynamic){} //suppress any errors from child
+					}
+
+					//for newly unresolveable macros, if they were defined before, a #define should be prepended to if-switch
+					//(this is because earlier defines were removed)
+					var prependTokens = new Array<Token>();
+					for(id in alteredMacros.keys()){
+						var directiveData = switch alteredMacros.get(id) {
+							case UserMacroObject(content): '#define $id $content';
+							case UserMacroFunction(content, params): '#define $id(${params.join(", ")}) $content';
+							default: continue;
+						}
+						//build tokens
+						prependTokens = prependTokens.concat(Tokenizer.tokenize(directiveData + '\n'));
+						//@! line numbers need correcting
+					}
+
+					//insert token (and newline) above first #if directive
+					tokens.insertTokens(start, prependTokens);
+					start += prependTokens.length;
+					tokensDelta += prependTokens.length;
+
+					//end has moved!
+					j += tokensDelta;
+					end = j;
+					//jump to end of if-switch
+					this.i = end;
 					throw Warn(msg, tokens[b.start - 1]);
 				}
 			}
+
 			//remove entire if-switch
 			tokens.deleteTokens(start, end - start + 1);
 			//insert new tokens
 			tokens.insertTokens(start, newTokens);
 			//step back index since tokens have changed
-			Preprocessor.i = start - 1;
+			this.i = start - 1;
 
 		}catch(e:Dynamic){
-			//if-switch could not be handled
-			//skip to end of if-switch
+			//if-switch could not be handled, probably because of a syntax error
+			//leave in place and skip to end of if-switch
 			while(level > 0){
 				j = tokens.nextNonSkipTokenIndex(j, 1, TokenType.PREPROCESSOR_DIRECTIVE);
 				t = tokens[j];
@@ -313,63 +378,89 @@ class Preprocessor{
 				}
 			}
 			//set index to end of if-switch
-			Preprocessor.i = j;
+			this.i = j;
+
 			throw e;
 		}
 	}
 
-	static function processIdentifier(){
-		var expanded = tokens.expandIdentifier(i);
+	function processIdentifier(){
+		var expanded = expandIdentifier(tokens, i);
 		if(expanded != null){
 			//identifier processed, skip over the new tokens
-			Preprocessor.i += expanded.length;
+			this.i += expanded.length;
 		}
 	}
 
 	//Macro Definition Handling
-	static function getMacro(id:String):PPMacro{
+	function getMacro(id:String):PPMacro{
 		var ppMacro:PPMacro;
 		if((ppMacro = builtinMacros.get(id)) != null) return ppMacro;
 		if((ppMacro = userDefinedMacros.get(id)) != null) return ppMacro;
 		return null;
 	}
 
-	static function defineMacro(id:String, ppMacro:PPMacro){
+	function defineMacro(id:String, ppMacro:PPMacro){
 		var existingMacro = getMacro(id);
+
 		switch existingMacro {
-			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _) | UnresolveableMacro(_): throw 'redefinition of predefined macro';
-			case UserMacroObject(_), UserMacroFunction(_, _): throw 'macro redefinition';
-			case null:
+			case isBuiltinMacro(_) => true: throw 'cannot redefine predefined macro \'$id\'';
+			case isUserMacro(_) => true: throw 'cannot redefine macro \'$id\'';
+			case null, _:
 		}
 
-		if(~/^__/.match(id)) throw 'macro name is reserved';
+		if(~/^__/.match(id)) throw 'macro names beginning with __ are reserved';
 		if(ppMacro == null) throw 'null macro definitions are not allowed';
 
 		userDefinedMacros.set(id, ppMacro);
+
+		if(onMacroDefined != null)
+			onMacroDefined(id, ppMacro);
 	}
 
-	static function undefineMacro(id:String){
+	function undefineMacro(id:String){
 		var existingMacro = getMacro(id);
+
 		switch existingMacro {
-			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _) | UnresolveableMacro(_): throw 'cannot undefine predefined macro';
-			case UserMacroObject(_) | UserMacroFunction(_, _): userDefinedMacros.remove(id);
-			case null:
+			case isBuiltinMacro(_) => true: throw 'cannot undefine predefined macro';
+			case isUserMacro(_) => true:
+				userDefinedMacros.remove(id);
+
+				if(onMacroUndefined != null)
+					onMacroUndefined(id);
+			case null, _: //undefine of null should not cause error
 		}
 	}
 
-	static function isMacroDefined(id:String):Bool{
+	function isMacroDefined(id:String):Bool{
 		var m = getMacro(id);
 		switch m{
 			case UnresolveableMacro(fm): 
-				if(force && fm != null) return true;
+				if(forceResolve && fm != null) return true;
 				else throw 'cannot resolve macro definition \'$id\'';
 			case null: return false;
 			case _: return true;
 		}
 	}
 
+	function isUserMacro(ppMacro:PPMacro){
+		switch ppMacro{
+			case UserMacroObject(_) | UserMacroFunction(_, _): return true;
+			case UnresolveableMacro(fm): return isUserMacro(fm);
+			case null, _: return false;
+		}
+	}
+
+	function isBuiltinMacro(ppMacro:PPMacro){
+		switch ppMacro{
+			case BuiltinMacroObject(_) | BuiltinMacroFunction(_, _): return true;
+			case UnresolveableMacro(fm): return isBuiltinMacro(fm);
+			case null, _: return false;
+		}
+	}
+
 	//Preprocessor Language Utils
-	static function readDirectiveData(data:String):DirectiveData{
+	function readDirectiveData(data:String):DirectiveData{
 		if(!directiveTitleReg.match(data)) throw 'invalid directive title';
 		var title = directiveTitleReg.matched(1); 
 		var content = StringTools.trim(directiveTitleReg.matchedRight());
@@ -381,13 +472,13 @@ class Preprocessor{
 		}
 	}
 
-	static inline function readMacroName(data:String):String{
+	inline function readMacroName(data:String):String{
 		if(!macroNameReg.match(data)) throw 'invalid macro name';
 		return macroNameReg.matched(1);
 	}
 
 	//MACRO_NAME(args)? content?
-	static function evaluateMacroDefinition(definitionString:String):MacroDefinition{
+	function evaluateMacroDefinition(definitionString:String):MacroDefinition{
 		if(macroNameReg.match(definitionString)){
 			var macroName = macroNameReg.matched(1);
 			var macroContent = '';
@@ -439,7 +530,7 @@ class Preprocessor{
 			}
 
 			return {
-				name: macroName,
+				id: macroName,
 				ppMacro: userMacro
 			}
 		}else{
@@ -449,83 +540,7 @@ class Preprocessor{
 		return null;
 	}
 
-	//Custom restricted expression evaluation
-	static function evaluateExpr(expr:Expression){//@! todo
-		/* Supported expressions
-		 * ...
-		 */
-	}
-
-	//Error Reporting
-	static function warn(msg, ?info:Dynamic){
-		var str = 'Preprocessor Warning: $msg';
-
-		var line = Reflect.field(info, 'line');
-		var col = Reflect.field(info, 'column');
-		if(Type.typeof(line).equals(Type.ValueType.TInt)){
-			str += ', line $line';
-			if(Type.typeof(col).equals(Type.ValueType.TInt)){
-				str += ', column $col';
-			}
-		}
-
-		warnings.push(str);
-	}
-
-	static function error(msg, ?info:Dynamic){
-		var str = 'Preprocessor Error: $msg';
-
-		var line = Reflect.field(info, 'line');
-		var col = Reflect.field(info, 'column');
-		if(Type.typeof(line).equals(Type.ValueType.TInt)){
-			str += ', line $line';
-			if(Type.typeof(col).equals(Type.ValueType.TInt)){
-				str += ', column $col';
-			}
-		}
-
-		throw str;
-	}
-
-	//Preprocessor Data
-	static var directiveTitleReg = ~/^#\s*([^\s]*)/;
-	static var macroNameReg = ~/^([a-z_]\w*)([^\w]|$)/i;
-}
-
-typedef DirectiveData = {
-	var title:String;
-	var content:String;
-}
-
-typedef MacroFunctionCall = {
-	var ident:Token;
-	var args:Array<Array<Token>>;
-	var start:Int;
-	var len:Int;
-}
-
-typedef MacroDefinition = {
-	var name:String;
-	var ppMacro:PPMacro;
-}
-
-enum PPMacro{
-	UserMacroObject(content:String);
-	UserMacroFunction(content:String, parameters:Array<String>);
-	BuiltinMacroObject(func:Void -> String);//function():Array<Token>
-	BuiltinMacroFunction(func:Array<Array<Token>> -> String, parameterCount:Int);//function(args):Array<Token>
-	UnresolveableMacro(ppMacro:PPMacro); 
-}
-
-enum PPError{
-	Warn(msg:String, info:Dynamic);
-	Error(msg:String, info:Dynamic);
-}
-
-@:access(glsl.parser.Preprocessor)
-class PPTokensHelper{
-
-	static public function expandIdentifiers(tokens:Array<Token>, ?overrideMap:Map<String, PPMacro>, ?ignore:Array<String>):Array<Token>{
+	function expandIdentifiers(tokens:Array<Token>, ?overrideMap:Map<String, PPMacro>, ?ignore:Array<String>):Array<Token>{
 		var len = tokens.length;//token length will change
 		for(j in 0...len){
 			if(tokens[j].type.isIdentifierType()){
@@ -536,14 +551,14 @@ class PPTokensHelper{
 		return tokens;
 	}
 
-	static public function expandIdentifier(tokens:Array<Token>, i:Int, ?overrideMap:Map<String, PPMacro>, ?ignore:Array<String>):Array<Token>{
+	function expandIdentifier(tokens:Array<Token>, i:Int, ?overrideMap:Map<String, PPMacro>, ?ignore:Array<String>):Array<Token>{
 		var token = tokens[i];
 		//could be an operator or a macro
 		var id = token.data;
 		//check ignore tokens
 		if(ignore != null && ignore.indexOf(id) != -1) return null;
 		//search for macro with id
-		var ppMacro = overrideMap == null ? Preprocessor.getMacro(id) : overrideMap.get(id);
+		var ppMacro = overrideMap == null ? this.getMacro(id) : overrideMap.get(id);
 		if(ppMacro == null) return null;
 
 		inline function tokenizeContent(content:String){
@@ -584,7 +599,7 @@ class PPTokensHelper{
 				case UserMacroFunction(content, parameters):
 					try{
 						//get function arguments
-						var functionCall = tokens.readFunctionCall(i);
+						var functionCall = readFunctionCall(tokens, i);
 						//ensure number of arguments match
 						if(functionCall.args.length != parameters.length){
 							switch functionCall.args.length > parameters.length{
@@ -629,7 +644,7 @@ class PPTokensHelper{
 				case BuiltinMacroFunction(func, requiredParameterCount):
 					try{
 						//get arguments
-						var functionCall = tokens.readFunctionCall(i);
+						var functionCall = readFunctionCall(tokens, i);
 						//ensure number of arguments match
 						if(functionCall.args.length != requiredParameterCount){
 							switch functionCall.args.length > requiredParameterCount{
@@ -651,8 +666,8 @@ class PPTokensHelper{
 						//identifier isn't a function call; ignore
 					}
 
-				case UnresolveableMacro(forceMacro):
-					if(Preprocessor.force && forceMacro != null) return resolveMacro(forceMacro);
+				case UnresolveableMacro(fm):
+					if(forceResolve && fm != null) return resolveMacro(fm);
 					else throw 'cannot resolve macro';
 				default:
 					throw 'unhandled macro object $ppMacro';
@@ -664,7 +679,7 @@ class PPTokensHelper{
 		return resolveMacro(ppMacro);
 	}
 
-	static public function readFunctionCall(tokens:Array<Token>, start:Int):MacroFunctionCall{
+	function readFunctionCall(tokens:Array<Token>, start:Int):MacroFunctionCall{
 		//macrofunction (identifier, identifier, ...)
 		var ident = tokens[start];
 		if(ident == null || !ident.type.isIdentifierType()){
@@ -716,6 +731,99 @@ class PPTokensHelper{
 		throw 'expecting \'(\'';
 		return null;
 	}
+
+	//Custom restricted expression evaluation
+	function evaluateExpr(expr:Expression){//@! todo
+		/* Supported expressions
+		 * ...
+		 */
+	}
+
+	//Error Reporting
+	function warn(msg, ?info:Dynamic){
+		var str = 'Preprocessor Warning: $msg';
+
+		var line = Reflect.field(info, 'line');
+		var col = Reflect.field(info, 'column');
+		if(Type.typeof(line).equals(Type.ValueType.TInt)){
+			str += ', line $line';
+			if(Type.typeof(col).equals(Type.ValueType.TInt)){
+				str += ', column $col';
+			}
+		}
+
+		_warnings.push(str);
+	}
+
+	function error(msg, ?info:Dynamic){
+		var str = 'Preprocessor Error: $msg';
+
+		var line = Reflect.field(info, 'line');
+		var col = Reflect.field(info, 'column');
+		if(Type.typeof(line).equals(Type.ValueType.TInt)){
+			str += ', line $line';
+			if(Type.typeof(col).equals(Type.ValueType.TInt)){
+				str += ', column $col';
+			}
+		}
+
+		throw str;
+	}
+
+	//Public API
+	static public var warnings:Array<String>;
+
+	//data gathered by the preprocessor
+	static public var version:Null<Int>;
+	static public var pragmas:Array<String>;
+	// static public var extensions:?<?> @! todo, extensions have an associated behavior parameter
+
+	static public function process(inputTokens:Array<Token>, forceResolve:Bool = false):Array<Token>{
+		var pp = new Preprocessor();
+		var tokens = pp._process(inputTokens, forceResolve);
+		warnings = pp._warnings;
+		version = pp._version;
+		pragmas = pp._pragmas;
+		return tokens;
+	}
+
+	//Preprocessor Data
+	static var directiveTitleReg = ~/^#\s*([^\s]*)/;
+	static var macroNameReg = ~/^([a-z_]\w*)([^\w]|$)/i;
+}
+
+typedef DirectiveData = {
+	var title:String;
+	var content:String;
+}
+
+typedef MacroFunctionCall = {
+	var ident:Token;
+	var args:Array<Array<Token>>;
+	var start:Int;
+	var len:Int;
+}
+
+typedef MacroDefinition = {
+	var id:String;
+	var ppMacro:PPMacro;
+}
+
+enum PPMacro{
+	UserMacroObject(content:String);
+	UserMacroFunction(content:String, parameters:Array<String>);
+	BuiltinMacroObject(func:Void -> String);//function():Array<Token>
+	BuiltinMacroFunction(func:Array<Array<Token>> -> String, parameterCount:Int);//function(args):Array<Token>
+	UnresolveableMacro(ppMacro:PPMacro);//macro cannot be handled in anyway (it is not know if this macro is defined or not)
+}
+
+enum PPError{
+	Warn(msg:String, info:Dynamic);
+	Error(msg:String, info:Dynamic);
+}
+
+@:access(glsl.parser.Preprocessor)
+class PPTokensHelper{
 
 	//returns the token n tokens away from token start, ignoring skippables. Supports negative n
 	static public function nextNonSkipToken(tokens:Array<Token>, start:Int, n:Int = 1, ?requiredType:TokenType):Token{

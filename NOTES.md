@@ -1,8 +1,6 @@
 #Todo
-------
-- node names
+-----
 - preprocessor should remove tokens when possible
-- add preprocessor directives to the syntax
 - create preprocess/ and postprocess/
 - isolate core parser for resuse by preprocessor
 

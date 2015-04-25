@@ -601,7 +601,6 @@ enum NodeEnum{
 	PreprocessorDirectiveNode(n:PreprocessorDirective);
 }
 
-@:publicFields
 class NodeEnumHelper{
 	static public function toEnum(n:Node):NodeEnum{
 		return switch (Type.typeof(n)) {

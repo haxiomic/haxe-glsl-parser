@@ -48,7 +48,6 @@ class Main{
 			
 			var ast = parse(input);
 			displayAST(ast);
-			
 
 			// displayAST(ast);
 			// var globals = Extract.extractGlobalVariables(ast);
@@ -63,10 +62,10 @@ class Main{
 			var plain = ast.print(null);
 			// trace('#\n\n\n');
 
-			trace('-- Pretty --');
-			trace(pretty);
-			trace('-- Plain --');
-			trace(plain);
+			// trace('-- Pretty --');
+			// trace(pretty);
+			// trace('-- Compact --');
+			// trace(plain);
 
 			// trace('-- Trying Second Parse -- ');
 			// var pretty2 = parse(pretty).print('\t');
@@ -99,9 +98,13 @@ class Main{
 	function parse(input:String):Node{
 		var tokens = glsl.parser.Tokenizer.tokenize(input);
 		warnings = warnings.concat(Tokenizer.warnings);
+
 		
 		tokens = glsl.parser.Preprocessor.process(tokens);
 		warnings = warnings.concat(Preprocessor.warnings);
+
+		trace('Preprocessed:');
+		trace(glsl.printer.TokenHelper.TokenArrayPrinter.print(tokens));
 
 		var ast = Parser.parseTokens(tokens);
 		warnings = warnings.concat(Parser.warnings);

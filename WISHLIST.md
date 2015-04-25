@@ -12,4 +12,7 @@
 	- add missing function prototypes
     - default function arguments
     - type inference for function returns and function parameters?
+    - functions within functions
+    - function reference passing?
+    - extra built ins, PI, random() and others
 - Complete Eval (currently just constant expressions)
