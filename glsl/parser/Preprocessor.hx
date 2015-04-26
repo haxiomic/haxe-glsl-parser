@@ -5,10 +5,8 @@
 	@author George Corney
 
 	@! Todo
-
 	- create custom expression tokenizer
-	- define warning levels?
-		- so major warnings can be distinguished from inconsequential ones (like unresolvable macro)
+		- example shader https://www.shadertoy.com/view/Xl2GDm
 
 	#Notes
 	- operates on glsl tokens and uses its own tokenizer for constant expressions
@@ -81,11 +79,12 @@ class Preprocessor{
 		//preprocessor loop
 		inline function tryProcess(process:Void->Void){
 			try process()
-			catch(e:PPError) switch e{
-				case Warn(msg, info): warn(msg, info);
-				case Error(msg, info): error(msg, info);
-			}
 			//if no position info is provided, assume error concerns the current token
+			catch(e:PPError) switch e{
+				case Note(msg, info): note(msg, info != null ? info : tokens[i]);
+				case Warn(msg, info): warn(msg, info != null ? info : tokens[i]);
+				case Error(msg, info): error(msg, info != null ? info : tokens[i]);
+			}
 			catch(msg:String) warn(msg, tokens[i]);
 		}
 
@@ -196,10 +195,11 @@ class Preprocessor{
 		var directive:DirectiveData;
 		var lastTitle:String;
 
-		var branches:Array<{test:Void->Bool, start:Int, end:Null<Int>}> = [];
+		var branches:Array<{directiveToken:Token, test:Void->Bool, start:Int, end:Null<Int>}> = [];
 
 		inline function openBlock(test:Void->Bool){
 			branches.push({
+				directiveToken: t,
 				test: test,
 				start: j + 1,
 				end: null
@@ -218,8 +218,10 @@ class Preprocessor{
 				switch directive = readDirectiveData(t.data){
 					case {title: 'if', content: content}:  //@!
 						level++;
-						throw '#if directive is not yet supported';
-						// openBlock(function() return evaluateExpr(expr)); 
+						openBlock(function(){
+							throw Note('#if directive is not yet supported', t);
+							// return evaluateExpr(expr)
+						}); 
 					case {title: 'ifdef', content: content}:
 						level++;
 						var macroName = readMacroName(content);
@@ -248,10 +250,12 @@ class Preprocessor{
 							}
 						case {title: 'elif', content: content}: //@!
 							if(level == 1){
-								throw '#elif directive is not yet supported';
 								if(lastTitle == 'else') throw '#${directive.title} cannot follow #else';
 								closeBlock();						
-								// openBlock(function() return evaluateExpr(expr));
+								openBlock(function(){
+									throw Note('#elif directive is not yet supported', t);
+									// return evaluateExpr(expr)
+								});
 							}
 						case {title: 'endif', content: _}:
 							level--;
@@ -264,6 +268,8 @@ class Preprocessor{
 				closeBlock();
 			}catch(msg:String){
 				throw Warn(msg, t); //set line information to current token
+			}catch(e:Dynamic){
+				throw alterErrorInfo(e, t);
 			}
 
 			//if-switch extent = i -> j (inclusive of j)
@@ -279,7 +285,7 @@ class Preprocessor{
 						newTokens = tokens.slice(b.start, b.end);
 						break;
 					}
-				}catch(msg:String){
+				}catch(e:Dynamic){
 					/* 
 						branch's test() could not be resolved, it's now not known which branch should be executed,
 						this creates uncertainty on the definition of macros - the following corrects for this,
@@ -291,13 +297,29 @@ class Preprocessor{
 					for(k in userDefinedMacros.keys())
 						userMacrosBefore.set(k, userDefinedMacros.get(k));
 
-					var alteredMacros = new Map<String, PPMacro>();
+					//these are macros who's definitions have been removed but will still have references in the source
+					var requiredMacros = new Map<String, PPMacro>();
 
 					//preprocess branches
 					var tokensDelta = 0;//records change in length of if-switch
 					for(bi in 0...branches.length){
 						//handle branches in reverse order to prevent position conflicts
 						var c = branches[branches.length - 1 - bi];
+						//if any macros are referenced in the branch directive, they should be marked as required
+						//@! this uses glsl tokenizer to extract identifiers rather than specialized pp tokenizer
+						switch readDirectiveData(c.directiveToken.data) {
+							case {title: 'if', content: content}, {title: 'elif', content: content}:
+								var directiveTokens = Tokenizer.tokenize(content);
+								for(dt in directiveTokens) 
+									if(dt.type.isIdentifierType() && dt.data != 'defined'){ //(ignore defined operator)
+										var ppMacro = this.getMacro(dt.data);
+										if(ppMacro != null){
+											requiredMacros.set(dt.data, ppMacro);
+										}
+									}
+							case null, _:
+						}
+
 						var branchTokens = tokens.slice(c.start, c.end);
 						//clone user macros for child preprocessor
 						var childUserMacros = new Map<String, PPMacro>();
@@ -306,18 +328,18 @@ class Preprocessor{
 						//create child preprocessor
 						var pp = new Preprocessor(childUserMacros, builtinMacros);
 						pp.preserveMacroDefinitions = true;
-						//attach callbacks
+						//attach macro definition callbacks
 						pp.onMacroDefined = function(id, ppMacro){
+							//mark macro as unresolvable
 							userDefinedMacros.set(id, UnresolveableMacro(ppMacro));
 						}
 						pp.onMacroUndefined = function(id){
-							//@! prevent deletion of relevant #define (or insert one?)
 							//mark macro as unresolvable
 							var existingMacro = userMacrosBefore.get(id);
 							if(existingMacro == null) return;
-
 							userDefinedMacros.set(id, UnresolveableMacro(existingMacro));
-							alteredMacros.set(id, existingMacro);
+							//references will be left in the source; mark as required macro
+							requiredMacros.set(id, existingMacro);
 						}
 						//preprocess and replace
 						try{
@@ -330,34 +352,43 @@ class Preprocessor{
 						}catch(e:Dynamic){} //suppress any errors from child
 					}
 
-					//for newly unresolveable macros, if they were defined before, a #define should be prepended to if-switch
-					//(this is because earlier defines were removed)
+					//inject definitions
+					//for macros who's definition has been removed but references remain, a #define should be prepended to if-switch
 					var prependTokens = new Array<Token>();
-					for(id in alteredMacros.keys()){
-						var directiveData = switch alteredMacros.get(id) {
+					for(id in requiredMacros.keys()){
+						var requiredMacro = requiredMacros.get(id);
+
+						var defineStr = switch requiredMacro {
 							case UserMacroObject(content): '#define $id $content';
 							case UserMacroFunction(content, params): '#define $id(${params.join(", ")}) $content';
 							default: continue;
 						}
+						var undefineStr = '#undef $id';
+
+						var glsl = undefineStr + '\n' + defineStr + '\n';
 						//build tokens
-						prependTokens = prependTokens.concat(Tokenizer.tokenize(directiveData + '\n'));
-						//@! line numbers need correcting
+						prependTokens = prependTokens.concat(Tokenizer.tokenize(glsl));
 					}
 
 					//insert token (and newline) above first #if directive
 					tokens.insertTokens(start, prependTokens);
+
+					//everything's been shifted - update position trackers
 					start += prependTokens.length;
 					tokensDelta += prependTokens.length;
-
-					//end has moved!
 					j += tokensDelta;
 					end = j;
-					//jump to end of if-switch
+
+					//jump preprocessor to end of if-switch
 					this.i = end;
-					throw Warn(msg, tokens[b.start - 1]);
+					
+					//pass error on
+					//attach correct token position info to error
+					throw alterErrorInfo(e, b.directiveToken);
 				}
 			}
 
+			//branch selection success:
 			//remove entire if-switch
 			tokens.deleteTokens(start, end - start + 1);
 			//insert new tokens
@@ -437,7 +468,7 @@ class Preprocessor{
 		switch m{
 			case UnresolveableMacro(fm): 
 				if(forceResolve && fm != null) return true;
-				else throw 'cannot resolve macro definition \'$id\'';
+				else throw Note('cannot resolve macro definition \'$id\'', null);
 			case null: return false;
 			case _: return true;
 		}
@@ -668,7 +699,7 @@ class Preprocessor{
 
 				case UnresolveableMacro(fm):
 					if(forceResolve && fm != null) return resolveMacro(fm);
-					else throw 'cannot resolve macro';
+					else throw Note('cannot resolve macro \'$id\'', token);
 				default:
 					throw 'unhandled macro object $ppMacro';
 			}
@@ -740,24 +771,22 @@ class Preprocessor{
 	}
 
 	//Error Reporting
+	function note(msg, ?info:Dynamic){
+		#if debug
+		trace('Preprocessor Note: $msg' + positionString(info));
+		#end
+	}
+
 	function warn(msg, ?info:Dynamic){
-		var str = 'Preprocessor Warning: $msg';
-
-		var line = Reflect.field(info, 'line');
-		var col = Reflect.field(info, 'column');
-		if(Type.typeof(line).equals(Type.ValueType.TInt)){
-			str += ', line $line';
-			if(Type.typeof(col).equals(Type.ValueType.TInt)){
-				str += ', column $col';
-			}
-		}
-
-		_warnings.push(str);
+		_warnings.push('Preprocessor Warning: $msg' + positionString(info));
 	}
 
 	function error(msg, ?info:Dynamic){
-		var str = 'Preprocessor Error: $msg';
+		throw 'Preprocessor Error: $msg' + positionString(info);
+	}
 
+	function positionString(?info:Dynamic){
+		var str  = '';
 		var line = Reflect.field(info, 'line');
 		var col = Reflect.field(info, 'column');
 		if(Type.typeof(line).equals(Type.ValueType.TInt)){
@@ -766,8 +795,19 @@ class Preprocessor{
 				str += ', column $col';
 			}
 		}
+		return str;
+	}
 
-		throw str;
+	function alterErrorInfo(error:Dynamic, newInfo:Dynamic):Dynamic{
+		return switch Type.typeof(error){
+			case Type.ValueType.TEnum(PPError):
+				switch error{
+					case Note(msg, info): Note(msg, newInfo);
+					case Warn(msg, info): Warn(msg, newInfo);
+					case Error(msg, info): Error(msg, newInfo);
+				}
+			case null, _: Warn(error, newInfo); //default to Warn
+		}
 	}
 
 	//Public API
@@ -818,6 +858,7 @@ enum PPMacro{
 }
 
 enum PPError{
+	Note(msg:String, info:Dynamic);
 	Warn(msg:String, info:Dynamic);
 	Error(msg:String, info:Dynamic);
 }

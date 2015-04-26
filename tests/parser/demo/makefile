@@ -11,6 +11,7 @@ BUILDHXML=	-js $(BIN)/$(OUTJS)\
 			"\n"-cp $(SOURCE)\
 			"\n"-cp ../../../\
 			"\n"-D analyzer\
+			"\n"-debug\
 
 all: clean build.hxml output-directory copy-template
 	haxe build.hxml
