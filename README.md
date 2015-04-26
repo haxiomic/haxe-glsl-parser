@@ -13,10 +13,13 @@ Supports all platforms available to the [haxe](haxe.org) compiler (notably JavaS
 ###Complete
 - Parser
 - Printer: pretty and ugly
+- Preprocessor
 
 ###In progress
 - Evaluator
-- Preprocessor
+- Validator
+- Optimizer
+- Minifier
 
 Feel free to contact me at haxiomic@gmail.com if you have any questions
 
