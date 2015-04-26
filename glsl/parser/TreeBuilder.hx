@@ -260,12 +260,12 @@ class TreeBuilder{
 			case 174: return s(1); //simple_statement ::= iteration_statement
 			case 175: return s(1); //simple_statement ::= jump_statement
 			case 176: return s(1); //simple_statement ::= preprocessor_directive
-			case 177: return new CompoundStatement([], true); //compound_statement_with_scope ::= LEFT_BRACE RIGHT_BRACE
-			case 178: return new CompoundStatement(cast a(2), true); //compound_statement_with_scope ::= LEFT_BRACE statement_list RIGHT_BRACE
+			case 177: return new CompoundStatement([]); //compound_statement_with_scope ::= LEFT_BRACE RIGHT_BRACE
+			case 178: return new CompoundStatement(cast a(2)); //compound_statement_with_scope ::= LEFT_BRACE statement_list RIGHT_BRACE
 			case 179: return s(1); /*@! scope change? */ //statement_with_scope ::= compound_statement_no_new_scope
 			case 180: return s(1); /*@! scope change? */ //statement_with_scope ::= simple_statement
-			case 181: return new CompoundStatement([], false); //compound_statement_no_new_scope ::= LEFT_BRACE RIGHT_BRACE
-			case 182: return new CompoundStatement(cast a(2), false); //compound_statement_no_new_scope ::= LEFT_BRACE statement_list RIGHT_BRACE
+			case 181: return new CompoundStatement([]); //compound_statement_no_new_scope ::= LEFT_BRACE RIGHT_BRACE
+			case 182: return new CompoundStatement(cast a(2)); //compound_statement_no_new_scope ::= LEFT_BRACE statement_list RIGHT_BRACE
 			case 183: return [n(1)]; //statement_list ::= statement_no_new_scope
 			case 184: a(1).push(n(2)); return s(1); //statement_list ::= statement_list statement_no_new_scope
 			case 185: return new ExpressionStatement(null); //expression_statement ::= SEMICOLON

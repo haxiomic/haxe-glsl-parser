@@ -159,10 +159,29 @@ class Tokenizer{
 					if(skippableTypes.indexOf(tt) == -1) nextTokenType = tt;
 				}
 
-				if(nextTokenType == IDENTIFIER || nextTokenType == LEFT_PAREN || nextTokenType == LEFT_BRACKET)
+				if(nextTokenType == IDENTIFIER || nextTokenType == LEFT_PAREN || nextTokenType == LEFT_BRACKET) //@! not fully defined
 					t.type = TYPE_NAME;
 			}
 		}
+
+		//@! new method
+		//identify type references
+		//keep as minimal and flexible as possible
+		//essentially writing a mini parser
+
+		//scopes
+		/*	
+			//minimal function definition
+			IDENTIFIER( new< * ){ * >}
+
+			IF( no_new ){ new< * > }ELSE{ new< * > }
+			IF( no_new ) new< * >; ELSE new< * >;
+
+			WHILE( no_new ){ no_new }
+			DO{ no_new }WHILE( no_new )
+
+			FOR( new< * >){ no_new }
+		*/
 
 		return tokens;
 	}
@@ -284,6 +303,7 @@ class Tokenizer{
 			if(tt == null && previousTokenType() == DOT) tt = FIELD_SELECTION;
 			//otherwise it must be an identifier
 			if(tt == null) tt = IDENTIFIER;
+			//it may be a TYPE_NAME, but this is handled in a later pass
 
 			buildToken(tt);
 			mode = UNDETERMINED;

@@ -1,10 +1,39 @@
 #Todo
 -----
-- preprocessor should remove tokens when possible
-- create preprocess/ and postprocess/
-- isolate core parser for resuse by preprocessor
-
 - account for scoping when finding TYPE_NAME references in Tokenizer
+	Scoping:
+
+		void functionName( new< ){
+			no_new
+		} >
+
+		if( no_new ){ new< > }else{ new< > }
+
+		while( no_new ){ no_new }
+		do{ no_new }while( no_new )
+
+		for( new< > ){ no_new }
+
+
+	Unusual situations:
+		struct S {
+			int x, y;
+		};
+		{
+			S S = S(0,0); // 'S' is only visible as a struct and constructor
+			S; // 'S' is now visible only as a variable
+		}
+
+	-> ** this requires that variable definitions are tracked and override user types **
+
+	- type name can either be a type-specifier's dataType or a constructor
+
+- The parser knows nothing about scope
+
+- Move demo out of test/parser
+
+- create preprocess/, postprocess/ and tokenizer/
+- isolate core parser for resuse by preprocessor
 
 - We probably need a preprocessor expression parser that includes the defined operator
 - Preprocessor_directive tokens need to be part of the SyntaxTree to make passing on PP tokens possible
@@ -54,3 +83,4 @@ uniform vec2 x[a.len];
 - In GLSL ES: "There is no mechanism for initializing arrays at declaration time from within a shader."
 - However, in GLSL (1.2), arrays can be initialized
 - We must be clear about language differences and state this is ES only explicitly (along with hints on extending this)
+-

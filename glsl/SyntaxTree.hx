@@ -338,27 +338,22 @@ class FunctionHeader implements Node{
 	}
 }
 
-interface Statement extends Node{
-	private var newScope:Bool; //@! not certain if newScope is being handled correctly - needs review
-}
+interface Statement extends Node{}
 
 typedef StatementList = Array<Statement>;
 
 @:publicFields
 class CompoundStatement implements Statement{
 	var statementList:StatementList;
-	private var newScope:Bool;
 	var nodeName:String;
-	function new(statementList:StatementList, newScope:Bool){
+	function new(statementList:StatementList){
 		this.statementList = statementList;
-		this.newScope = newScope;
 	}
 }
 
 @:publicFields
 class DeclarationStatement implements Statement{
 	var declaration:Declaration;
-	private var newScope:Bool = false;
 	var nodeName:String;
 	function new(declaration:Declaration){
 		this.declaration = declaration;
@@ -368,7 +363,6 @@ class DeclarationStatement implements Statement{
 @:publicFields
 class ExpressionStatement implements Statement{
 	var expression:Expression;
-	private var newScope:Bool = false;
 	var nodeName:String;
 	function new(expression:Expression){
 		this.expression = expression;
@@ -380,7 +374,6 @@ class IfStatement implements Statement{
 	var test:Expression;
 	var consequent:Statement;
 	var alternate:Statement;
-	private var newScope:Bool = false;
 	var nodeName:String;
 	function new(test:Expression, consequent:Statement, alternate:Statement){
 		this.test = test;
@@ -392,7 +385,6 @@ class IfStatement implements Statement{
 @:publicFields
 class JumpStatement implements Statement{
 	var mode:JumpMode;
-	private var newScope:Bool = false;
 	var nodeName:String;
 	function new(mode:JumpMode){
 		this.mode = mode;
@@ -410,14 +402,12 @@ class ReturnStatement extends JumpStatement{
 
 interface IterationStatement extends Statement{
 	var body:Statement;
-	private var newScope:Bool;
 }
 
 @:publicFields
 class WhileStatement implements IterationStatement{
 	var test:Expression;
 	var body:Statement;
-	private var newScope:Bool = false;
 	var nodeName:String;
 	function new(test:Expression, body:Statement){
 		this.test = test;
@@ -429,7 +419,6 @@ class WhileStatement implements IterationStatement{
 class DoWhileStatement implements IterationStatement{
 	var test:Expression;
 	var body:Statement;
-	private var newScope:Bool = false;
 	var nodeName:String;
 	function new(test:Expression, body:Statement){
 		this.test = test;
@@ -443,7 +432,6 @@ class ForStatement implements IterationStatement{
 	var test:Expression;
 	var update:Expression;
 	var body:Statement;
-	private var newScope:Bool = false;
 	var nodeName:String;
 	function new(init:Statement, test:Expression, update:Expression, body:Statement){
 		this.init = init;
@@ -458,7 +446,6 @@ class ForStatement implements IterationStatement{
 class PreprocessorDirective implements Declaration implements Statement{
 	var content:String;
 	var external:Bool = true;
-	private var newScope:Bool = false;
 	var nodeName:String;
 	function new(content:String){
 		this.content = content;
