@@ -62,6 +62,13 @@ HxOverrides.indexOf = function(a,obj,i) {
 	}
 	return -1;
 };
+HxOverrides.iter = function(a) {
+	return { cur : 0, arr : a, hasNext : function() {
+		return this.cur < this.arr.length;
+	}, next : function() {
+		return this.arr[this.cur++];
+	}};
+};
 var Main = function() {
 	this.warnings = [];
 	this.inputChanged = false;
@@ -96,7 +103,7 @@ Main.prototype = {
 			var plain = glsl_printer_NodePrinter.print(ast,null);
 			console.log("-- Pretty --");
 			console.log(pretty);
-			console.log("-- Plain --");
+			console.log("-- Compact --");
 			console.log(plain);
 		} catch( e ) {
 			if (e instanceof js__$Boot_HaxeError) e = e.val;
@@ -108,10 +115,10 @@ Main.prototype = {
 		this.inputChanged = false;
 	}
 	,parse: function(input) {
-		var tokens = glsl_parser_Tokenizer.tokenize(input);
-		this.warnings = this.warnings.concat(glsl_parser_Tokenizer.warnings);
-		tokens = glsl_parser_Preprocessor.process(tokens);
-		this.warnings = this.warnings.concat(glsl_parser_Preprocessor.warnings);
+		var tokens = glsl_tokens_Tokenizer.tokenize(input);
+		this.warnings = this.warnings.concat(glsl_tokens_Tokenizer.warnings);
+		tokens = glsl_preprocess_Preprocessor.process(tokens);
+		this.warnings = this.warnings.concat(glsl_preprocess_Preprocessor.warnings);
 		var ast = glsl_parser_Parser.parseTokens(tokens);
 		this.warnings = this.warnings.concat(glsl_parser_Parser.warnings);
 		return ast;
@@ -348,7 +355,7 @@ glsl_TypedExpression.prototype = {
 	__class__: glsl_TypedExpression
 };
 var glsl_Identifier = function(name) {
-	this.parenWrap = false;
+	this.enclosed = false;
 	this.name = name;
 	this.nodeName = "Identifier";
 };
@@ -358,7 +365,7 @@ glsl_Identifier.prototype = {
 	__class__: glsl_Identifier
 };
 var glsl_Primitive = function(value,dataType) {
-	this.parenWrap = false;
+	this.enclosed = false;
 	this.dataType = dataType;
 	this.set_value(value);
 	this.nodeName = "Primitive";
@@ -386,7 +393,7 @@ glsl_Primitive.prototype = {
 	,__class__: glsl_Primitive
 };
 var glsl_BinaryExpression = function(op,left,right) {
-	this.parenWrap = false;
+	this.enclosed = false;
 	this.op = op;
 	this.left = left;
 	this.right = right;
@@ -398,7 +405,7 @@ glsl_BinaryExpression.prototype = {
 	__class__: glsl_BinaryExpression
 };
 var glsl_UnaryExpression = function(op,arg,isPrefix) {
-	this.parenWrap = false;
+	this.enclosed = false;
 	this.op = op;
 	this.arg = arg;
 	this.isPrefix = isPrefix;
@@ -410,7 +417,7 @@ glsl_UnaryExpression.prototype = {
 	__class__: glsl_UnaryExpression
 };
 var glsl_SequenceExpression = function(expressions) {
-	this.parenWrap = false;
+	this.enclosed = false;
 	this.expressions = expressions;
 	this.nodeName = "SequenceExpression";
 };
@@ -420,7 +427,7 @@ glsl_SequenceExpression.prototype = {
 	__class__: glsl_SequenceExpression
 };
 var glsl_ConditionalExpression = function(test,consequent,alternate) {
-	this.parenWrap = false;
+	this.enclosed = false;
 	this.test = test;
 	this.consequent = consequent;
 	this.alternate = alternate;
@@ -432,7 +439,7 @@ glsl_ConditionalExpression.prototype = {
 	__class__: glsl_ConditionalExpression
 };
 var glsl_AssignmentExpression = function(op,left,right) {
-	this.parenWrap = false;
+	this.enclosed = false;
 	this.op = op;
 	this.left = left;
 	this.right = right;
@@ -444,7 +451,7 @@ glsl_AssignmentExpression.prototype = {
 	__class__: glsl_AssignmentExpression
 };
 var glsl_FieldSelectionExpression = function(left,field) {
-	this.parenWrap = false;
+	this.enclosed = false;
 	this.left = left;
 	this.field = field;
 	this.nodeName = "FieldSelectionExpression";
@@ -455,7 +462,7 @@ glsl_FieldSelectionExpression.prototype = {
 	__class__: glsl_FieldSelectionExpression
 };
 var glsl_ArrayElementSelectionExpression = function(left,arrayIndexExpression) {
-	this.parenWrap = false;
+	this.enclosed = false;
 	this.left = left;
 	this.arrayIndexExpression = arrayIndexExpression;
 	this.nodeName = "ArrayElementSelectionExpression";
@@ -471,7 +478,7 @@ glsl_ExpressionParameters.prototype = {
 	__class__: glsl_ExpressionParameters
 };
 var glsl_FunctionCall = function(name,parameters) {
-	this.parenWrap = false;
+	this.enclosed = false;
 	this.name = name;
 	this.parameters = parameters != null?parameters:[];
 	this.nodeName = "FunctionCall";
@@ -482,7 +489,7 @@ glsl_FunctionCall.prototype = {
 	__class__: glsl_FunctionCall
 };
 var glsl_Constructor = function(dataType,parameters) {
-	this.parenWrap = false;
+	this.enclosed = false;
 	this.dataType = dataType;
 	this.parameters = parameters != null?parameters:[];
 	this.nodeName = "Constructor";
@@ -578,12 +585,8 @@ glsl_FunctionHeader.prototype = {
 var glsl_Statement = function() { };
 glsl_Statement.__name__ = true;
 glsl_Statement.__interfaces__ = [glsl_Node];
-glsl_Statement.prototype = {
-	__class__: glsl_Statement
-};
-var glsl_CompoundStatement = function(statementList,newScope) {
+var glsl_CompoundStatement = function(statementList) {
 	this.statementList = statementList;
-	this.newScope = newScope;
 	this.nodeName = "CompoundStatement";
 };
 glsl_CompoundStatement.__name__ = true;
@@ -592,7 +595,6 @@ glsl_CompoundStatement.prototype = {
 	__class__: glsl_CompoundStatement
 };
 var glsl_DeclarationStatement = function(declaration) {
-	this.newScope = false;
 	this.declaration = declaration;
 	this.nodeName = "DeclarationStatement";
 };
@@ -602,7 +604,6 @@ glsl_DeclarationStatement.prototype = {
 	__class__: glsl_DeclarationStatement
 };
 var glsl_ExpressionStatement = function(expression) {
-	this.newScope = false;
 	this.expression = expression;
 	this.nodeName = "ExpressionStatement";
 };
@@ -612,7 +613,6 @@ glsl_ExpressionStatement.prototype = {
 	__class__: glsl_ExpressionStatement
 };
 var glsl_IfStatement = function(test,consequent,alternate) {
-	this.newScope = false;
 	this.test = test;
 	this.consequent = consequent;
 	this.alternate = alternate;
@@ -624,7 +624,6 @@ glsl_IfStatement.prototype = {
 	__class__: glsl_IfStatement
 };
 var glsl_JumpStatement = function(mode) {
-	this.newScope = false;
 	this.mode = mode;
 	this.nodeName = "JumpStatement";
 };
@@ -650,7 +649,6 @@ glsl_IterationStatement.prototype = {
 	__class__: glsl_IterationStatement
 };
 var glsl_WhileStatement = function(test,body) {
-	this.newScope = false;
 	this.test = test;
 	this.body = body;
 	this.nodeName = "WhileStatement";
@@ -661,7 +659,6 @@ glsl_WhileStatement.prototype = {
 	__class__: glsl_WhileStatement
 };
 var glsl_DoWhileStatement = function(test,body) {
-	this.newScope = false;
 	this.test = test;
 	this.body = body;
 	this.nodeName = "DoWhileStatement";
@@ -672,7 +669,6 @@ glsl_DoWhileStatement.prototype = {
 	__class__: glsl_DoWhileStatement
 };
 var glsl_ForStatement = function(init,test,update,body) {
-	this.newScope = false;
 	this.init = init;
 	this.test = test;
 	this.update = update;
@@ -685,7 +681,6 @@ glsl_ForStatement.prototype = {
 	__class__: glsl_ForStatement
 };
 var glsl_PreprocessorDirective = function(content) {
-	this.newScope = false;
 	this.external = true;
 	this.content = content;
 	this.nodeName = "PreprocessorDirective";
@@ -1084,295 +1079,295 @@ glsl_NodeEnumHelper.toEnum = function(n) {
 		return $r;
 	}(this));
 };
-var glsl_parser_TokenType = { __ename__ : true, __constructs__ : ["ATTRIBUTE","CONST","BOOL","FLOAT","INT","BREAK","CONTINUE","DO","ELSE","FOR","IF","DISCARD","RETURN","BVEC2","BVEC3","BVEC4","IVEC2","IVEC3","IVEC4","VEC2","VEC3","VEC4","MAT2","MAT3","MAT4","IN","OUT","INOUT","UNIFORM","VARYING","SAMPLER2D","SAMPLERCUBE","STRUCT","VOID","WHILE","INVARIANT","HIGH_PRECISION","MEDIUM_PRECISION","LOW_PRECISION","PRECISION","BOOLCONSTANT","IDENTIFIER","TYPE_NAME","FIELD_SELECTION","LEFT_OP","RIGHT_OP","INC_OP","DEC_OP","LE_OP","GE_OP","EQ_OP","NE_OP","AND_OP","OR_OP","XOR_OP","MUL_ASSIGN","DIV_ASSIGN","ADD_ASSIGN","MOD_ASSIGN","SUB_ASSIGN","LEFT_ASSIGN","RIGHT_ASSIGN","AND_ASSIGN","XOR_ASSIGN","OR_ASSIGN","LEFT_PAREN","RIGHT_PAREN","LEFT_BRACKET","RIGHT_BRACKET","LEFT_BRACE","RIGHT_BRACE","DOT","COMMA","COLON","EQUAL","SEMICOLON","BANG","DASH","TILDE","PLUS","STAR","SLASH","PERCENT","LEFT_ANGLE","RIGHT_ANGLE","VERTICAL_BAR","CARET","AMPERSAND","QUESTION","INTCONSTANT","FLOATCONSTANT","WHITESPACE","BLOCK_COMMENT","LINE_COMMENT","PREPROCESSOR_DIRECTIVE","RESERVED_KEYWORD"] };
-glsl_parser_TokenType.ATTRIBUTE = ["ATTRIBUTE",0];
-glsl_parser_TokenType.ATTRIBUTE.toString = $estr;
-glsl_parser_TokenType.ATTRIBUTE.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.CONST = ["CONST",1];
-glsl_parser_TokenType.CONST.toString = $estr;
-glsl_parser_TokenType.CONST.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.BOOL = ["BOOL",2];
-glsl_parser_TokenType.BOOL.toString = $estr;
-glsl_parser_TokenType.BOOL.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.FLOAT = ["FLOAT",3];
-glsl_parser_TokenType.FLOAT.toString = $estr;
-glsl_parser_TokenType.FLOAT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.INT = ["INT",4];
-glsl_parser_TokenType.INT.toString = $estr;
-glsl_parser_TokenType.INT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.BREAK = ["BREAK",5];
-glsl_parser_TokenType.BREAK.toString = $estr;
-glsl_parser_TokenType.BREAK.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.CONTINUE = ["CONTINUE",6];
-glsl_parser_TokenType.CONTINUE.toString = $estr;
-glsl_parser_TokenType.CONTINUE.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.DO = ["DO",7];
-glsl_parser_TokenType.DO.toString = $estr;
-glsl_parser_TokenType.DO.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.ELSE = ["ELSE",8];
-glsl_parser_TokenType.ELSE.toString = $estr;
-glsl_parser_TokenType.ELSE.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.FOR = ["FOR",9];
-glsl_parser_TokenType.FOR.toString = $estr;
-glsl_parser_TokenType.FOR.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.IF = ["IF",10];
-glsl_parser_TokenType.IF.toString = $estr;
-glsl_parser_TokenType.IF.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.DISCARD = ["DISCARD",11];
-glsl_parser_TokenType.DISCARD.toString = $estr;
-glsl_parser_TokenType.DISCARD.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.RETURN = ["RETURN",12];
-glsl_parser_TokenType.RETURN.toString = $estr;
-glsl_parser_TokenType.RETURN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.BVEC2 = ["BVEC2",13];
-glsl_parser_TokenType.BVEC2.toString = $estr;
-glsl_parser_TokenType.BVEC2.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.BVEC3 = ["BVEC3",14];
-glsl_parser_TokenType.BVEC3.toString = $estr;
-glsl_parser_TokenType.BVEC3.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.BVEC4 = ["BVEC4",15];
-glsl_parser_TokenType.BVEC4.toString = $estr;
-glsl_parser_TokenType.BVEC4.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.IVEC2 = ["IVEC2",16];
-glsl_parser_TokenType.IVEC2.toString = $estr;
-glsl_parser_TokenType.IVEC2.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.IVEC3 = ["IVEC3",17];
-glsl_parser_TokenType.IVEC3.toString = $estr;
-glsl_parser_TokenType.IVEC3.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.IVEC4 = ["IVEC4",18];
-glsl_parser_TokenType.IVEC4.toString = $estr;
-glsl_parser_TokenType.IVEC4.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.VEC2 = ["VEC2",19];
-glsl_parser_TokenType.VEC2.toString = $estr;
-glsl_parser_TokenType.VEC2.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.VEC3 = ["VEC3",20];
-glsl_parser_TokenType.VEC3.toString = $estr;
-glsl_parser_TokenType.VEC3.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.VEC4 = ["VEC4",21];
-glsl_parser_TokenType.VEC4.toString = $estr;
-glsl_parser_TokenType.VEC4.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.MAT2 = ["MAT2",22];
-glsl_parser_TokenType.MAT2.toString = $estr;
-glsl_parser_TokenType.MAT2.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.MAT3 = ["MAT3",23];
-glsl_parser_TokenType.MAT3.toString = $estr;
-glsl_parser_TokenType.MAT3.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.MAT4 = ["MAT4",24];
-glsl_parser_TokenType.MAT4.toString = $estr;
-glsl_parser_TokenType.MAT4.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.IN = ["IN",25];
-glsl_parser_TokenType.IN.toString = $estr;
-glsl_parser_TokenType.IN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.OUT = ["OUT",26];
-glsl_parser_TokenType.OUT.toString = $estr;
-glsl_parser_TokenType.OUT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.INOUT = ["INOUT",27];
-glsl_parser_TokenType.INOUT.toString = $estr;
-glsl_parser_TokenType.INOUT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.UNIFORM = ["UNIFORM",28];
-glsl_parser_TokenType.UNIFORM.toString = $estr;
-glsl_parser_TokenType.UNIFORM.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.VARYING = ["VARYING",29];
-glsl_parser_TokenType.VARYING.toString = $estr;
-glsl_parser_TokenType.VARYING.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.SAMPLER2D = ["SAMPLER2D",30];
-glsl_parser_TokenType.SAMPLER2D.toString = $estr;
-glsl_parser_TokenType.SAMPLER2D.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.SAMPLERCUBE = ["SAMPLERCUBE",31];
-glsl_parser_TokenType.SAMPLERCUBE.toString = $estr;
-glsl_parser_TokenType.SAMPLERCUBE.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.STRUCT = ["STRUCT",32];
-glsl_parser_TokenType.STRUCT.toString = $estr;
-glsl_parser_TokenType.STRUCT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.VOID = ["VOID",33];
-glsl_parser_TokenType.VOID.toString = $estr;
-glsl_parser_TokenType.VOID.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.WHILE = ["WHILE",34];
-glsl_parser_TokenType.WHILE.toString = $estr;
-glsl_parser_TokenType.WHILE.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.INVARIANT = ["INVARIANT",35];
-glsl_parser_TokenType.INVARIANT.toString = $estr;
-glsl_parser_TokenType.INVARIANT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.HIGH_PRECISION = ["HIGH_PRECISION",36];
-glsl_parser_TokenType.HIGH_PRECISION.toString = $estr;
-glsl_parser_TokenType.HIGH_PRECISION.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.MEDIUM_PRECISION = ["MEDIUM_PRECISION",37];
-glsl_parser_TokenType.MEDIUM_PRECISION.toString = $estr;
-glsl_parser_TokenType.MEDIUM_PRECISION.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.LOW_PRECISION = ["LOW_PRECISION",38];
-glsl_parser_TokenType.LOW_PRECISION.toString = $estr;
-glsl_parser_TokenType.LOW_PRECISION.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.PRECISION = ["PRECISION",39];
-glsl_parser_TokenType.PRECISION.toString = $estr;
-glsl_parser_TokenType.PRECISION.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.BOOLCONSTANT = ["BOOLCONSTANT",40];
-glsl_parser_TokenType.BOOLCONSTANT.toString = $estr;
-glsl_parser_TokenType.BOOLCONSTANT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.IDENTIFIER = ["IDENTIFIER",41];
-glsl_parser_TokenType.IDENTIFIER.toString = $estr;
-glsl_parser_TokenType.IDENTIFIER.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.TYPE_NAME = ["TYPE_NAME",42];
-glsl_parser_TokenType.TYPE_NAME.toString = $estr;
-glsl_parser_TokenType.TYPE_NAME.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.FIELD_SELECTION = ["FIELD_SELECTION",43];
-glsl_parser_TokenType.FIELD_SELECTION.toString = $estr;
-glsl_parser_TokenType.FIELD_SELECTION.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.LEFT_OP = ["LEFT_OP",44];
-glsl_parser_TokenType.LEFT_OP.toString = $estr;
-glsl_parser_TokenType.LEFT_OP.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.RIGHT_OP = ["RIGHT_OP",45];
-glsl_parser_TokenType.RIGHT_OP.toString = $estr;
-glsl_parser_TokenType.RIGHT_OP.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.INC_OP = ["INC_OP",46];
-glsl_parser_TokenType.INC_OP.toString = $estr;
-glsl_parser_TokenType.INC_OP.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.DEC_OP = ["DEC_OP",47];
-glsl_parser_TokenType.DEC_OP.toString = $estr;
-glsl_parser_TokenType.DEC_OP.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.LE_OP = ["LE_OP",48];
-glsl_parser_TokenType.LE_OP.toString = $estr;
-glsl_parser_TokenType.LE_OP.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.GE_OP = ["GE_OP",49];
-glsl_parser_TokenType.GE_OP.toString = $estr;
-glsl_parser_TokenType.GE_OP.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.EQ_OP = ["EQ_OP",50];
-glsl_parser_TokenType.EQ_OP.toString = $estr;
-glsl_parser_TokenType.EQ_OP.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.NE_OP = ["NE_OP",51];
-glsl_parser_TokenType.NE_OP.toString = $estr;
-glsl_parser_TokenType.NE_OP.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.AND_OP = ["AND_OP",52];
-glsl_parser_TokenType.AND_OP.toString = $estr;
-glsl_parser_TokenType.AND_OP.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.OR_OP = ["OR_OP",53];
-glsl_parser_TokenType.OR_OP.toString = $estr;
-glsl_parser_TokenType.OR_OP.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.XOR_OP = ["XOR_OP",54];
-glsl_parser_TokenType.XOR_OP.toString = $estr;
-glsl_parser_TokenType.XOR_OP.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.MUL_ASSIGN = ["MUL_ASSIGN",55];
-glsl_parser_TokenType.MUL_ASSIGN.toString = $estr;
-glsl_parser_TokenType.MUL_ASSIGN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.DIV_ASSIGN = ["DIV_ASSIGN",56];
-glsl_parser_TokenType.DIV_ASSIGN.toString = $estr;
-glsl_parser_TokenType.DIV_ASSIGN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.ADD_ASSIGN = ["ADD_ASSIGN",57];
-glsl_parser_TokenType.ADD_ASSIGN.toString = $estr;
-glsl_parser_TokenType.ADD_ASSIGN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.MOD_ASSIGN = ["MOD_ASSIGN",58];
-glsl_parser_TokenType.MOD_ASSIGN.toString = $estr;
-glsl_parser_TokenType.MOD_ASSIGN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.SUB_ASSIGN = ["SUB_ASSIGN",59];
-glsl_parser_TokenType.SUB_ASSIGN.toString = $estr;
-glsl_parser_TokenType.SUB_ASSIGN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.LEFT_ASSIGN = ["LEFT_ASSIGN",60];
-glsl_parser_TokenType.LEFT_ASSIGN.toString = $estr;
-glsl_parser_TokenType.LEFT_ASSIGN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.RIGHT_ASSIGN = ["RIGHT_ASSIGN",61];
-glsl_parser_TokenType.RIGHT_ASSIGN.toString = $estr;
-glsl_parser_TokenType.RIGHT_ASSIGN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.AND_ASSIGN = ["AND_ASSIGN",62];
-glsl_parser_TokenType.AND_ASSIGN.toString = $estr;
-glsl_parser_TokenType.AND_ASSIGN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.XOR_ASSIGN = ["XOR_ASSIGN",63];
-glsl_parser_TokenType.XOR_ASSIGN.toString = $estr;
-glsl_parser_TokenType.XOR_ASSIGN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.OR_ASSIGN = ["OR_ASSIGN",64];
-glsl_parser_TokenType.OR_ASSIGN.toString = $estr;
-glsl_parser_TokenType.OR_ASSIGN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.LEFT_PAREN = ["LEFT_PAREN",65];
-glsl_parser_TokenType.LEFT_PAREN.toString = $estr;
-glsl_parser_TokenType.LEFT_PAREN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.RIGHT_PAREN = ["RIGHT_PAREN",66];
-glsl_parser_TokenType.RIGHT_PAREN.toString = $estr;
-glsl_parser_TokenType.RIGHT_PAREN.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.LEFT_BRACKET = ["LEFT_BRACKET",67];
-glsl_parser_TokenType.LEFT_BRACKET.toString = $estr;
-glsl_parser_TokenType.LEFT_BRACKET.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.RIGHT_BRACKET = ["RIGHT_BRACKET",68];
-glsl_parser_TokenType.RIGHT_BRACKET.toString = $estr;
-glsl_parser_TokenType.RIGHT_BRACKET.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.LEFT_BRACE = ["LEFT_BRACE",69];
-glsl_parser_TokenType.LEFT_BRACE.toString = $estr;
-glsl_parser_TokenType.LEFT_BRACE.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.RIGHT_BRACE = ["RIGHT_BRACE",70];
-glsl_parser_TokenType.RIGHT_BRACE.toString = $estr;
-glsl_parser_TokenType.RIGHT_BRACE.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.DOT = ["DOT",71];
-glsl_parser_TokenType.DOT.toString = $estr;
-glsl_parser_TokenType.DOT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.COMMA = ["COMMA",72];
-glsl_parser_TokenType.COMMA.toString = $estr;
-glsl_parser_TokenType.COMMA.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.COLON = ["COLON",73];
-glsl_parser_TokenType.COLON.toString = $estr;
-glsl_parser_TokenType.COLON.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.EQUAL = ["EQUAL",74];
-glsl_parser_TokenType.EQUAL.toString = $estr;
-glsl_parser_TokenType.EQUAL.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.SEMICOLON = ["SEMICOLON",75];
-glsl_parser_TokenType.SEMICOLON.toString = $estr;
-glsl_parser_TokenType.SEMICOLON.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.BANG = ["BANG",76];
-glsl_parser_TokenType.BANG.toString = $estr;
-glsl_parser_TokenType.BANG.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.DASH = ["DASH",77];
-glsl_parser_TokenType.DASH.toString = $estr;
-glsl_parser_TokenType.DASH.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.TILDE = ["TILDE",78];
-glsl_parser_TokenType.TILDE.toString = $estr;
-glsl_parser_TokenType.TILDE.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.PLUS = ["PLUS",79];
-glsl_parser_TokenType.PLUS.toString = $estr;
-glsl_parser_TokenType.PLUS.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.STAR = ["STAR",80];
-glsl_parser_TokenType.STAR.toString = $estr;
-glsl_parser_TokenType.STAR.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.SLASH = ["SLASH",81];
-glsl_parser_TokenType.SLASH.toString = $estr;
-glsl_parser_TokenType.SLASH.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.PERCENT = ["PERCENT",82];
-glsl_parser_TokenType.PERCENT.toString = $estr;
-glsl_parser_TokenType.PERCENT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.LEFT_ANGLE = ["LEFT_ANGLE",83];
-glsl_parser_TokenType.LEFT_ANGLE.toString = $estr;
-glsl_parser_TokenType.LEFT_ANGLE.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.RIGHT_ANGLE = ["RIGHT_ANGLE",84];
-glsl_parser_TokenType.RIGHT_ANGLE.toString = $estr;
-glsl_parser_TokenType.RIGHT_ANGLE.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.VERTICAL_BAR = ["VERTICAL_BAR",85];
-glsl_parser_TokenType.VERTICAL_BAR.toString = $estr;
-glsl_parser_TokenType.VERTICAL_BAR.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.CARET = ["CARET",86];
-glsl_parser_TokenType.CARET.toString = $estr;
-glsl_parser_TokenType.CARET.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.AMPERSAND = ["AMPERSAND",87];
-glsl_parser_TokenType.AMPERSAND.toString = $estr;
-glsl_parser_TokenType.AMPERSAND.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.QUESTION = ["QUESTION",88];
-glsl_parser_TokenType.QUESTION.toString = $estr;
-glsl_parser_TokenType.QUESTION.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.INTCONSTANT = ["INTCONSTANT",89];
-glsl_parser_TokenType.INTCONSTANT.toString = $estr;
-glsl_parser_TokenType.INTCONSTANT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.FLOATCONSTANT = ["FLOATCONSTANT",90];
-glsl_parser_TokenType.FLOATCONSTANT.toString = $estr;
-glsl_parser_TokenType.FLOATCONSTANT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.WHITESPACE = ["WHITESPACE",91];
-glsl_parser_TokenType.WHITESPACE.toString = $estr;
-glsl_parser_TokenType.WHITESPACE.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.BLOCK_COMMENT = ["BLOCK_COMMENT",92];
-glsl_parser_TokenType.BLOCK_COMMENT.toString = $estr;
-glsl_parser_TokenType.BLOCK_COMMENT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.LINE_COMMENT = ["LINE_COMMENT",93];
-glsl_parser_TokenType.LINE_COMMENT.toString = $estr;
-glsl_parser_TokenType.LINE_COMMENT.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.PREPROCESSOR_DIRECTIVE = ["PREPROCESSOR_DIRECTIVE",94];
-glsl_parser_TokenType.PREPROCESSOR_DIRECTIVE.toString = $estr;
-glsl_parser_TokenType.PREPROCESSOR_DIRECTIVE.__enum__ = glsl_parser_TokenType;
-glsl_parser_TokenType.RESERVED_KEYWORD = ["RESERVED_KEYWORD",95];
-glsl_parser_TokenType.RESERVED_KEYWORD.toString = $estr;
-glsl_parser_TokenType.RESERVED_KEYWORD.__enum__ = glsl_parser_TokenType;
+var glsl_tokens_TokenType = { __ename__ : true, __constructs__ : ["ATTRIBUTE","CONST","BOOL","FLOAT","INT","BREAK","CONTINUE","DO","ELSE","FOR","IF","DISCARD","RETURN","BVEC2","BVEC3","BVEC4","IVEC2","IVEC3","IVEC4","VEC2","VEC3","VEC4","MAT2","MAT3","MAT4","IN","OUT","INOUT","UNIFORM","VARYING","SAMPLER2D","SAMPLERCUBE","STRUCT","VOID","WHILE","INVARIANT","HIGH_PRECISION","MEDIUM_PRECISION","LOW_PRECISION","PRECISION","BOOLCONSTANT","IDENTIFIER","TYPE_NAME","FIELD_SELECTION","LEFT_OP","RIGHT_OP","INC_OP","DEC_OP","LE_OP","GE_OP","EQ_OP","NE_OP","AND_OP","OR_OP","XOR_OP","MUL_ASSIGN","DIV_ASSIGN","ADD_ASSIGN","MOD_ASSIGN","SUB_ASSIGN","LEFT_ASSIGN","RIGHT_ASSIGN","AND_ASSIGN","XOR_ASSIGN","OR_ASSIGN","LEFT_PAREN","RIGHT_PAREN","LEFT_BRACKET","RIGHT_BRACKET","LEFT_BRACE","RIGHT_BRACE","DOT","COMMA","COLON","EQUAL","SEMICOLON","BANG","DASH","TILDE","PLUS","STAR","SLASH","PERCENT","LEFT_ANGLE","RIGHT_ANGLE","VERTICAL_BAR","CARET","AMPERSAND","QUESTION","INTCONSTANT","FLOATCONSTANT","WHITESPACE","BLOCK_COMMENT","LINE_COMMENT","PREPROCESSOR_DIRECTIVE","RESERVED_KEYWORD"] };
+glsl_tokens_TokenType.ATTRIBUTE = ["ATTRIBUTE",0];
+glsl_tokens_TokenType.ATTRIBUTE.toString = $estr;
+glsl_tokens_TokenType.ATTRIBUTE.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.CONST = ["CONST",1];
+glsl_tokens_TokenType.CONST.toString = $estr;
+glsl_tokens_TokenType.CONST.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.BOOL = ["BOOL",2];
+glsl_tokens_TokenType.BOOL.toString = $estr;
+glsl_tokens_TokenType.BOOL.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.FLOAT = ["FLOAT",3];
+glsl_tokens_TokenType.FLOAT.toString = $estr;
+glsl_tokens_TokenType.FLOAT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.INT = ["INT",4];
+glsl_tokens_TokenType.INT.toString = $estr;
+glsl_tokens_TokenType.INT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.BREAK = ["BREAK",5];
+glsl_tokens_TokenType.BREAK.toString = $estr;
+glsl_tokens_TokenType.BREAK.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.CONTINUE = ["CONTINUE",6];
+glsl_tokens_TokenType.CONTINUE.toString = $estr;
+glsl_tokens_TokenType.CONTINUE.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.DO = ["DO",7];
+glsl_tokens_TokenType.DO.toString = $estr;
+glsl_tokens_TokenType.DO.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.ELSE = ["ELSE",8];
+glsl_tokens_TokenType.ELSE.toString = $estr;
+glsl_tokens_TokenType.ELSE.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.FOR = ["FOR",9];
+glsl_tokens_TokenType.FOR.toString = $estr;
+glsl_tokens_TokenType.FOR.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.IF = ["IF",10];
+glsl_tokens_TokenType.IF.toString = $estr;
+glsl_tokens_TokenType.IF.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.DISCARD = ["DISCARD",11];
+glsl_tokens_TokenType.DISCARD.toString = $estr;
+glsl_tokens_TokenType.DISCARD.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.RETURN = ["RETURN",12];
+glsl_tokens_TokenType.RETURN.toString = $estr;
+glsl_tokens_TokenType.RETURN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.BVEC2 = ["BVEC2",13];
+glsl_tokens_TokenType.BVEC2.toString = $estr;
+glsl_tokens_TokenType.BVEC2.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.BVEC3 = ["BVEC3",14];
+glsl_tokens_TokenType.BVEC3.toString = $estr;
+glsl_tokens_TokenType.BVEC3.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.BVEC4 = ["BVEC4",15];
+glsl_tokens_TokenType.BVEC4.toString = $estr;
+glsl_tokens_TokenType.BVEC4.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.IVEC2 = ["IVEC2",16];
+glsl_tokens_TokenType.IVEC2.toString = $estr;
+glsl_tokens_TokenType.IVEC2.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.IVEC3 = ["IVEC3",17];
+glsl_tokens_TokenType.IVEC3.toString = $estr;
+glsl_tokens_TokenType.IVEC3.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.IVEC4 = ["IVEC4",18];
+glsl_tokens_TokenType.IVEC4.toString = $estr;
+glsl_tokens_TokenType.IVEC4.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.VEC2 = ["VEC2",19];
+glsl_tokens_TokenType.VEC2.toString = $estr;
+glsl_tokens_TokenType.VEC2.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.VEC3 = ["VEC3",20];
+glsl_tokens_TokenType.VEC3.toString = $estr;
+glsl_tokens_TokenType.VEC3.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.VEC4 = ["VEC4",21];
+glsl_tokens_TokenType.VEC4.toString = $estr;
+glsl_tokens_TokenType.VEC4.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.MAT2 = ["MAT2",22];
+glsl_tokens_TokenType.MAT2.toString = $estr;
+glsl_tokens_TokenType.MAT2.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.MAT3 = ["MAT3",23];
+glsl_tokens_TokenType.MAT3.toString = $estr;
+glsl_tokens_TokenType.MAT3.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.MAT4 = ["MAT4",24];
+glsl_tokens_TokenType.MAT4.toString = $estr;
+glsl_tokens_TokenType.MAT4.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.IN = ["IN",25];
+glsl_tokens_TokenType.IN.toString = $estr;
+glsl_tokens_TokenType.IN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.OUT = ["OUT",26];
+glsl_tokens_TokenType.OUT.toString = $estr;
+glsl_tokens_TokenType.OUT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.INOUT = ["INOUT",27];
+glsl_tokens_TokenType.INOUT.toString = $estr;
+glsl_tokens_TokenType.INOUT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.UNIFORM = ["UNIFORM",28];
+glsl_tokens_TokenType.UNIFORM.toString = $estr;
+glsl_tokens_TokenType.UNIFORM.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.VARYING = ["VARYING",29];
+glsl_tokens_TokenType.VARYING.toString = $estr;
+glsl_tokens_TokenType.VARYING.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.SAMPLER2D = ["SAMPLER2D",30];
+glsl_tokens_TokenType.SAMPLER2D.toString = $estr;
+glsl_tokens_TokenType.SAMPLER2D.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.SAMPLERCUBE = ["SAMPLERCUBE",31];
+glsl_tokens_TokenType.SAMPLERCUBE.toString = $estr;
+glsl_tokens_TokenType.SAMPLERCUBE.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.STRUCT = ["STRUCT",32];
+glsl_tokens_TokenType.STRUCT.toString = $estr;
+glsl_tokens_TokenType.STRUCT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.VOID = ["VOID",33];
+glsl_tokens_TokenType.VOID.toString = $estr;
+glsl_tokens_TokenType.VOID.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.WHILE = ["WHILE",34];
+glsl_tokens_TokenType.WHILE.toString = $estr;
+glsl_tokens_TokenType.WHILE.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.INVARIANT = ["INVARIANT",35];
+glsl_tokens_TokenType.INVARIANT.toString = $estr;
+glsl_tokens_TokenType.INVARIANT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.HIGH_PRECISION = ["HIGH_PRECISION",36];
+glsl_tokens_TokenType.HIGH_PRECISION.toString = $estr;
+glsl_tokens_TokenType.HIGH_PRECISION.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.MEDIUM_PRECISION = ["MEDIUM_PRECISION",37];
+glsl_tokens_TokenType.MEDIUM_PRECISION.toString = $estr;
+glsl_tokens_TokenType.MEDIUM_PRECISION.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.LOW_PRECISION = ["LOW_PRECISION",38];
+glsl_tokens_TokenType.LOW_PRECISION.toString = $estr;
+glsl_tokens_TokenType.LOW_PRECISION.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.PRECISION = ["PRECISION",39];
+glsl_tokens_TokenType.PRECISION.toString = $estr;
+glsl_tokens_TokenType.PRECISION.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.BOOLCONSTANT = ["BOOLCONSTANT",40];
+glsl_tokens_TokenType.BOOLCONSTANT.toString = $estr;
+glsl_tokens_TokenType.BOOLCONSTANT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.IDENTIFIER = ["IDENTIFIER",41];
+glsl_tokens_TokenType.IDENTIFIER.toString = $estr;
+glsl_tokens_TokenType.IDENTIFIER.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.TYPE_NAME = ["TYPE_NAME",42];
+glsl_tokens_TokenType.TYPE_NAME.toString = $estr;
+glsl_tokens_TokenType.TYPE_NAME.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.FIELD_SELECTION = ["FIELD_SELECTION",43];
+glsl_tokens_TokenType.FIELD_SELECTION.toString = $estr;
+glsl_tokens_TokenType.FIELD_SELECTION.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.LEFT_OP = ["LEFT_OP",44];
+glsl_tokens_TokenType.LEFT_OP.toString = $estr;
+glsl_tokens_TokenType.LEFT_OP.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.RIGHT_OP = ["RIGHT_OP",45];
+glsl_tokens_TokenType.RIGHT_OP.toString = $estr;
+glsl_tokens_TokenType.RIGHT_OP.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.INC_OP = ["INC_OP",46];
+glsl_tokens_TokenType.INC_OP.toString = $estr;
+glsl_tokens_TokenType.INC_OP.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.DEC_OP = ["DEC_OP",47];
+glsl_tokens_TokenType.DEC_OP.toString = $estr;
+glsl_tokens_TokenType.DEC_OP.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.LE_OP = ["LE_OP",48];
+glsl_tokens_TokenType.LE_OP.toString = $estr;
+glsl_tokens_TokenType.LE_OP.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.GE_OP = ["GE_OP",49];
+glsl_tokens_TokenType.GE_OP.toString = $estr;
+glsl_tokens_TokenType.GE_OP.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.EQ_OP = ["EQ_OP",50];
+glsl_tokens_TokenType.EQ_OP.toString = $estr;
+glsl_tokens_TokenType.EQ_OP.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.NE_OP = ["NE_OP",51];
+glsl_tokens_TokenType.NE_OP.toString = $estr;
+glsl_tokens_TokenType.NE_OP.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.AND_OP = ["AND_OP",52];
+glsl_tokens_TokenType.AND_OP.toString = $estr;
+glsl_tokens_TokenType.AND_OP.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.OR_OP = ["OR_OP",53];
+glsl_tokens_TokenType.OR_OP.toString = $estr;
+glsl_tokens_TokenType.OR_OP.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.XOR_OP = ["XOR_OP",54];
+glsl_tokens_TokenType.XOR_OP.toString = $estr;
+glsl_tokens_TokenType.XOR_OP.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.MUL_ASSIGN = ["MUL_ASSIGN",55];
+glsl_tokens_TokenType.MUL_ASSIGN.toString = $estr;
+glsl_tokens_TokenType.MUL_ASSIGN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.DIV_ASSIGN = ["DIV_ASSIGN",56];
+glsl_tokens_TokenType.DIV_ASSIGN.toString = $estr;
+glsl_tokens_TokenType.DIV_ASSIGN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.ADD_ASSIGN = ["ADD_ASSIGN",57];
+glsl_tokens_TokenType.ADD_ASSIGN.toString = $estr;
+glsl_tokens_TokenType.ADD_ASSIGN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.MOD_ASSIGN = ["MOD_ASSIGN",58];
+glsl_tokens_TokenType.MOD_ASSIGN.toString = $estr;
+glsl_tokens_TokenType.MOD_ASSIGN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.SUB_ASSIGN = ["SUB_ASSIGN",59];
+glsl_tokens_TokenType.SUB_ASSIGN.toString = $estr;
+glsl_tokens_TokenType.SUB_ASSIGN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.LEFT_ASSIGN = ["LEFT_ASSIGN",60];
+glsl_tokens_TokenType.LEFT_ASSIGN.toString = $estr;
+glsl_tokens_TokenType.LEFT_ASSIGN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.RIGHT_ASSIGN = ["RIGHT_ASSIGN",61];
+glsl_tokens_TokenType.RIGHT_ASSIGN.toString = $estr;
+glsl_tokens_TokenType.RIGHT_ASSIGN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.AND_ASSIGN = ["AND_ASSIGN",62];
+glsl_tokens_TokenType.AND_ASSIGN.toString = $estr;
+glsl_tokens_TokenType.AND_ASSIGN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.XOR_ASSIGN = ["XOR_ASSIGN",63];
+glsl_tokens_TokenType.XOR_ASSIGN.toString = $estr;
+glsl_tokens_TokenType.XOR_ASSIGN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.OR_ASSIGN = ["OR_ASSIGN",64];
+glsl_tokens_TokenType.OR_ASSIGN.toString = $estr;
+glsl_tokens_TokenType.OR_ASSIGN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.LEFT_PAREN = ["LEFT_PAREN",65];
+glsl_tokens_TokenType.LEFT_PAREN.toString = $estr;
+glsl_tokens_TokenType.LEFT_PAREN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.RIGHT_PAREN = ["RIGHT_PAREN",66];
+glsl_tokens_TokenType.RIGHT_PAREN.toString = $estr;
+glsl_tokens_TokenType.RIGHT_PAREN.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.LEFT_BRACKET = ["LEFT_BRACKET",67];
+glsl_tokens_TokenType.LEFT_BRACKET.toString = $estr;
+glsl_tokens_TokenType.LEFT_BRACKET.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.RIGHT_BRACKET = ["RIGHT_BRACKET",68];
+glsl_tokens_TokenType.RIGHT_BRACKET.toString = $estr;
+glsl_tokens_TokenType.RIGHT_BRACKET.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.LEFT_BRACE = ["LEFT_BRACE",69];
+glsl_tokens_TokenType.LEFT_BRACE.toString = $estr;
+glsl_tokens_TokenType.LEFT_BRACE.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.RIGHT_BRACE = ["RIGHT_BRACE",70];
+glsl_tokens_TokenType.RIGHT_BRACE.toString = $estr;
+glsl_tokens_TokenType.RIGHT_BRACE.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.DOT = ["DOT",71];
+glsl_tokens_TokenType.DOT.toString = $estr;
+glsl_tokens_TokenType.DOT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.COMMA = ["COMMA",72];
+glsl_tokens_TokenType.COMMA.toString = $estr;
+glsl_tokens_TokenType.COMMA.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.COLON = ["COLON",73];
+glsl_tokens_TokenType.COLON.toString = $estr;
+glsl_tokens_TokenType.COLON.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.EQUAL = ["EQUAL",74];
+glsl_tokens_TokenType.EQUAL.toString = $estr;
+glsl_tokens_TokenType.EQUAL.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.SEMICOLON = ["SEMICOLON",75];
+glsl_tokens_TokenType.SEMICOLON.toString = $estr;
+glsl_tokens_TokenType.SEMICOLON.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.BANG = ["BANG",76];
+glsl_tokens_TokenType.BANG.toString = $estr;
+glsl_tokens_TokenType.BANG.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.DASH = ["DASH",77];
+glsl_tokens_TokenType.DASH.toString = $estr;
+glsl_tokens_TokenType.DASH.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.TILDE = ["TILDE",78];
+glsl_tokens_TokenType.TILDE.toString = $estr;
+glsl_tokens_TokenType.TILDE.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.PLUS = ["PLUS",79];
+glsl_tokens_TokenType.PLUS.toString = $estr;
+glsl_tokens_TokenType.PLUS.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.STAR = ["STAR",80];
+glsl_tokens_TokenType.STAR.toString = $estr;
+glsl_tokens_TokenType.STAR.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.SLASH = ["SLASH",81];
+glsl_tokens_TokenType.SLASH.toString = $estr;
+glsl_tokens_TokenType.SLASH.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.PERCENT = ["PERCENT",82];
+glsl_tokens_TokenType.PERCENT.toString = $estr;
+glsl_tokens_TokenType.PERCENT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.LEFT_ANGLE = ["LEFT_ANGLE",83];
+glsl_tokens_TokenType.LEFT_ANGLE.toString = $estr;
+glsl_tokens_TokenType.LEFT_ANGLE.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.RIGHT_ANGLE = ["RIGHT_ANGLE",84];
+glsl_tokens_TokenType.RIGHT_ANGLE.toString = $estr;
+glsl_tokens_TokenType.RIGHT_ANGLE.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.VERTICAL_BAR = ["VERTICAL_BAR",85];
+glsl_tokens_TokenType.VERTICAL_BAR.toString = $estr;
+glsl_tokens_TokenType.VERTICAL_BAR.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.CARET = ["CARET",86];
+glsl_tokens_TokenType.CARET.toString = $estr;
+glsl_tokens_TokenType.CARET.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.AMPERSAND = ["AMPERSAND",87];
+glsl_tokens_TokenType.AMPERSAND.toString = $estr;
+glsl_tokens_TokenType.AMPERSAND.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.QUESTION = ["QUESTION",88];
+glsl_tokens_TokenType.QUESTION.toString = $estr;
+glsl_tokens_TokenType.QUESTION.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.INTCONSTANT = ["INTCONSTANT",89];
+glsl_tokens_TokenType.INTCONSTANT.toString = $estr;
+glsl_tokens_TokenType.INTCONSTANT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.FLOATCONSTANT = ["FLOATCONSTANT",90];
+glsl_tokens_TokenType.FLOATCONSTANT.toString = $estr;
+glsl_tokens_TokenType.FLOATCONSTANT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.WHITESPACE = ["WHITESPACE",91];
+glsl_tokens_TokenType.WHITESPACE.toString = $estr;
+glsl_tokens_TokenType.WHITESPACE.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.BLOCK_COMMENT = ["BLOCK_COMMENT",92];
+glsl_tokens_TokenType.BLOCK_COMMENT.toString = $estr;
+glsl_tokens_TokenType.BLOCK_COMMENT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.LINE_COMMENT = ["LINE_COMMENT",93];
+glsl_tokens_TokenType.LINE_COMMENT.toString = $estr;
+glsl_tokens_TokenType.LINE_COMMENT.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE = ["PREPROCESSOR_DIRECTIVE",94];
+glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE.toString = $estr;
+glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE.__enum__ = glsl_tokens_TokenType;
+glsl_tokens_TokenType.RESERVED_KEYWORD = ["RESERVED_KEYWORD",95];
+glsl_tokens_TokenType.RESERVED_KEYWORD.toString = $estr;
+glsl_tokens_TokenType.RESERVED_KEYWORD.__enum__ = glsl_tokens_TokenType;
 var glsl_parser_ParserTables = function() { };
 glsl_parser_ParserTables.__name__ = true;
 var glsl_parser_Parser = function() { };
@@ -1387,7 +1382,7 @@ glsl_parser_Parser.init = function() {
 };
 glsl_parser_Parser.parse = function(input) {
 	glsl_parser_Parser.init();
-	var tokens = glsl_parser_Tokenizer.tokenize(input);
+	var tokens = glsl_tokens_Tokenizer.tokenize(input);
 	return glsl_parser_Parser.parseTokens(tokens);
 };
 glsl_parser_Parser.parseTokens = function(tokens) {
@@ -1410,12 +1405,12 @@ glsl_parser_Parser.parseStep = function(major,minor) {
 	while(true) {
 		act = glsl_parser_Parser.findShiftAction(major);
 		if(act < 335) {
-			glsl_parser_Parser.assert(!atEOF,{ fileName : "Parser.hx", lineNumber : 77, className : "glsl.parser.Parser", methodName : "parseStep"});
+			glsl_parser_Parser.assert(!atEOF,{ fileName : "Parser.hx", lineNumber : 76, className : "glsl.parser.Parser", methodName : "parseStep"});
 			glsl_parser_Parser.shift(act,major,minor);
 			glsl_parser_Parser.errorCount--;
 			major = 167;
 		} else if(act < 548) glsl_parser_Parser.reduce(act - 335); else {
-			glsl_parser_Parser.assert(act == 548,{ fileName : "Parser.hx", lineNumber : 85, className : "glsl.parser.Parser", methodName : "parseStep"});
+			glsl_parser_Parser.assert(act == 548,{ fileName : "Parser.hx", lineNumber : 84, className : "glsl.parser.Parser", methodName : "parseStep"});
 			if(glsl_parser_Parser.errorCount <= 0) {
 				var minor1 = minor;
 				var msg = "syntax error";
@@ -1447,20 +1442,20 @@ glsl_parser_Parser.findShiftAction = function(iLookAhead) {
 	var stateno = glsl_parser_Parser.stack[glsl_parser_Parser.i].stateno;
 	var j = glsl_parser_Parser.shiftOffset[stateno];
 	if(stateno > 168 || j == -36) return glsl_parser_Parser.defaultAction[stateno];
-	glsl_parser_Parser.assert(iLookAhead != 167,{ fileName : "Parser.hx", lineNumber : 121, className : "glsl.parser.Parser", methodName : "findShiftAction"});
+	glsl_parser_Parser.assert(iLookAhead != 167,{ fileName : "Parser.hx", lineNumber : 120, className : "glsl.parser.Parser", methodName : "findShiftAction"});
 	j += iLookAhead;
 	if(j < 0 || j >= glsl_parser_Parser.actionCount || glsl_parser_Parser.lookahead[j] != iLookAhead) return glsl_parser_Parser.defaultAction[stateno];
 	return glsl_parser_Parser.action[j];
 };
 glsl_parser_Parser.findReduceAction = function(stateno,iLookAhead) {
 	var j;
-	glsl_parser_Parser.assert(stateno <= 72,{ fileName : "Parser.hx", lineNumber : 140, className : "glsl.parser.Parser", methodName : "findReduceAction"});
+	glsl_parser_Parser.assert(stateno <= 72,{ fileName : "Parser.hx", lineNumber : 139, className : "glsl.parser.Parser", methodName : "findReduceAction"});
 	j = glsl_parser_Parser.reduceOffset[stateno];
-	glsl_parser_Parser.assert(j != -63,{ fileName : "Parser.hx", lineNumber : 145, className : "glsl.parser.Parser", methodName : "findReduceAction"});
-	glsl_parser_Parser.assert(iLookAhead != 167,{ fileName : "Parser.hx", lineNumber : 146, className : "glsl.parser.Parser", methodName : "findReduceAction"});
+	glsl_parser_Parser.assert(j != -63,{ fileName : "Parser.hx", lineNumber : 144, className : "glsl.parser.Parser", methodName : "findReduceAction"});
+	glsl_parser_Parser.assert(iLookAhead != 167,{ fileName : "Parser.hx", lineNumber : 145, className : "glsl.parser.Parser", methodName : "findReduceAction"});
 	j += iLookAhead;
-	glsl_parser_Parser.assert(j >= 0 && j < glsl_parser_Parser.actionCount,{ fileName : "Parser.hx", lineNumber : 154, className : "glsl.parser.Parser", methodName : "findReduceAction"});
-	glsl_parser_Parser.assert(glsl_parser_Parser.lookahead[j] == iLookAhead,{ fileName : "Parser.hx", lineNumber : 155, className : "glsl.parser.Parser", methodName : "findReduceAction"});
+	glsl_parser_Parser.assert(j >= 0 && j < glsl_parser_Parser.actionCount,{ fileName : "Parser.hx", lineNumber : 153, className : "glsl.parser.Parser", methodName : "findReduceAction"});
+	glsl_parser_Parser.assert(glsl_parser_Parser.lookahead[j] == iLookAhead,{ fileName : "Parser.hx", lineNumber : 154, className : "glsl.parser.Parser", methodName : "findReduceAction"});
 	return glsl_parser_Parser.action[j];
 };
 glsl_parser_Parser.shift = function(newState,major,minor) {
@@ -1478,7 +1473,7 @@ glsl_parser_Parser.reduce = function(ruleno) {
 	glsl_parser_Parser.i -= size;
 	act = glsl_parser_Parser.findReduceAction(glsl_parser_Parser.stack[glsl_parser_Parser.i].stateno,$goto);
 	if(act < 335) glsl_parser_Parser.shift(act,$goto,newNode); else {
-		glsl_parser_Parser.assert(act == 549,{ fileName : "Parser.hx", lineNumber : 188, className : "glsl.parser.Parser", methodName : "reduce"});
+		glsl_parser_Parser.assert(act == 549,{ fileName : "Parser.hx", lineNumber : 187, className : "glsl.parser.Parser", methodName : "reduce"});
 		glsl_parser_Parser.accept();
 	}
 };
@@ -1546,1131 +1541,6 @@ glsl_parser__$Parser_RuleInfoEntry_$Impl_$.get_nrhs = function(this1) {
 glsl_parser__$Parser_RuleInfoEntry_$Impl_$.set_nrhs = function(this1,v) {
 	return this1[1] = v;
 };
-var glsl_parser_PPMacro = { __ename__ : true, __constructs__ : ["UserMacroObject","UserMacroFunction","BuiltinMacroObject","BuiltinMacroFunction","UnresolveableMacro"] };
-glsl_parser_PPMacro.UserMacroObject = function(content) { var $x = ["UserMacroObject",0,content]; $x.__enum__ = glsl_parser_PPMacro; $x.toString = $estr; return $x; };
-glsl_parser_PPMacro.UserMacroFunction = function(content,parameters) { var $x = ["UserMacroFunction",1,content,parameters]; $x.__enum__ = glsl_parser_PPMacro; $x.toString = $estr; return $x; };
-glsl_parser_PPMacro.BuiltinMacroObject = function(func) { var $x = ["BuiltinMacroObject",2,func]; $x.__enum__ = glsl_parser_PPMacro; $x.toString = $estr; return $x; };
-glsl_parser_PPMacro.BuiltinMacroFunction = function(func,parameterCount) { var $x = ["BuiltinMacroFunction",3,func,parameterCount]; $x.__enum__ = glsl_parser_PPMacro; $x.toString = $estr; return $x; };
-glsl_parser_PPMacro.UnresolveableMacro = function(ppMacro) { var $x = ["UnresolveableMacro",4,ppMacro]; $x.__enum__ = glsl_parser_PPMacro; $x.toString = $estr; return $x; };
-var js_Boot = function() { };
-js_Boot.__name__ = true;
-js_Boot.getClass = function(o) {
-	if((o instanceof Array) && o.__enum__ == null) return Array; else {
-		var cl = o.__class__;
-		if(cl != null) return cl;
-		var name = js_Boot.__nativeClassName(o);
-		if(name != null) return js_Boot.__resolveNativeClass(name);
-		return null;
-	}
-};
-js_Boot.__string_rec = function(o,s) {
-	if(o == null) return "null";
-	if(s.length >= 5) return "<...>";
-	var t = typeof(o);
-	if(t == "function" && (o.__name__ || o.__ename__)) t = "object";
-	switch(t) {
-	case "object":
-		if(o instanceof Array) {
-			if(o.__enum__) {
-				if(o.length == 2) return o[0];
-				var str2 = o[0] + "(";
-				s += "\t";
-				var _g1 = 2;
-				var _g = o.length;
-				while(_g1 < _g) {
-					var i1 = _g1++;
-					if(i1 != 2) str2 += "," + js_Boot.__string_rec(o[i1],s); else str2 += js_Boot.__string_rec(o[i1],s);
-				}
-				return str2 + ")";
-			}
-			var l = o.length;
-			var i;
-			var str1 = "[";
-			s += "\t";
-			var _g2 = 0;
-			while(_g2 < l) {
-				var i2 = _g2++;
-				str1 += (i2 > 0?",":"") + js_Boot.__string_rec(o[i2],s);
-			}
-			str1 += "]";
-			return str1;
-		}
-		var tostr;
-		try {
-			tostr = o.toString;
-		} catch( e ) {
-			if (e instanceof js__$Boot_HaxeError) e = e.val;
-			return "???";
-		}
-		if(tostr != null && tostr != Object.toString && typeof(tostr) == "function") {
-			var s2 = o.toString();
-			if(s2 != "[object Object]") return s2;
-		}
-		var k = null;
-		var str = "{\n";
-		s += "\t";
-		var hasp = o.hasOwnProperty != null;
-		for( var k in o ) {
-		if(hasp && !o.hasOwnProperty(k)) {
-			continue;
-		}
-		if(k == "prototype" || k == "__class__" || k == "__super__" || k == "__interfaces__" || k == "__properties__") {
-			continue;
-		}
-		if(str.length != 2) str += ", \n";
-		str += s + k + " : " + js_Boot.__string_rec(o[k],s);
-		}
-		s = s.substring(1);
-		str += "\n" + s + "}";
-		return str;
-	case "function":
-		return "<function>";
-	case "string":
-		return o;
-	default:
-		return String(o);
-	}
-};
-js_Boot.__interfLoop = function(cc,cl) {
-	if(cc == null) return false;
-	if(cc == cl) return true;
-	var intf = cc.__interfaces__;
-	if(intf != null) {
-		var _g1 = 0;
-		var _g = intf.length;
-		while(_g1 < _g) {
-			var i = _g1++;
-			var i1 = intf[i];
-			if(i1 == cl || js_Boot.__interfLoop(i1,cl)) return true;
-		}
-	}
-	return js_Boot.__interfLoop(cc.__super__,cl);
-};
-js_Boot.__instanceof = function(o,cl) {
-	if(cl == null) return false;
-	switch(cl) {
-	case Int:
-		return (o|0) === o;
-	case Float:
-		return typeof(o) == "number";
-	case Bool:
-		return typeof(o) == "boolean";
-	case String:
-		return typeof(o) == "string";
-	case Array:
-		return (o instanceof Array) && o.__enum__ == null;
-	case Dynamic:
-		return true;
-	default:
-		if(o != null) {
-			if(typeof(cl) == "function") {
-				if(o instanceof cl) return true;
-				if(js_Boot.__interfLoop(js_Boot.getClass(o),cl)) return true;
-			} else if(typeof(cl) == "object" && js_Boot.__isNativeObj(cl)) {
-				if(o instanceof cl) return true;
-			}
-		} else return false;
-		if(cl == Class && o.__name__ != null) return true;
-		if(cl == Enum && o.__ename__ != null) return true;
-		return o.__enum__ == cl;
-	}
-};
-js_Boot.__cast = function(o,t) {
-	if(js_Boot.__instanceof(o,t)) return o; else throw new js__$Boot_HaxeError("Cannot cast " + Std.string(o) + " to " + Std.string(t));
-};
-js_Boot.__nativeClassName = function(o) {
-	var name = js_Boot.__toStr.call(o).slice(8,-1);
-	if(name == "Object" || name == "Function" || name == "Math" || name == "JSON") return null;
-	return name;
-};
-js_Boot.__isNativeObj = function(o) {
-	return js_Boot.__nativeClassName(o) != null;
-};
-js_Boot.__resolveNativeClass = function(name) {
-	if(typeof window != "undefined") return window[name]; else return global[name];
-};
-var glsl_parser_Preprocessor = function() { };
-glsl_parser_Preprocessor.__name__ = true;
-glsl_parser_Preprocessor.process = function(inputTokens,force) {
-	if(force == null) force = false;
-	glsl_parser_Preprocessor.tokens = inputTokens;
-	glsl_parser_Preprocessor.i = 0;
-	glsl_parser_Preprocessor.force = force;
-	glsl_parser_Preprocessor.userDefinedMacros = new haxe_ds_StringMap();
-	glsl_parser_Preprocessor.warnings = [];
-	glsl_parser_Preprocessor.version = 100;
-	glsl_parser_Preprocessor.pragmas = [];
-	while(glsl_parser_Preprocessor.i < glsl_parser_Preprocessor.tokens.length) {
-		var _g = glsl_parser_Preprocessor.tokens[glsl_parser_Preprocessor.i].type;
-		switch(_g[1]) {
-		case 94:
-			try {
-				glsl_parser_Preprocessor.processDirective();
-			} catch( $e0 ) {
-				if ($e0 instanceof js__$Boot_HaxeError) $e0 = $e0.val;
-				if( js_Boot.__instanceof($e0,glsl_parser_PPError) ) {
-					var e = $e0;
-					switch(e[1]) {
-					case 0:
-						var info = e[3];
-						glsl_parser_Preprocessor.warn(e[2],info);
-						break;
-					case 1:
-						var info1 = e[3];
-						glsl_parser_Preprocessor.error(e[2],info1);
-						break;
-					}
-				} else if( js_Boot.__instanceof($e0,String) ) {
-					var msg = $e0;
-					glsl_parser_Preprocessor.warn(msg,glsl_parser_Preprocessor.tokens[glsl_parser_Preprocessor.i]);
-				} else throw($e0);
-			}
-			break;
-		default:
-			{
-				var _g1 = HxOverrides.indexOf(glsl_parser_PPTokensHelper.identifierTokens,_g,0) >= 0;
-				switch(_g1) {
-				case true:
-					try {
-						glsl_parser_Preprocessor.processIdentifier();
-					} catch( $e1 ) {
-						if ($e1 instanceof js__$Boot_HaxeError) $e1 = $e1.val;
-						if( js_Boot.__instanceof($e1,glsl_parser_PPError) ) {
-							var e1 = $e1;
-							switch(e1[1]) {
-							case 0:
-								var info2 = e1[3];
-								glsl_parser_Preprocessor.warn(e1[2],info2);
-								break;
-							case 1:
-								var info3 = e1[3];
-								glsl_parser_Preprocessor.error(e1[2],info3);
-								break;
-							}
-						} else if( js_Boot.__instanceof($e1,String) ) {
-							var msg1 = $e1;
-							glsl_parser_Preprocessor.warn(msg1,glsl_parser_Preprocessor.tokens[glsl_parser_Preprocessor.i]);
-						} else throw($e1);
-					}
-					break;
-				default:
-				}
-			}
-		}
-		glsl_parser_Preprocessor.i++;
-	}
-	return glsl_parser_Preprocessor.tokens;
-};
-glsl_parser_Preprocessor.processDirective = function() {
-	var t = glsl_parser_Preprocessor.tokens[glsl_parser_Preprocessor.i];
-	var directive = glsl_parser_Preprocessor.readDirectiveData(t.data);
-	var _g = directive.title;
-	switch(_g) {
-	case "":
-		break;
-	case "define":
-		var definition = glsl_parser_Preprocessor.evaluateMacroDefinition(directive.content);
-		glsl_parser_Preprocessor.defineMacro(definition.name,definition.ppMacro);
-		if(glsl_parser_Preprocessor.force) glsl_parser_PPTokensHelper.deleteTokens(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i);
-		break;
-	case "undef":
-		var tmp;
-		if(!glsl_parser_Preprocessor.macroNameReg.match(directive.content)) throw new js__$Boot_HaxeError("invalid macro name");
-		tmp = glsl_parser_Preprocessor.macroNameReg.matched(1);
-		var macroName = tmp;
-		glsl_parser_Preprocessor.undefineMacro(macroName);
-		if(glsl_parser_Preprocessor.force) glsl_parser_PPTokensHelper.deleteTokens(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i);
-		break;
-	case "if":case "ifdef":case "ifndef":
-		glsl_parser_Preprocessor.processIfSwitch();
-		break;
-	case "else":case "elif":case "endif":
-		if(glsl_parser_Preprocessor.force) glsl_parser_PPTokensHelper.deleteTokens(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i);
-		throw new js__$Boot_HaxeError("unexpected #" + directive.title);
-		break;
-	case "error":
-		if(glsl_parser_Preprocessor.force) glsl_parser_PPTokensHelper.deleteTokens(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i);
-		throw new js__$Boot_HaxeError(glsl_parser_PPError.Error("" + directive.content,t));
-		break;
-	case "pragma":
-		if(new EReg("^\\s*STDGL(\\s+|$)","").match(directive.content)) throw new js__$Boot_HaxeError("pragmas beginning with STDGL are reserved");
-		glsl_parser_Preprocessor.pragmas.push(directive.content);
-		if(glsl_parser_Preprocessor.force) glsl_parser_PPTokensHelper.deleteTokens(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i);
-		break;
-	case "extension":
-		if(glsl_parser_Preprocessor.force) glsl_parser_PPTokensHelper.deleteTokens(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i);
-		throw new js__$Boot_HaxeError("directive #extension is not yet supported");
-		break;
-	case "version":
-		if(glsl_parser_PPTokensHelper.nextNonSkipToken(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i,-1) == null) {
-			var versionNumRegex = new EReg("^(\\d+)$","");
-			var matched = versionNumRegex.match(directive.content);
-			if(matched) {
-				versionNumRegex.matched(1);
-				glsl_parser_Preprocessor.version = Std.parseInt(versionNumRegex.matched(1));
-				if(glsl_parser_Preprocessor.force) glsl_parser_PPTokensHelper.deleteTokens(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i);
-			} else {
-				var _g1 = directive.content;
-				switch(_g1) {
-				case "":
-					throw new js__$Boot_HaxeError("version number required");
-					break;
-				default:
-					throw new js__$Boot_HaxeError("invalid version number '" + directive.content + "'");
-				}
-			}
-		} else throw new js__$Boot_HaxeError("#version directive must occur before anything else, except for comments and whitespace");
-		break;
-	case "line":
-		if(glsl_parser_Preprocessor.force) glsl_parser_PPTokensHelper.deleteTokens(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i);
-		throw new js__$Boot_HaxeError("directive #line is not yet supported");
-		break;
-	default:
-		if(glsl_parser_Preprocessor.force) glsl_parser_PPTokensHelper.deleteTokens(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i);
-		throw new js__$Boot_HaxeError("unknown directive #'" + directive.title + "'");
-	}
-};
-glsl_parser_Preprocessor.processIfSwitch = function() {
-	var newTokens = [];
-	var start = glsl_parser_Preprocessor.i;
-	var end = null;
-	var j = glsl_parser_Preprocessor.i;
-	var t;
-	var level = 0;
-	var directive;
-	var lastTitle;
-	var testBlocks = [];
-	try {
-		t = glsl_parser_Preprocessor.tokens[j];
-		try {
-			{
-				var _g = directive = glsl_parser_Preprocessor.readDirectiveData(t.data);
-				switch(_g.title) {
-				case "if":
-					level++;
-					throw new js__$Boot_HaxeError("#if directive is not yet supported");
-					break;
-				case "ifdef":
-					var content = _g.content;
-					level++;
-					var tmp;
-					if(!glsl_parser_Preprocessor.macroNameReg.match(content)) throw new js__$Boot_HaxeError("invalid macro name");
-					tmp = glsl_parser_Preprocessor.macroNameReg.matched(1);
-					var macroName = tmp;
-					testBlocks.push({ testFunc : function() {
-						return glsl_parser_Preprocessor.isMacroDefined(macroName);
-					}, start : j + 1, end : null});
-					break;
-				case "ifndef":
-					var content1 = _g.content;
-					level++;
-					var tmp1;
-					if(!glsl_parser_Preprocessor.macroNameReg.match(content1)) throw new js__$Boot_HaxeError("invalid macro name");
-					tmp1 = glsl_parser_Preprocessor.macroNameReg.matched(1);
-					var macroName1 = tmp1;
-					testBlocks.push({ testFunc : function() {
-						return !glsl_parser_Preprocessor.isMacroDefined(macroName1);
-					}, start : j + 1, end : null});
-					break;
-				default:
-					throw new js__$Boot_HaxeError("expected if-switch directive, got #" + _g.title);
-				}
-			}
-			lastTitle = directive.title;
-			while(level > 0) {
-				j = glsl_parser_PPTokensHelper.nextNonSkipTokenIndex(glsl_parser_Preprocessor.tokens,j,1,glsl_parser_TokenType.PREPROCESSOR_DIRECTIVE);
-				t = glsl_parser_Preprocessor.tokens[j];
-				if(t == null) throw new js__$Boot_HaxeError("expecting #endif but reached end of file");
-				{
-					var _g1 = directive = glsl_parser_Preprocessor.readDirectiveData(t.data);
-					switch(_g1.title) {
-					case "if":case "ifdef":case "ifndef":
-						level++;
-						break;
-					case "else":
-						if(level == 1) {
-							if(lastTitle == "else") throw new js__$Boot_HaxeError("#" + directive.title + " cannot follow #else");
-							testBlocks[testBlocks.length - 1].end = j - 1;
-							testBlocks.push({ testFunc : function() {
-								return true;
-							}, start : j + 1, end : null});
-						}
-						break;
-					case "elif":
-						if(level == 1) throw new js__$Boot_HaxeError("#elif directive is not yet supported");
-						break;
-					case "endif":
-						level--;
-						break;
-					default:
-					}
-				}
-				lastTitle = directive.title;
-			}
-			testBlocks[testBlocks.length - 1].end = j - 1;
-		} catch( msg ) {
-			if (msg instanceof js__$Boot_HaxeError) msg = msg.val;
-			if( js_Boot.__instanceof(msg,String) ) {
-				throw new js__$Boot_HaxeError(glsl_parser_PPError.Warn(msg,t));
-			} else throw(msg);
-		}
-		end = j;
-		var _g2 = 0;
-		while(_g2 < testBlocks.length) {
-			var b = testBlocks[_g2];
-			++_g2;
-			try {
-				if(b.testFunc()) {
-					newTokens = glsl_parser_Preprocessor.tokens.slice(b.start,b.end);
-					break;
-				}
-			} catch( msg1 ) {
-				if (msg1 instanceof js__$Boot_HaxeError) msg1 = msg1.val;
-				if( js_Boot.__instanceof(msg1,String) ) {
-					throw new js__$Boot_HaxeError(glsl_parser_PPError.Warn(msg1,glsl_parser_Preprocessor.tokens[b.start - 1]));
-				} else throw(msg1);
-			}
-		}
-		glsl_parser_PPTokensHelper.deleteTokens(glsl_parser_Preprocessor.tokens,start,end - start + 1);
-		glsl_parser_PPTokensHelper.insertTokens(glsl_parser_Preprocessor.tokens,start,newTokens);
-		glsl_parser_Preprocessor.i = start - 1;
-	} catch( e ) {
-		if (e instanceof js__$Boot_HaxeError) e = e.val;
-		while(level > 0) {
-			j = glsl_parser_PPTokensHelper.nextNonSkipTokenIndex(glsl_parser_Preprocessor.tokens,j,1,glsl_parser_TokenType.PREPROCESSOR_DIRECTIVE);
-			t = glsl_parser_Preprocessor.tokens[j];
-			if(t == null) throw new js__$Boot_HaxeError(glsl_parser_PPError.Warn("expecting #endif but reached end of file",glsl_parser_Preprocessor.tokens[start]));
-			var _g3 = glsl_parser_Preprocessor.readDirectiveData(t.data).title;
-			switch(_g3) {
-			case "if":case "ifdef":case "ifndef":
-				level++;
-				break;
-			case "endif":
-				level--;
-				break;
-			}
-		}
-		glsl_parser_Preprocessor.i = j;
-		throw new js__$Boot_HaxeError(e);
-	}
-};
-glsl_parser_Preprocessor.processIdentifier = function() {
-	var expanded = glsl_parser_PPTokensHelper.expandIdentifier(glsl_parser_Preprocessor.tokens,glsl_parser_Preprocessor.i);
-	if(expanded != null) glsl_parser_Preprocessor.i += expanded.length;
-};
-glsl_parser_Preprocessor.getMacro = function(id) {
-	var ppMacro;
-	var tmp;
-	var _this = glsl_parser_Preprocessor.builtinMacros;
-	if(__map_reserved[id] != null) tmp = _this.getReserved(id); else tmp = _this.h[id];
-	if((ppMacro = tmp) != null) return ppMacro;
-	var tmp1;
-	var _this1 = glsl_parser_Preprocessor.userDefinedMacros;
-	if(__map_reserved[id] != null) tmp1 = _this1.getReserved(id); else tmp1 = _this1.h[id];
-	if((ppMacro = tmp1) != null) return ppMacro;
-	return null;
-};
-glsl_parser_Preprocessor.defineMacro = function(id,ppMacro) {
-	var existingMacro = glsl_parser_Preprocessor.getMacro(id);
-	if(existingMacro == null) {
-	} else switch(existingMacro[1]) {
-	case 2:case 3:case 4:
-		throw new js__$Boot_HaxeError("redefinition of predefined macro");
-		break;
-	case 0:case 1:
-		throw new js__$Boot_HaxeError("macro redefinition");
-		break;
-	}
-	if(new EReg("^__","").match(id)) throw new js__$Boot_HaxeError("macro name is reserved");
-	if(ppMacro == null) throw new js__$Boot_HaxeError("null macro definitions are not allowed");
-	var _this = glsl_parser_Preprocessor.userDefinedMacros;
-	if(__map_reserved[id] != null) _this.setReserved(id,ppMacro); else _this.h[id] = ppMacro;
-};
-glsl_parser_Preprocessor.undefineMacro = function(id) {
-	var existingMacro = glsl_parser_Preprocessor.getMacro(id);
-	if(existingMacro == null) {
-	} else switch(existingMacro[1]) {
-	case 2:case 3:case 4:
-		throw new js__$Boot_HaxeError("cannot undefine predefined macro");
-		break;
-	case 0:case 1:
-		glsl_parser_Preprocessor.userDefinedMacros.remove(id);
-		break;
-	}
-};
-glsl_parser_Preprocessor.isMacroDefined = function(id) {
-	var m = glsl_parser_Preprocessor.getMacro(id);
-	if(m == null) return false; else switch(m[1]) {
-	case 4:
-		if(glsl_parser_Preprocessor.force && m[2] != null) return true; else throw new js__$Boot_HaxeError("cannot resolve macro definition '" + id + "'");
-		break;
-	default:
-		return true;
-	}
-};
-glsl_parser_Preprocessor.readDirectiveData = function(data) {
-	if(!glsl_parser_Preprocessor.directiveTitleReg.match(data)) throw new js__$Boot_HaxeError("invalid directive title");
-	var title = glsl_parser_Preprocessor.directiveTitleReg.matched(1);
-	var content = StringTools.trim(glsl_parser_Preprocessor.directiveTitleReg.matchedRight());
-	content = StringTools.replace(content,"\\\n","\n");
-	return { title : title, content : content};
-};
-glsl_parser_Preprocessor.readMacroName = function(data) {
-	if(!glsl_parser_Preprocessor.macroNameReg.match(data)) throw new js__$Boot_HaxeError("invalid macro name");
-	return glsl_parser_Preprocessor.macroNameReg.matched(1);
-};
-glsl_parser_Preprocessor.evaluateMacroDefinition = function(definitionString) {
-	if(glsl_parser_Preprocessor.macroNameReg.match(definitionString)) {
-		var macroName = glsl_parser_Preprocessor.macroNameReg.matched(1);
-		var macroContent = "";
-		var macroParameters = [];
-		var nextChar = glsl_parser_Preprocessor.macroNameReg.matched(2);
-		var userMacro;
-		switch(nextChar) {
-		case "(":
-			var parametersReg = new EReg("([^\\)]*)\\)","");
-			var parameterReg = new EReg("^\\s*(([a-z_]\\w*)?)\\s*(,|$)","i");
-			var matchedRightParen = parametersReg.match(glsl_parser_Preprocessor.macroNameReg.matchedRight());
-			if(matchedRightParen) {
-				var parameterString = parametersReg.matched(1);
-				macroContent = parametersReg.matchedRight();
-				var reachedLast = false;
-				while(!reachedLast) if(parameterReg.match(parameterString)) {
-					var parameterName = parameterReg.matched(1);
-					var parameterNextChar = parameterReg.matched(3);
-					macroParameters.push(parameterName);
-					parameterString = parameterReg.matchedRight();
-					reachedLast = parameterNextChar != ",";
-				} else throw new js__$Boot_HaxeError("invalid macro parameter");
-			} else throw new js__$Boot_HaxeError("unmatched parentheses");
-			userMacro = glsl_parser_PPMacro.UserMacroFunction(StringTools.trim(macroContent),macroParameters);
-			break;
-		default:
-			macroContent = nextChar + glsl_parser_Preprocessor.macroNameReg.matchedRight();
-			macroContent = StringTools.trim(macroContent);
-			userMacro = glsl_parser_PPMacro.UserMacroObject(StringTools.trim(macroContent));
-		}
-		return { name : macroName, ppMacro : userMacro};
-	} else throw new js__$Boot_HaxeError("invalid macro definition");
-	return null;
-};
-glsl_parser_Preprocessor.evaluateExpr = function(expr) {
-};
-glsl_parser_Preprocessor.warn = function(msg,info) {
-	var str = "Preprocessor Warning: " + msg;
-	var line = Reflect.field(info,"line");
-	var col = Reflect.field(info,"column");
-	var tmp;
-	var a = Type["typeof"](line);
-	tmp = Type.enumEq(a,ValueType.TInt);
-	if(tmp) {
-		str += ", line " + line;
-		var tmp1;
-		var a1 = Type["typeof"](col);
-		tmp1 = Type.enumEq(a1,ValueType.TInt);
-		if(tmp1) str += ", column " + col;
-	}
-	glsl_parser_Preprocessor.warnings.push(str);
-};
-glsl_parser_Preprocessor.error = function(msg,info) {
-	var str = "Preprocessor Error: " + msg;
-	var line = Reflect.field(info,"line");
-	var col = Reflect.field(info,"column");
-	var tmp;
-	var a = Type["typeof"](line);
-	tmp = Type.enumEq(a,ValueType.TInt);
-	if(tmp) {
-		str += ", line " + line;
-		var tmp1;
-		var a1 = Type["typeof"](col);
-		tmp1 = Type.enumEq(a1,ValueType.TInt);
-		if(tmp1) str += ", column " + col;
-	}
-	throw new js__$Boot_HaxeError(str);
-};
-var glsl_parser_PPError = { __ename__ : true, __constructs__ : ["Warn","Error"] };
-glsl_parser_PPError.Warn = function(msg,info) { var $x = ["Warn",0,msg,info]; $x.__enum__ = glsl_parser_PPError; $x.toString = $estr; return $x; };
-glsl_parser_PPError.Error = function(msg,info) { var $x = ["Error",1,msg,info]; $x.__enum__ = glsl_parser_PPError; $x.toString = $estr; return $x; };
-var glsl_parser_PPTokensHelper = function() { };
-glsl_parser_PPTokensHelper.__name__ = true;
-glsl_parser_PPTokensHelper.expandIdentifiers = function(tokens,overrideMap,ignore) {
-	var len = tokens.length;
-	var _g = 0;
-	while(_g < len) {
-		var j = _g++;
-		if(HxOverrides.indexOf(glsl_parser_PPTokensHelper.identifierTokens,tokens[j].type,0) >= 0) {
-			glsl_parser_PPTokensHelper.expandIdentifier(tokens,j,overrideMap,ignore);
-			len = tokens.length;
-		}
-	}
-	return tokens;
-};
-glsl_parser_PPTokensHelper.expandIdentifier = function(tokens,i,overrideMap,ignore) {
-	var token = tokens[i];
-	var id = token.data;
-	if(ignore != null && HxOverrides.indexOf(ignore,id,0) != -1) return null;
-	var ppMacro = overrideMap == null?glsl_parser_Preprocessor.getMacro(id):__map_reserved[id] != null?overrideMap.getReserved(id):overrideMap.h[id];
-	if(ppMacro == null) return null;
-	var tmp;
-	var resolveMacro1 = null;
-	resolveMacro1 = function(ppMacro1) {
-		switch(ppMacro1[1]) {
-		case 0:
-			var content = ppMacro1[2];
-			var tmp1;
-			var newTokens1 = glsl_parser_Tokenizer.tokenize(content,function(warning) {
-				throw new js__$Boot_HaxeError("" + warning);
-			},function(error) {
-				throw new js__$Boot_HaxeError("" + error);
-			});
-			var _g = 0;
-			while(_g < newTokens1.length) {
-				var t = newTokens1[_g];
-				++_g;
-				t.line = token.line;
-				t.column = token.column;
-			}
-			tmp1 = newTokens1;
-			var newTokens = tmp1;
-			if(ignore == null) ignore = [id]; else ignore.push(id);
-			glsl_parser_PPTokensHelper.expandIdentifiers(newTokens,overrideMap,ignore);
-			glsl_parser_PPTokensHelper.deleteTokens(tokens,i,1);
-			glsl_parser_PPTokensHelper.insertTokens(tokens,i,newTokens);
-			return newTokens;
-		case 1:
-			var parameters = ppMacro1[3];
-			var content1 = ppMacro1[2];
-			try {
-				var functionCall = glsl_parser_PPTokensHelper.readFunctionCall(tokens,i);
-				if(functionCall.args.length != parameters.length) {
-					var _g1 = functionCall.args.length > parameters.length;
-					switch(_g1) {
-					case true:
-						throw new js__$Boot_HaxeError("too many arguments for macro");
-						break;
-					case false:
-						throw new js__$Boot_HaxeError("not enough arguments for macro");
-						break;
-					}
-				}
-				var tmp2;
-				var newTokens3 = glsl_parser_Tokenizer.tokenize(content1,function(warning1) {
-					throw new js__$Boot_HaxeError("" + warning1);
-				},function(error1) {
-					throw new js__$Boot_HaxeError("" + error1);
-				});
-				var _g2 = 0;
-				while(_g2 < newTokens3.length) {
-					var t1 = newTokens3[_g2];
-					++_g2;
-					t1.line = token.line;
-					t1.column = token.column;
-				}
-				tmp2 = newTokens3;
-				var newTokens2 = tmp2;
-				var parameterMap = new haxe_ds_StringMap();
-				var _g11 = 0;
-				var _g3 = parameters.length;
-				while(_g11 < _g3) {
-					var i1 = _g11++;
-					var tmp3;
-					var key = parameters[i1];
-					if(__map_reserved[key] != null) tmp3 = parameterMap.existsReserved(key); else tmp3 = parameterMap.h.hasOwnProperty(key);
-					if(!tmp3) {
-						var value = glsl_parser_PPMacro.UserMacroObject(glsl_printer_TokenArrayPrinter.print(functionCall.args[i1]));
-						var key1 = parameters[i1];
-						if(__map_reserved[key1] != null) parameterMap.setReserved(key1,value); else parameterMap.h[key1] = value;
-					}
-				}
-				glsl_parser_PPTokensHelper.expandIdentifiers(newTokens2,parameterMap);
-				if(ignore == null) ignore = [id]; else ignore.push(id);
-				glsl_parser_PPTokensHelper.expandIdentifiers(newTokens2,overrideMap,ignore);
-				glsl_parser_PPTokensHelper.deleteTokens(tokens,i,functionCall.len);
-				glsl_parser_PPTokensHelper.insertTokens(tokens,i,newTokens2);
-				return newTokens2;
-			} catch( e ) {
-				if (e instanceof js__$Boot_HaxeError) e = e.val;
-			}
-			break;
-		case 2:
-			var func = ppMacro1[2];
-			var tmp4;
-			var content2 = func();
-			var newTokens5 = glsl_parser_Tokenizer.tokenize(content2,function(warning2) {
-				throw new js__$Boot_HaxeError("" + warning2);
-			},function(error2) {
-				throw new js__$Boot_HaxeError("" + error2);
-			});
-			var _g4 = 0;
-			while(_g4 < newTokens5.length) {
-				var t2 = newTokens5[_g4];
-				++_g4;
-				t2.line = token.line;
-				t2.column = token.column;
-			}
-			tmp4 = newTokens5;
-			var newTokens4 = tmp4;
-			glsl_parser_PPTokensHelper.deleteTokens(tokens,i,1);
-			glsl_parser_PPTokensHelper.insertTokens(tokens,i,newTokens4);
-			return newTokens4;
-		case 3:
-			var requiredParameterCount = ppMacro1[3];
-			var func1 = ppMacro1[2];
-			try {
-				var functionCall1 = glsl_parser_PPTokensHelper.readFunctionCall(tokens,i);
-				if(functionCall1.args.length != requiredParameterCount) {
-					var _g5 = functionCall1.args.length > requiredParameterCount;
-					switch(_g5) {
-					case true:
-						throw new js__$Boot_HaxeError("too many arguments for macro");
-						break;
-					case false:
-						throw new js__$Boot_HaxeError("not enough arguments for macro");
-						break;
-					}
-				}
-				var tmp5;
-				var content3 = func1(functionCall1.args);
-				var newTokens7 = glsl_parser_Tokenizer.tokenize(content3,function(warning3) {
-					throw new js__$Boot_HaxeError("" + warning3);
-				},function(error3) {
-					throw new js__$Boot_HaxeError("" + error3);
-				});
-				var _g6 = 0;
-				while(_g6 < newTokens7.length) {
-					var t3 = newTokens7[_g6];
-					++_g6;
-					t3.line = token.line;
-					t3.column = token.column;
-				}
-				tmp5 = newTokens7;
-				var newTokens6 = tmp5;
-				glsl_parser_PPTokensHelper.deleteTokens(tokens,i,functionCall1.len);
-				glsl_parser_PPTokensHelper.insertTokens(tokens,i,newTokens6);
-				return newTokens6;
-			} catch( e1 ) {
-				if (e1 instanceof js__$Boot_HaxeError) e1 = e1.val;
-			}
-			break;
-		case 4:
-			var forceMacro = ppMacro1[2];
-			if(glsl_parser_Preprocessor.force && forceMacro != null) return resolveMacro1(forceMacro); else throw new js__$Boot_HaxeError("cannot resolve macro");
-			break;
-		}
-		return null;
-	};
-	tmp = resolveMacro1;
-	var resolveMacro = tmp;
-	return resolveMacro(ppMacro);
-};
-glsl_parser_PPTokensHelper.readFunctionCall = function(tokens,start) {
-	var ident = tokens[start];
-	if(ident == null || !(HxOverrides.indexOf(glsl_parser_PPTokensHelper.identifierTokens,ident.type,0) >= 0)) throw new js__$Boot_HaxeError("invalid function call");
-	var args = [];
-	var j = glsl_parser_PPTokensHelper.nextNonSkipTokenIndex(tokens,start);
-	if(j == -1) throw new js__$Boot_HaxeError("invalid function call");
-	var t = tokens[j];
-	if(Type.enumEq(t.type,glsl_parser_TokenType.LEFT_PAREN)) {
-		var argBuffer = [];
-		var level = 1;
-		do {
-			t = tokens[++j];
-			if(t == null) throw new js__$Boot_HaxeError("expecting ')'");
-			if(HxOverrides.indexOf(glsl_parser_Tokenizer.skippableTypes,t.type,0) != -1) continue;
-			var _g = t.type;
-			if(_g == null) throw new js__$Boot_HaxeError("" + Std.string(t) + " has no token type"); else switch(_g[1]) {
-			case 65:
-				level++;
-				break;
-			case 66:
-				level--;
-				break;
-			case 72:
-				if(level == 1) {
-					args.push(argBuffer);
-					argBuffer = [];
-				} else argBuffer.push(t);
-				break;
-			default:
-				argBuffer.push(t);
-			}
-			if(level <= 0) {
-				args.push(argBuffer);
-				argBuffer = [];
-				break;
-			}
-		} while(true);
-		return { ident : ident, args : args, start : start, len : j - start + 1};
-	}
-	throw new js__$Boot_HaxeError("expecting '('");
-};
-glsl_parser_PPTokensHelper.nextNonSkipToken = function(tokens,start,n,requiredType) {
-	if(n == null) n = 1;
-	var j = glsl_parser_PPTokensHelper.nextNonSkipTokenIndex(tokens,start,n,requiredType);
-	return j != -1?tokens[j]:null;
-};
-glsl_parser_PPTokensHelper.nextNonSkipTokenIndex = function(tokens,start,n,requiredType) {
-	if(n == null) n = 1;
-	var direction = n >= 0?1:-1;
-	var j = start;
-	var m = Math.abs(n);
-	var t;
-	while(m > 0) {
-		j += direction;
-		t = tokens[j];
-		if(t == null) return -1;
-		if(requiredType != null && !Type.enumEq(t.type,requiredType)) continue;
-		if(HxOverrides.indexOf(glsl_parser_Tokenizer.skippableTypes,t.type,0) != -1) continue;
-		m--;
-	}
-	return j;
-};
-glsl_parser_PPTokensHelper.deleteTokens = function(tokens,start,count) {
-	if(count == null) count = 1;
-	return tokens.splice(start,count);
-};
-glsl_parser_PPTokensHelper.insertTokens = function(tokens,start,newTokens) {
-	var j = newTokens.length;
-	while(--j >= 0) tokens.splice(start,0,newTokens[j]);
-	return tokens;
-};
-glsl_parser_PPTokensHelper.isIdentifierType = function(type) {
-	return HxOverrides.indexOf(glsl_parser_PPTokensHelper.identifierTokens,type,0) >= 0;
-};
-var glsl_parser__$Tokenizer_ScanMode = { __ename__ : true, __constructs__ : ["UNDETERMINED","BLOCK_COMMENT","LINE_COMMENT","PREPROCESSOR_DIRECTIVE","WHITESPACE","OPERATOR","LITERAL","INTEGER_CONSTANT","DECIMAL_CONSTANT","HEX_CONSTANT","OCTAL_CONSTANT","FLOATING_CONSTANT","FRACTIONAL_CONSTANT","EXPONENT_PART"] };
-glsl_parser__$Tokenizer_ScanMode.UNDETERMINED = ["UNDETERMINED",0];
-glsl_parser__$Tokenizer_ScanMode.UNDETERMINED.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.UNDETERMINED.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.BLOCK_COMMENT = ["BLOCK_COMMENT",1];
-glsl_parser__$Tokenizer_ScanMode.BLOCK_COMMENT.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.BLOCK_COMMENT.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.LINE_COMMENT = ["LINE_COMMENT",2];
-glsl_parser__$Tokenizer_ScanMode.LINE_COMMENT.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.LINE_COMMENT.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE = ["PREPROCESSOR_DIRECTIVE",3];
-glsl_parser__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.WHITESPACE = ["WHITESPACE",4];
-glsl_parser__$Tokenizer_ScanMode.WHITESPACE.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.WHITESPACE.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.OPERATOR = ["OPERATOR",5];
-glsl_parser__$Tokenizer_ScanMode.OPERATOR.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.OPERATOR.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.LITERAL = ["LITERAL",6];
-glsl_parser__$Tokenizer_ScanMode.LITERAL.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.LITERAL.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.INTEGER_CONSTANT = ["INTEGER_CONSTANT",7];
-glsl_parser__$Tokenizer_ScanMode.INTEGER_CONSTANT.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.INTEGER_CONSTANT.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.DECIMAL_CONSTANT = ["DECIMAL_CONSTANT",8];
-glsl_parser__$Tokenizer_ScanMode.DECIMAL_CONSTANT.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.DECIMAL_CONSTANT.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.HEX_CONSTANT = ["HEX_CONSTANT",9];
-glsl_parser__$Tokenizer_ScanMode.HEX_CONSTANT.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.HEX_CONSTANT.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.OCTAL_CONSTANT = ["OCTAL_CONSTANT",10];
-glsl_parser__$Tokenizer_ScanMode.OCTAL_CONSTANT.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.OCTAL_CONSTANT.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.FLOATING_CONSTANT = ["FLOATING_CONSTANT",11];
-glsl_parser__$Tokenizer_ScanMode.FLOATING_CONSTANT.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.FLOATING_CONSTANT.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT = ["FRACTIONAL_CONSTANT",12];
-glsl_parser__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-glsl_parser__$Tokenizer_ScanMode.EXPONENT_PART = ["EXPONENT_PART",13];
-glsl_parser__$Tokenizer_ScanMode.EXPONENT_PART.toString = $estr;
-glsl_parser__$Tokenizer_ScanMode.EXPONENT_PART.__enum__ = glsl_parser__$Tokenizer_ScanMode;
-var glsl_parser_Tokenizer = function() { };
-glsl_parser_Tokenizer.__name__ = true;
-glsl_parser_Tokenizer.tokenize = function(source,onWarn,onError) {
-	glsl_parser_Tokenizer.source = source;
-	glsl_parser_Tokenizer.onWarn = onWarn;
-	glsl_parser_Tokenizer.onError = onError;
-	glsl_parser_Tokenizer.tokens = [];
-	glsl_parser_Tokenizer.i = 0;
-	glsl_parser_Tokenizer.line = 1;
-	glsl_parser_Tokenizer.col = 1;
-	glsl_parser_Tokenizer.userDefinedTypes = [];
-	glsl_parser_Tokenizer.warnings = [];
-	glsl_parser_Tokenizer.mode = glsl_parser__$Tokenizer_ScanMode.UNDETERMINED;
-	var lastMode;
-	while(glsl_parser_Tokenizer.i < source.length || glsl_parser_Tokenizer.mode != glsl_parser__$Tokenizer_ScanMode.UNDETERMINED) {
-		lastMode = glsl_parser_Tokenizer.mode;
-		var _g = glsl_parser_Tokenizer.mode;
-		switch(_g[1]) {
-		case 0:
-			glsl_parser_Tokenizer.determineMode();
-			break;
-		case 3:
-			glsl_parser_Tokenizer.preprocessorMode();
-			break;
-		case 1:
-			glsl_parser_Tokenizer.blockCommentMode();
-			break;
-		case 2:
-			glsl_parser_Tokenizer.lineCommentMode();
-			break;
-		case 4:
-			glsl_parser_Tokenizer.whitespaceMode();
-			break;
-		case 5:
-			glsl_parser_Tokenizer.operatorMode();
-			break;
-		case 6:
-			glsl_parser_Tokenizer.literalMode();
-			break;
-		case 11:
-			glsl_parser_Tokenizer.floatingConstantMode();
-			break;
-		case 12:
-			glsl_parser_Tokenizer.fractionalConstantMode();
-			break;
-		case 13:
-			glsl_parser_Tokenizer.exponentPartMode();
-			break;
-		case 9:case 10:case 8:
-			glsl_parser_Tokenizer.integerConstantMode();
-			break;
-		default:
-			glsl_parser_Tokenizer.error("unhandled mode " + Std.string(glsl_parser_Tokenizer.mode));
-		}
-		if(glsl_parser_Tokenizer.mode == lastMode && glsl_parser_Tokenizer.i == glsl_parser_Tokenizer.last_i) {
-			glsl_parser_Tokenizer.error("unclosed mode " + Std.string(glsl_parser_Tokenizer.mode));
-			break;
-		}
-	}
-	var _g1 = 0;
-	var _g2 = glsl_parser_Tokenizer.tokens.length;
-	while(_g1 < _g2) {
-		var j = _g1++;
-		var t = glsl_parser_Tokenizer.tokens[j];
-		if(t.type != glsl_parser_TokenType.IDENTIFIER) continue;
-		var previousTokenType = null;
-		var k = j - 1;
-		while(k >= 0 && previousTokenType == null) {
-			var tt = glsl_parser_Tokenizer.tokens[k--].type;
-			if(HxOverrides.indexOf(glsl_parser_Tokenizer.skippableTypes,tt,0) == -1) previousTokenType = tt;
-		}
-		if(previousTokenType == glsl_parser_TokenType.STRUCT) {
-			glsl_parser_Tokenizer.userDefinedTypes.push(t.data);
-			continue;
-		}
-		if(HxOverrides.indexOf(glsl_parser_Tokenizer.userDefinedTypes,t.data,0) != -1) {
-			var nextTokenType = null;
-			var k1 = j + 1;
-			while(k1 < glsl_parser_Tokenizer.tokens.length && nextTokenType == null) {
-				var tt1 = glsl_parser_Tokenizer.tokens[k1++].type;
-				if(HxOverrides.indexOf(glsl_parser_Tokenizer.skippableTypes,tt1,0) == -1) nextTokenType = tt1;
-			}
-			if(nextTokenType == glsl_parser_TokenType.IDENTIFIER || nextTokenType == glsl_parser_TokenType.LEFT_PAREN || nextTokenType == glsl_parser_TokenType.LEFT_BRACKET) t.type = glsl_parser_TokenType.TYPE_NAME;
-		}
-	}
-	return glsl_parser_Tokenizer.tokens;
-};
-glsl_parser_Tokenizer.startLen = function(m) {
-	return glsl_parser_Tokenizer.startConditionsMap.get(m)();
-};
-glsl_parser_Tokenizer.isStart = function(m) {
-	return glsl_parser_Tokenizer.startLen(m) != null;
-};
-glsl_parser_Tokenizer.isEnd = function(m) {
-	return glsl_parser_Tokenizer.endConditionsMap.get(m)();
-};
-glsl_parser_Tokenizer.tryMode = function(m) {
-	var n = glsl_parser_Tokenizer.startConditionsMap.get(m)();
-	if(n != null) {
-		glsl_parser_Tokenizer.mode = m;
-		glsl_parser_Tokenizer.advance(n);
-		return true;
-	}
-	return false;
-};
-glsl_parser_Tokenizer.advance = function(n) {
-	if(n == null) n = 1;
-	glsl_parser_Tokenizer.last_i = glsl_parser_Tokenizer.i;
-	while(n-- > 0 && glsl_parser_Tokenizer.i < glsl_parser_Tokenizer.source.length) {
-		glsl_parser_Tokenizer.buf += glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i);
-		glsl_parser_Tokenizer.i++;
-	}
-	var splitByLines = new EReg("\n","gm").split(glsl_parser_Tokenizer.source.substring(glsl_parser_Tokenizer.last_i,glsl_parser_Tokenizer.i));
-	var nl = splitByLines.length - 1;
-	if(nl > 0) {
-		glsl_parser_Tokenizer.line += nl;
-		glsl_parser_Tokenizer.col = splitByLines[nl].length + 1;
-	} else glsl_parser_Tokenizer.col += glsl_parser_Tokenizer.i - glsl_parser_Tokenizer.last_i;
-};
-glsl_parser_Tokenizer.determineMode = function() {
-	glsl_parser_Tokenizer.buf = "";
-	glsl_parser_Tokenizer.lineStart = glsl_parser_Tokenizer.line;
-	glsl_parser_Tokenizer.colStart = glsl_parser_Tokenizer.col;
-	if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.BLOCK_COMMENT)) return;
-	if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.LINE_COMMENT)) return;
-	if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE)) return;
-	if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.WHITESPACE)) return;
-	if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.LITERAL)) return;
-	if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.FLOATING_CONSTANT)) return;
-	if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.OPERATOR)) return;
-	if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.HEX_CONSTANT)) return;
-	if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.OCTAL_CONSTANT)) return;
-	if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.DECIMAL_CONSTANT)) return;
-	glsl_parser_Tokenizer.warn("unrecognized token " + glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i));
-	glsl_parser_Tokenizer.mode = glsl_parser__$Tokenizer_ScanMode.UNDETERMINED;
-	glsl_parser_Tokenizer.advance();
-	return;
-};
-glsl_parser_Tokenizer.preprocessorMode = function() {
-	if(glsl_parser_Tokenizer.endConditionsMap.get(glsl_parser_Tokenizer.mode)()) {
-		glsl_parser_Tokenizer.buildToken(glsl_parser_TokenType.PREPROCESSOR_DIRECTIVE);
-		glsl_parser_Tokenizer.mode = glsl_parser__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_parser_Tokenizer.advance();
-};
-glsl_parser_Tokenizer.blockCommentMode = function() {
-	if(glsl_parser_Tokenizer.endConditionsMap.get(glsl_parser_Tokenizer.mode)()) {
-		glsl_parser_Tokenizer.buildToken(glsl_parser_TokenType.BLOCK_COMMENT);
-		glsl_parser_Tokenizer.mode = glsl_parser__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_parser_Tokenizer.advance();
-};
-glsl_parser_Tokenizer.lineCommentMode = function() {
-	if(glsl_parser_Tokenizer.endConditionsMap.get(glsl_parser_Tokenizer.mode)()) {
-		glsl_parser_Tokenizer.buildToken(glsl_parser_TokenType.LINE_COMMENT);
-		glsl_parser_Tokenizer.mode = glsl_parser__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_parser_Tokenizer.advance();
-};
-glsl_parser_Tokenizer.whitespaceMode = function() {
-	if(glsl_parser_Tokenizer.endConditionsMap.get(glsl_parser_Tokenizer.mode)()) {
-		glsl_parser_Tokenizer.buildToken(glsl_parser_TokenType.WHITESPACE);
-		glsl_parser_Tokenizer.mode = glsl_parser__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_parser_Tokenizer.advance();
-};
-glsl_parser_Tokenizer.operatorMode = function() {
-	if(glsl_parser_Tokenizer.endConditionsMap.get(glsl_parser_Tokenizer.mode)()) {
-		var tmp;
-		var _this = glsl_parser_Tokenizer.operatorMap;
-		var key = glsl_parser_Tokenizer.buf;
-		if(__map_reserved[key] != null) tmp = _this.getReserved(key); else tmp = _this.h[key];
-		glsl_parser_Tokenizer.buildToken(tmp);
-		glsl_parser_Tokenizer.mode = glsl_parser__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_parser_Tokenizer.advance();
-};
-glsl_parser_Tokenizer.literalMode = function() {
-	if(glsl_parser_Tokenizer.endConditionsMap.get(glsl_parser_Tokenizer.mode)()) {
-		var tt = null;
-		var tmp;
-		var _this = glsl_parser_Tokenizer.keywordMap;
-		var key = glsl_parser_Tokenizer.buf;
-		if(__map_reserved[key] != null) tmp = _this.getReserved(key); else tmp = _this.h[key];
-		tt = tmp;
-		if(tt == null && glsl_parser_Tokenizer.previousTokenType() == glsl_parser_TokenType.DOT) tt = glsl_parser_TokenType.FIELD_SELECTION;
-		if(tt == null) tt = glsl_parser_TokenType.IDENTIFIER;
-		glsl_parser_Tokenizer.buildToken(tt);
-		glsl_parser_Tokenizer.mode = glsl_parser__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_parser_Tokenizer.advance();
-};
-glsl_parser_Tokenizer.floatingConstantMode = function() {
-	var _g = glsl_parser_Tokenizer.floatMode;
-	switch(_g) {
-	case 0:
-		if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT)) {
-			glsl_parser_Tokenizer.floatMode = 1;
-			return;
-		}
-		var j = glsl_parser_Tokenizer.i;
-		while(new EReg("[0-9]","").match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i))) glsl_parser_Tokenizer.advance();
-		if(glsl_parser_Tokenizer.i > j) {
-			glsl_parser_Tokenizer.floatMode = 2;
-			return;
-		}
-		glsl_parser_Tokenizer.error("error parsing float, could not determine floatMode");
-		break;
-	case 1:
-		glsl_parser_Tokenizer.floatMode = 3;
-		if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.EXPONENT_PART)) return;
-		break;
-	case 2:
-		if(glsl_parser_Tokenizer.tryMode(glsl_parser__$Tokenizer_ScanMode.EXPONENT_PART)) {
-			glsl_parser_Tokenizer.floatMode = 3;
-			return;
-		} else glsl_parser_Tokenizer.error("float in floatMode 2 must have exponent part - none found");
-		break;
-	}
-	if(glsl_parser_Tokenizer.endConditionsMap.get(glsl_parser_Tokenizer.mode)()) {
-		glsl_parser_Tokenizer.buildToken(glsl_parser_TokenType.FLOATCONSTANT);
-		glsl_parser_Tokenizer.mode = glsl_parser__$Tokenizer_ScanMode.UNDETERMINED;
-		glsl_parser_Tokenizer.floatMode = 0;
-		return;
-	}
-	glsl_parser_Tokenizer.error("error parsing float");
-};
-glsl_parser_Tokenizer.fractionalConstantMode = function() {
-	if(glsl_parser_Tokenizer.endConditionsMap.get(glsl_parser_Tokenizer.mode)()) {
-		glsl_parser_Tokenizer.mode = glsl_parser__$Tokenizer_ScanMode.FLOATING_CONSTANT;
-		return;
-	}
-	glsl_parser_Tokenizer.advance();
-};
-glsl_parser_Tokenizer.exponentPartMode = function() {
-	if(glsl_parser_Tokenizer.endConditionsMap.get(glsl_parser_Tokenizer.mode)()) {
-		glsl_parser_Tokenizer.mode = glsl_parser__$Tokenizer_ScanMode.FLOATING_CONSTANT;
-		return;
-	}
-	glsl_parser_Tokenizer.advance();
-};
-glsl_parser_Tokenizer.integerConstantMode = function() {
-	if(glsl_parser_Tokenizer.endConditionsMap.get(glsl_parser_Tokenizer.mode)()) {
-		glsl_parser_Tokenizer.buildToken(glsl_parser_TokenType.INTCONSTANT);
-		glsl_parser_Tokenizer.mode = glsl_parser__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_parser_Tokenizer.advance();
-};
-glsl_parser_Tokenizer.buildToken = function(type) {
-	if(type == null) glsl_parser_Tokenizer.error("cannot have null token type");
-	if(glsl_parser_Tokenizer.buf == "") glsl_parser_Tokenizer.error("cannot have empty token data");
-	var token = { type : type, data : glsl_parser_Tokenizer.buf, line : glsl_parser_Tokenizer.lineStart, column : glsl_parser_Tokenizer.colStart, position : glsl_parser_Tokenizer.i - glsl_parser_Tokenizer.buf.length};
-	if(glsl_parser_Tokenizer.verbose) console.log("building token " + Std.string(type) + " (" + glsl_parser_Tokenizer.buf + ")");
-	glsl_parser_Tokenizer.tokens.push(token);
-	if(type == glsl_parser_TokenType.RESERVED_KEYWORD) glsl_parser_Tokenizer.warn("using reserved keyword " + glsl_parser_Tokenizer.buf);
-};
-glsl_parser_Tokenizer.c = function(j) {
-	return glsl_parser_Tokenizer.source.charAt(j);
-};
-glsl_parser_Tokenizer.previousToken = function(n,ignoreSkippable) {
-	if(ignoreSkippable == null) ignoreSkippable = false;
-	if(n == null) n = 0;
-	if(!ignoreSkippable) return glsl_parser_Tokenizer.tokens[-n + glsl_parser_Tokenizer.tokens.length - 1]; else {
-		var t = null;
-		var i = 0;
-		while(n >= 0 && i < glsl_parser_Tokenizer.tokens.length) {
-			t = glsl_parser_Tokenizer.tokens[-i + glsl_parser_Tokenizer.tokens.length - 1];
-			if(HxOverrides.indexOf(glsl_parser_Tokenizer.skippableTypes,t.type,0) == -1) n--;
-			i++;
-		}
-		return t;
-	}
-};
-glsl_parser_Tokenizer.previousTokenType = function(n,ignoreSkippable) {
-	if(n == null) n = 0;
-	var pt = glsl_parser_Tokenizer.previousToken(n,ignoreSkippable);
-	return pt != null?pt.type:null;
-};
-glsl_parser_Tokenizer.warn = function(msg) {
-	if(glsl_parser_Tokenizer.onWarn != null) glsl_parser_Tokenizer.onWarn(msg); else glsl_parser_Tokenizer.warnings.push("Tokenizer Warning: " + msg + ", line " + glsl_parser_Tokenizer.line + ", column " + glsl_parser_Tokenizer.col);
-};
-glsl_parser_Tokenizer.error = function(msg) {
-	if(glsl_parser_Tokenizer.onError != null) glsl_parser_Tokenizer.onError(msg); else throw new js__$Boot_HaxeError("Tokenizer Error: " + msg + ", line " + glsl_parser_Tokenizer.line + ", column " + glsl_parser_Tokenizer.col);
-};
 var glsl_parser_TreeBuilder = function() { };
 glsl_parser_TreeBuilder.__name__ = true;
 glsl_parser_TreeBuilder.buildRule = function(ruleno) {
@@ -2698,7 +1568,7 @@ glsl_parser_TreeBuilder.buildRule = function(ruleno) {
 		l2.raw = glsl_parser_TreeBuilder.s(1).data;
 		return l2;
 	case 6:
-		(js_Boot.__cast(glsl_parser_TreeBuilder.s(2) , glsl_Expression)).parenWrap = true;
+		(js_Boot.__cast(glsl_parser_TreeBuilder.s(2) , glsl_Expression)).enclosed = true;
 		return glsl_parser_TreeBuilder.s(2);
 	case 7:
 		return glsl_parser_TreeBuilder.s(1);
@@ -3091,17 +1961,17 @@ glsl_parser_TreeBuilder.buildRule = function(ruleno) {
 	case 176:
 		return glsl_parser_TreeBuilder.s(1);
 	case 177:
-		return new glsl_CompoundStatement([],true);
+		return new glsl_CompoundStatement([]);
 	case 178:
-		return new glsl_CompoundStatement(glsl_parser_TreeBuilder.s(2),true);
+		return new glsl_CompoundStatement(glsl_parser_TreeBuilder.s(2));
 	case 179:
 		return glsl_parser_TreeBuilder.s(1);
 	case 180:
 		return glsl_parser_TreeBuilder.s(1);
 	case 181:
-		return new glsl_CompoundStatement([],false);
+		return new glsl_CompoundStatement([]);
 	case 182:
-		return new glsl_CompoundStatement(glsl_parser_TreeBuilder.s(2),false);
+		return new glsl_CompoundStatement(glsl_parser_TreeBuilder.s(2));
 	case 183:
 		return [glsl_parser_TreeBuilder.s(1)];
 	case 184:
@@ -3204,6 +2074,871 @@ var glsl_parser_Instructions = { __ename__ : true, __constructs__ : ["SET_INVARI
 glsl_parser_Instructions.SET_INVARIANT_VARYING = ["SET_INVARIANT_VARYING",0];
 glsl_parser_Instructions.SET_INVARIANT_VARYING.toString = $estr;
 glsl_parser_Instructions.SET_INVARIANT_VARYING.__enum__ = glsl_parser_Instructions;
+var glsl_preprocess_Preprocessor = function(userDefinedMacros,builtinMacros) {
+	this.preserveMacroDefinitions = false;
+	var _g1 = this;
+	this.i = 0;
+	this.userDefinedMacros = userDefinedMacros != null?userDefinedMacros:new haxe_ds_StringMap();
+	var tmp;
+	if(builtinMacros != null) tmp = builtinMacros; else {
+		var _g = new haxe_ds_StringMap();
+		var value = glsl_preprocess_PPMacro.UnresolveableMacro(glsl_preprocess_PPMacro.BuiltinMacroObject(function() {
+			return _g1._version == null?"null":"" + _g1._version;
+		}));
+		if(__map_reserved.__VERSION__ != null) _g.setReserved("__VERSION__",value); else _g.h["__VERSION__"] = value;
+		var value1 = glsl_preprocess_PPMacro.UnresolveableMacro(glsl_preprocess_PPMacro.BuiltinMacroObject(function() {
+			return Std.string(_g1.tokens[_g1.i].line);
+		}));
+		if(__map_reserved.__LINE__ != null) _g.setReserved("__LINE__",value1); else _g.h["__LINE__"] = value1;
+		var value2 = glsl_preprocess_PPMacro.UnresolveableMacro(glsl_preprocess_PPMacro.BuiltinMacroObject(function() {
+			return "0";
+		}));
+		if(__map_reserved.__FILE__ != null) _g.setReserved("__FILE__",value2); else _g.h["__FILE__"] = value2;
+		var value3 = glsl_preprocess_PPMacro.UnresolveableMacro(glsl_preprocess_PPMacro.BuiltinMacroObject(function() {
+			return "1";
+		}));
+		if(__map_reserved.GL_ES != null) _g.setReserved("GL_ES",value3); else _g.h["GL_ES"] = value3;
+		tmp = _g;
+	}
+	this.builtinMacros = tmp;
+	this._warnings = [];
+	this._version = 100;
+	this._pragmas = [];
+};
+glsl_preprocess_Preprocessor.__name__ = true;
+glsl_preprocess_Preprocessor.process = function(inputTokens,forceResolve) {
+	if(forceResolve == null) forceResolve = false;
+	var pp = new glsl_preprocess_Preprocessor();
+	var tokens = pp._process(inputTokens,forceResolve);
+	glsl_preprocess_Preprocessor.warnings = pp._warnings;
+	glsl_preprocess_Preprocessor.version = pp._version;
+	glsl_preprocess_Preprocessor.pragmas = pp._pragmas;
+	return tokens;
+};
+glsl_preprocess_Preprocessor.prototype = {
+	_process: function(inputTokens,forceResolve) {
+		if(forceResolve == null) forceResolve = false;
+		var _g = this;
+		this.tokens = inputTokens;
+		this.forceResolve = forceResolve;
+		while(this.i < this.tokens.length) {
+			var _g1 = this.tokens[this.i].type;
+			switch(_g1[1]) {
+			case 94:
+				try {
+					this.processDirective();
+				} catch( $e0 ) {
+					if ($e0 instanceof js__$Boot_HaxeError) $e0 = $e0.val;
+					if( js_Boot.__instanceof($e0,glsl_preprocess_PPError) ) {
+						var e = $e0;
+						switch(e[1]) {
+						case 0:
+							var info = e[3];
+							_g.note(e[2],info != null?info:_g.tokens[_g.i]);
+							break;
+						case 1:
+							var info1 = e[3];
+							_g.warn(e[2],info1 != null?info1:_g.tokens[_g.i]);
+							break;
+						case 2:
+							var info2 = e[3];
+							_g.error(e[2],info2 != null?info2:_g.tokens[_g.i]);
+							break;
+						}
+					} else if( js_Boot.__instanceof($e0,String) ) {
+						var msg = $e0;
+						_g.warn(msg,_g.tokens[_g.i]);
+					} else throw($e0);
+				}
+				break;
+			default:
+				{
+					var _g11 = HxOverrides.indexOf(glsl_tokens_TokenHelper.identifierTokens,_g1,0) >= 0;
+					switch(_g11) {
+					case true:
+						try {
+							this.processIdentifier();
+						} catch( $e1 ) {
+							if ($e1 instanceof js__$Boot_HaxeError) $e1 = $e1.val;
+							if( js_Boot.__instanceof($e1,glsl_preprocess_PPError) ) {
+								var e1 = $e1;
+								switch(e1[1]) {
+								case 0:
+									var info3 = e1[3];
+									_g.note(e1[2],info3 != null?info3:_g.tokens[_g.i]);
+									break;
+								case 1:
+									var info4 = e1[3];
+									_g.warn(e1[2],info4 != null?info4:_g.tokens[_g.i]);
+									break;
+								case 2:
+									var info5 = e1[3];
+									_g.error(e1[2],info5 != null?info5:_g.tokens[_g.i]);
+									break;
+								}
+							} else if( js_Boot.__instanceof($e1,String) ) {
+								var msg1 = $e1;
+								_g.warn(msg1,_g.tokens[_g.i]);
+							} else throw($e1);
+						}
+						break;
+					default:
+					}
+				}
+			}
+			this.i++;
+		}
+		return this.tokens;
+	}
+	,processDirective: function() {
+		var t = this.tokens[this.i];
+		var directive = this.readDirectiveData(t.data);
+		var _g = directive.title;
+		switch(_g) {
+		case "":
+			glsl_tokens_TokenHelper.deleteTokens(this.tokens,this.i);
+			break;
+		case "define":
+			var definition = this.evaluateMacroDefinition(directive.content);
+			this.defineMacro(definition.id,definition.ppMacro);
+			if(!this.preserveMacroDefinitions) glsl_tokens_TokenHelper.deleteTokens(this.tokens,this.i);
+			break;
+		case "undef":
+			var tmp;
+			if(!glsl_preprocess_Preprocessor.macroNameReg.match(directive.content)) throw new js__$Boot_HaxeError("invalid macro name");
+			tmp = glsl_preprocess_Preprocessor.macroNameReg.matched(1);
+			var macroName = tmp;
+			this.undefineMacro(macroName);
+			if(!this.preserveMacroDefinitions) glsl_tokens_TokenHelper.deleteTokens(this.tokens,this.i);
+			break;
+		case "if":case "ifdef":case "ifndef":
+			this.processIfSwitch();
+			break;
+		case "else":case "elif":case "endif":
+			throw new js__$Boot_HaxeError("unexpected #" + directive.title);
+			break;
+		case "error":
+			throw new js__$Boot_HaxeError(glsl_preprocess_PPError.Error("" + directive.content,t));
+			break;
+		case "pragma":
+			if(new EReg("^\\s*STDGL(\\s+|$)","").match(directive.content)) throw new js__$Boot_HaxeError("pragmas beginning with STDGL are reserved");
+			this._pragmas.push(directive.content);
+			break;
+		case "extension":
+			throw new js__$Boot_HaxeError("directive #extension is not yet supported");
+			break;
+		case "version":
+			if(glsl_tokens_TokenHelper.nextNonSkipToken(this.tokens,this.i,-1) == null) {
+				var versionNumRegex = new EReg("^(\\d+)$","");
+				var matched = versionNumRegex.match(directive.content);
+				if(matched) {
+					versionNumRegex.matched(1);
+					this._version = Std.parseInt(versionNumRegex.matched(1));
+				} else {
+					var _g1 = directive.content;
+					switch(_g1) {
+					case "":
+						throw new js__$Boot_HaxeError("version number required");
+						break;
+					default:
+						throw new js__$Boot_HaxeError("invalid version number '" + directive.content + "'");
+					}
+				}
+			} else throw new js__$Boot_HaxeError("#version directive must occur before anything else, except for comments and whitespace");
+			break;
+		case "line":
+			throw new js__$Boot_HaxeError("directive #line is not yet supported");
+			break;
+		default:
+			throw new js__$Boot_HaxeError("unknown directive #'" + directive.title + "'");
+		}
+	}
+	,processIfSwitch: function() {
+		var _g1 = this;
+		var start = this.i;
+		var end = null;
+		var j = this.i;
+		var t;
+		var level = 0;
+		var directive;
+		var lastTitle;
+		var branches = [];
+		try {
+			t = this.tokens[j];
+			try {
+				{
+					var _g = directive = this.readDirectiveData(t.data);
+					var directive1 = _g;
+					switch(_g.title) {
+					case "if":
+						var content = _g.content;
+						level++;
+						branches.push({ directiveToken : t, test : function() {
+							throw new js__$Boot_HaxeError(glsl_preprocess_PPError.Note("#if directive is not yet supported",t));
+						}, start : j + 1, end : null});
+						break;
+					case "ifdef":
+						var content1 = _g.content;
+						level++;
+						var tmp;
+						if(!glsl_preprocess_Preprocessor.macroNameReg.match(content1)) throw new js__$Boot_HaxeError("invalid macro name");
+						tmp = glsl_preprocess_Preprocessor.macroNameReg.matched(1);
+						var macroName = tmp;
+						branches.push({ directiveToken : t, test : function() {
+							return _g1.isMacroDefined(macroName);
+						}, start : j + 1, end : null});
+						break;
+					case "ifndef":
+						var content2 = _g.content;
+						level++;
+						var tmp1;
+						if(!glsl_preprocess_Preprocessor.macroNameReg.match(content2)) throw new js__$Boot_HaxeError("invalid macro name");
+						tmp1 = glsl_preprocess_Preprocessor.macroNameReg.matched(1);
+						var macroName1 = tmp1;
+						branches.push({ directiveToken : t, test : function() {
+							return !_g1.isMacroDefined(macroName1);
+						}, start : j + 1, end : null});
+						break;
+					default:
+						throw new js__$Boot_HaxeError("expected if-switch directive, got #" + directive1.title);
+					}
+				}
+				lastTitle = directive.title;
+				while(level > 0) {
+					j = glsl_tokens_TokenHelper.nextNonSkipTokenIndex(this.tokens,j,1,glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE);
+					t = this.tokens[j];
+					if(t == null) throw new js__$Boot_HaxeError("expecting #endif but reached end of file");
+					{
+						var _g2 = directive = this.readDirectiveData(t.data);
+						switch(_g2.title) {
+						case "if":case "ifdef":case "ifndef":
+							level++;
+							break;
+						case "else":
+							if(level == 1) {
+								if(lastTitle == "else") throw new js__$Boot_HaxeError("#" + directive.title + " cannot follow #else");
+								branches[branches.length - 1].end = j - 1;
+								branches.push({ directiveToken : t, test : function() {
+									return true;
+								}, start : j + 1, end : null});
+							}
+							break;
+						case "elif":
+							var content3 = _g2.content;
+							if(level == 1) {
+								if(lastTitle == "else") throw new js__$Boot_HaxeError("#" + directive.title + " cannot follow #else");
+								branches[branches.length - 1].end = j - 1;
+								branches.push({ directiveToken : t, test : function() {
+									throw new js__$Boot_HaxeError(glsl_preprocess_PPError.Note("#elif directive is not yet supported",t));
+								}, start : j + 1, end : null});
+							}
+							break;
+						case "endif":
+							level--;
+							break;
+						default:
+						}
+					}
+					lastTitle = directive.title;
+				}
+				branches[branches.length - 1].end = j - 1;
+			} catch( e ) {
+				if (e instanceof js__$Boot_HaxeError) e = e.val;
+				throw new js__$Boot_HaxeError(this.replaceErrorInfo(e,t));
+			}
+			end = j;
+			var newTokens = [];
+			var _g3 = 0;
+			while(_g3 < branches.length) {
+				var b = branches[_g3];
+				++_g3;
+				try {
+					if(b.test()) {
+						newTokens = this.tokens.slice(b.start,b.end);
+						break;
+					}
+				} catch( e1 ) {
+					if (e1 instanceof js__$Boot_HaxeError) e1 = e1.val;
+					var userMacrosBefore = [new haxe_ds_StringMap()];
+					var $it0 = this.userDefinedMacros.keys();
+					while( $it0.hasNext() ) {
+						var k = $it0.next();
+						var tmp2;
+						var _this = this.userDefinedMacros;
+						if(__map_reserved[k] != null) tmp2 = _this.getReserved(k); else tmp2 = _this.h[k];
+						var value = tmp2;
+						if(__map_reserved[k] != null) userMacrosBefore[0].setReserved(k,value); else userMacrosBefore[0].h[k] = value;
+					}
+					var requiredMacros = [new haxe_ds_StringMap()];
+					var tokensDelta = 0;
+					var _g21 = 0;
+					var _g11 = branches.length;
+					while(_g21 < _g11) {
+						var bi = _g21++;
+						var c = branches[branches.length - 1 - bi];
+						{
+							var _g31 = this.readDirectiveData(c.directiveToken.data);
+							if(_g31 == null) {
+							} else switch(_g31.title) {
+							case "if":
+								var content4 = _g31.content;
+								var directiveTokens = glsl_tokens_Tokenizer.tokenize(content4);
+								var _g4 = 0;
+								while(_g4 < directiveTokens.length) {
+									var dt = directiveTokens[_g4];
+									++_g4;
+									if(HxOverrides.indexOf(glsl_tokens_TokenHelper.identifierTokens,dt.type,0) >= 0 && dt.data != "defined") {
+										var ppMacro = this.getMacro(dt.data);
+										if(ppMacro != null) {
+											var key = dt.data;
+											if(__map_reserved[key] != null) requiredMacros[0].setReserved(key,ppMacro); else requiredMacros[0].h[key] = ppMacro;
+										}
+									}
+								}
+								break;
+							case "elif":
+								var content5 = _g31.content;
+								var directiveTokens1 = glsl_tokens_Tokenizer.tokenize(content5);
+								var _g41 = 0;
+								while(_g41 < directiveTokens1.length) {
+									var dt1 = directiveTokens1[_g41];
+									++_g41;
+									if(HxOverrides.indexOf(glsl_tokens_TokenHelper.identifierTokens,dt1.type,0) >= 0 && dt1.data != "defined") {
+										var ppMacro1 = this.getMacro(dt1.data);
+										if(ppMacro1 != null) {
+											var key1 = dt1.data;
+											if(__map_reserved[key1] != null) requiredMacros[0].setReserved(key1,ppMacro1); else requiredMacros[0].h[key1] = ppMacro1;
+										}
+									}
+								}
+								break;
+							default:
+							}
+						}
+						var branchTokens = this.tokens.slice(c.start,c.end);
+						var childUserMacros = new haxe_ds_StringMap();
+						var $it1 = this.userDefinedMacros.keys();
+						while( $it1.hasNext() ) {
+							var k1 = $it1.next();
+							var tmp3;
+							var _this1 = this.userDefinedMacros;
+							if(__map_reserved[k1] != null) tmp3 = _this1.getReserved(k1); else tmp3 = _this1.h[k1];
+							var value1 = tmp3;
+							if(__map_reserved[k1] != null) childUserMacros.setReserved(k1,value1); else childUserMacros.h[k1] = value1;
+						}
+						var pp = new glsl_preprocess_Preprocessor(childUserMacros,this.builtinMacros);
+						pp.preserveMacroDefinitions = true;
+						pp.onMacroDefined = (function() {
+							return function(id,ppMacro2) {
+								var value2 = glsl_preprocess_PPMacro.UnresolveableMacro(ppMacro2);
+								var _this2 = _g1.userDefinedMacros;
+								if(__map_reserved[id] != null) _this2.setReserved(id,value2); else _this2.h[id] = value2;
+							};
+						})();
+						pp.onMacroUndefined = (function(requiredMacros,userMacrosBefore) {
+							return function(id1) {
+								var existingMacro = __map_reserved[id1] != null?userMacrosBefore[0].getReserved(id1):userMacrosBefore[0].h[id1];
+								if(existingMacro == null) return;
+								var value3 = glsl_preprocess_PPMacro.UnresolveableMacro(existingMacro);
+								var _this3 = _g1.userDefinedMacros;
+								if(__map_reserved[id1] != null) _this3.setReserved(id1,value3); else _this3.h[id1] = value3;
+								if(__map_reserved[id1] != null) requiredMacros[0].setReserved(id1,existingMacro); else requiredMacros[0].h[id1] = existingMacro;
+							};
+						})(requiredMacros,userMacrosBefore);
+						try {
+							var lenBefore = branchTokens.length;
+							var newTokens1 = pp._process(branchTokens,this.forceResolve);
+							tokensDelta += newTokens1.length - lenBefore;
+							glsl_tokens_TokenHelper.deleteTokens(this.tokens,c.start,c.end - c.start);
+							glsl_tokens_TokenHelper.insertTokens(this.tokens,c.start,newTokens1);
+						} catch( e2 ) {
+							if (e2 instanceof js__$Boot_HaxeError) e2 = e2.val;
+						}
+					}
+					var prependTokens = [];
+					var $it2 = requiredMacros[0].keys();
+					while( $it2.hasNext() ) {
+						var id2 = $it2.next();
+						var requiredMacro = __map_reserved[id2] != null?requiredMacros[0].getReserved(id2):requiredMacros[0].h[id2];
+						var undefineStr = "#undef " + id2;
+						var tmp4;
+						switch(requiredMacro[1]) {
+						case 0:
+							var content6 = requiredMacro[2];
+							tmp4 = "#define " + id2 + " " + content6;
+							break;
+						case 1:
+							var params = requiredMacro[3];
+							var content7 = requiredMacro[2];
+							tmp4 = "#define " + id2 + "(" + params.join(", ") + ") " + content7;
+							break;
+						default:
+							continue;
+						}
+						var defineStr = tmp4;
+						var glsl1 = undefineStr + "\n" + defineStr + "\n";
+						prependTokens = prependTokens.concat(glsl_tokens_Tokenizer.tokenize(glsl1));
+					}
+					glsl_tokens_TokenHelper.insertTokens(this.tokens,start,prependTokens);
+					start += prependTokens.length;
+					tokensDelta += prependTokens.length;
+					j += tokensDelta;
+					end = j;
+					this.i = end;
+					throw new js__$Boot_HaxeError(this.replaceErrorInfo(e1,b.directiveToken));
+				}
+			}
+			glsl_tokens_TokenHelper.deleteTokens(this.tokens,start,end - start + 1);
+			glsl_tokens_TokenHelper.insertTokens(this.tokens,start,newTokens);
+			this.i = start - 1;
+		} catch( e3 ) {
+			if (e3 instanceof js__$Boot_HaxeError) e3 = e3.val;
+			while(level > 0) {
+				j = glsl_tokens_TokenHelper.nextNonSkipTokenIndex(this.tokens,j,1,glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE);
+				t = this.tokens[j];
+				if(t == null) throw new js__$Boot_HaxeError(glsl_preprocess_PPError.Warn("expecting #endif but reached end of file",this.tokens[start]));
+				var _g5 = this.readDirectiveData(t.data).title;
+				switch(_g5) {
+				case "if":case "ifdef":case "ifndef":
+					level++;
+					break;
+				case "endif":
+					level--;
+					break;
+				}
+			}
+			this.i = j;
+			throw new js__$Boot_HaxeError(e3);
+		}
+	}
+	,processIdentifier: function() {
+		var expanded = this.expandIdentifier(this.tokens,this.i);
+		if(expanded != null) this.i += expanded.length;
+	}
+	,getMacro: function(id) {
+		var ppMacro;
+		var tmp;
+		var _this = this.builtinMacros;
+		if(__map_reserved[id] != null) tmp = _this.getReserved(id); else tmp = _this.h[id];
+		if((ppMacro = tmp) != null) return ppMacro;
+		var tmp1;
+		var _this1 = this.userDefinedMacros;
+		if(__map_reserved[id] != null) tmp1 = _this1.getReserved(id); else tmp1 = _this1.h[id];
+		if((ppMacro = tmp1) != null) return ppMacro;
+		return null;
+	}
+	,defineMacro: function(id,ppMacro) {
+		var existingMacro = this.getMacro(id);
+		var __ex0 = existingMacro;
+		{
+			var _g = this.isBuiltinMacro(__ex0);
+			switch(_g) {
+			case true:
+				throw new js__$Boot_HaxeError("cannot redefine predefined macro '" + id + "'");
+				break;
+			default:
+				var __ex01 = existingMacro;
+				{
+					var _g1 = this.isUserMacro(__ex01);
+					switch(_g1) {
+					case true:
+						throw new js__$Boot_HaxeError("cannot redefine macro '" + id + "'");
+						break;
+					default:
+						if(existingMacro == null) {
+						} else switch(existingMacro[1]) {
+						default:
+						}
+					}
+				}
+			}
+		}
+		if(new EReg("^__","").match(id)) throw new js__$Boot_HaxeError("macro names beginning with __ are reserved");
+		if(ppMacro == null) throw new js__$Boot_HaxeError("null macro definitions are not allowed");
+		var _this = this.userDefinedMacros;
+		if(__map_reserved[id] != null) _this.setReserved(id,ppMacro); else _this.h[id] = ppMacro;
+		if(this.onMacroDefined != null) this.onMacroDefined(id,ppMacro);
+	}
+	,undefineMacro: function(id) {
+		var existingMacro = this.getMacro(id);
+		{
+			var _g = this.isBuiltinMacro(existingMacro);
+			switch(_g) {
+			case true:
+				throw new js__$Boot_HaxeError("cannot undefine predefined macro");
+				break;
+			default:
+				{
+					var _g1 = this.isUserMacro(existingMacro);
+					switch(_g1) {
+					case true:
+						this.userDefinedMacros.remove(id);
+						if(this.onMacroUndefined != null) this.onMacroUndefined(id);
+						break;
+					default:
+					}
+				}
+			}
+		}
+	}
+	,isMacroDefined: function(id) {
+		var m = this.getMacro(id);
+		if(m == null) return false; else switch(m[1]) {
+		case 4:
+			if(this.forceResolve && m[2] != null) return true; else throw new js__$Boot_HaxeError(glsl_preprocess_PPError.Note("cannot resolve macro definition '" + id + "'",null));
+			break;
+		default:
+			return true;
+		}
+	}
+	,isUserMacro: function(ppMacro) {
+		if(ppMacro == null) return false; else switch(ppMacro[1]) {
+		case 0:case 1:
+			return true;
+		case 4:
+			return this.isUserMacro(ppMacro[2]);
+		default:
+			return false;
+		}
+	}
+	,isBuiltinMacro: function(ppMacro) {
+		if(ppMacro == null) return false; else switch(ppMacro[1]) {
+		case 2:case 3:
+			return true;
+		case 4:
+			return this.isBuiltinMacro(ppMacro[2]);
+		default:
+			return false;
+		}
+	}
+	,readDirectiveData: function(data) {
+		if(!glsl_preprocess_Preprocessor.directiveTitleReg.match(data)) throw new js__$Boot_HaxeError("invalid directive title");
+		var title = glsl_preprocess_Preprocessor.directiveTitleReg.matched(1);
+		var content = StringTools.trim(glsl_preprocess_Preprocessor.directiveTitleReg.matchedRight());
+		content = StringTools.replace(content,"\\\n","\n");
+		return { title : title, content : content};
+	}
+	,readMacroName: function(data) {
+		if(!glsl_preprocess_Preprocessor.macroNameReg.match(data)) throw new js__$Boot_HaxeError("invalid macro name");
+		return glsl_preprocess_Preprocessor.macroNameReg.matched(1);
+	}
+	,evaluateMacroDefinition: function(definitionString) {
+		if(glsl_preprocess_Preprocessor.macroNameReg.match(definitionString)) {
+			var macroName = glsl_preprocess_Preprocessor.macroNameReg.matched(1);
+			var macroContent = "";
+			var macroParameters = [];
+			var nextChar = glsl_preprocess_Preprocessor.macroNameReg.matched(2);
+			var userMacro;
+			switch(nextChar) {
+			case "(":
+				var parametersReg = new EReg("([^\\)]*)\\)","");
+				var parameterReg = new EReg("^\\s*(([a-z_]\\w*)?)\\s*(,|$)","i");
+				var matchedRightParen = parametersReg.match(glsl_preprocess_Preprocessor.macroNameReg.matchedRight());
+				if(matchedRightParen) {
+					var parameterString = parametersReg.matched(1);
+					macroContent = parametersReg.matchedRight();
+					var reachedLast = false;
+					while(!reachedLast) if(parameterReg.match(parameterString)) {
+						var parameterName = parameterReg.matched(1);
+						var parameterNextChar = parameterReg.matched(3);
+						macroParameters.push(parameterName);
+						parameterString = parameterReg.matchedRight();
+						reachedLast = parameterNextChar != ",";
+					} else throw new js__$Boot_HaxeError("invalid macro parameter");
+				} else throw new js__$Boot_HaxeError("unmatched parentheses");
+				userMacro = glsl_preprocess_PPMacro.UserMacroFunction(StringTools.trim(macroContent),macroParameters);
+				break;
+			default:
+				macroContent = nextChar + glsl_preprocess_Preprocessor.macroNameReg.matchedRight();
+				macroContent = StringTools.trim(macroContent);
+				userMacro = glsl_preprocess_PPMacro.UserMacroObject(StringTools.trim(macroContent));
+			}
+			return { id : macroName, ppMacro : userMacro};
+		} else throw new js__$Boot_HaxeError("invalid macro definition");
+		return null;
+	}
+	,expandIdentifiers: function(tokens,overrideMap,ignore) {
+		var len = tokens.length;
+		var _g = 0;
+		while(_g < len) {
+			var j = _g++;
+			if(HxOverrides.indexOf(glsl_tokens_TokenHelper.identifierTokens,tokens[j].type,0) >= 0) {
+				this.expandIdentifier(tokens,j,overrideMap,ignore);
+				len = tokens.length;
+			}
+		}
+		return tokens;
+	}
+	,expandIdentifier: function(tokens,i,overrideMap,ignore) {
+		var _g = this;
+		var token = tokens[i];
+		var id = token.data;
+		if(ignore != null && HxOverrides.indexOf(ignore,id,0) != -1) return null;
+		var ppMacro = overrideMap == null?this.getMacro(id):__map_reserved[id] != null?overrideMap.getReserved(id):overrideMap.h[id];
+		if(ppMacro == null) return null;
+		var tmp;
+		var resolveMacro1 = null;
+		resolveMacro1 = function(ppMacro1) {
+			switch(ppMacro1[1]) {
+			case 0:
+				var content = ppMacro1[2];
+				var tmp1;
+				var newTokens1 = glsl_tokens_Tokenizer.tokenize(content,function(warning) {
+					throw new js__$Boot_HaxeError("" + warning);
+				},function(error) {
+					throw new js__$Boot_HaxeError("" + error);
+				});
+				var _g1 = 0;
+				while(_g1 < newTokens1.length) {
+					var t = newTokens1[_g1];
+					++_g1;
+					t.line = token.line;
+					t.column = token.column;
+				}
+				tmp1 = newTokens1;
+				var newTokens = tmp1;
+				if(ignore == null) ignore = [id]; else ignore.push(id);
+				_g.expandIdentifiers(newTokens,overrideMap,ignore);
+				glsl_tokens_TokenHelper.deleteTokens(tokens,i,1);
+				glsl_tokens_TokenHelper.insertTokens(tokens,i,newTokens);
+				return newTokens;
+			case 1:
+				var parameters = ppMacro1[3];
+				var content1 = ppMacro1[2];
+				try {
+					var functionCall = _g.readFunctionCall(tokens,i);
+					if(functionCall.args.length != parameters.length) {
+						var _g11 = functionCall.args.length > parameters.length;
+						switch(_g11) {
+						case true:
+							throw new js__$Boot_HaxeError("too many arguments for macro");
+							break;
+						case false:
+							throw new js__$Boot_HaxeError("not enough arguments for macro");
+							break;
+						}
+					}
+					var tmp2;
+					var newTokens3 = glsl_tokens_Tokenizer.tokenize(content1,function(warning1) {
+						throw new js__$Boot_HaxeError("" + warning1);
+					},function(error1) {
+						throw new js__$Boot_HaxeError("" + error1);
+					});
+					var _g2 = 0;
+					while(_g2 < newTokens3.length) {
+						var t1 = newTokens3[_g2];
+						++_g2;
+						t1.line = token.line;
+						t1.column = token.column;
+					}
+					tmp2 = newTokens3;
+					var newTokens2 = tmp2;
+					var parameterMap = new haxe_ds_StringMap();
+					var _g21 = 0;
+					var _g12 = parameters.length;
+					while(_g21 < _g12) {
+						var i1 = _g21++;
+						var tmp3;
+						var key = parameters[i1];
+						if(__map_reserved[key] != null) tmp3 = parameterMap.existsReserved(key); else tmp3 = parameterMap.h.hasOwnProperty(key);
+						if(!tmp3) {
+							var value = glsl_preprocess_PPMacro.UserMacroObject(glsl_printer_TokenArrayPrinter.print(functionCall.args[i1]));
+							var key1 = parameters[i1];
+							if(__map_reserved[key1] != null) parameterMap.setReserved(key1,value); else parameterMap.h[key1] = value;
+						}
+					}
+					_g.expandIdentifiers(newTokens2,parameterMap);
+					if(ignore == null) ignore = [id]; else ignore.push(id);
+					_g.expandIdentifiers(newTokens2,overrideMap,ignore);
+					glsl_tokens_TokenHelper.deleteTokens(tokens,i,functionCall.len);
+					glsl_tokens_TokenHelper.insertTokens(tokens,i,newTokens2);
+					return newTokens2;
+				} catch( e ) {
+					if (e instanceof js__$Boot_HaxeError) e = e.val;
+				}
+				break;
+			case 2:
+				var func = ppMacro1[2];
+				var tmp4;
+				var content2 = func();
+				var newTokens5 = glsl_tokens_Tokenizer.tokenize(content2,function(warning2) {
+					throw new js__$Boot_HaxeError("" + warning2);
+				},function(error2) {
+					throw new js__$Boot_HaxeError("" + error2);
+				});
+				var _g3 = 0;
+				while(_g3 < newTokens5.length) {
+					var t2 = newTokens5[_g3];
+					++_g3;
+					t2.line = token.line;
+					t2.column = token.column;
+				}
+				tmp4 = newTokens5;
+				var newTokens4 = tmp4;
+				glsl_tokens_TokenHelper.deleteTokens(tokens,i,1);
+				glsl_tokens_TokenHelper.insertTokens(tokens,i,newTokens4);
+				return newTokens4;
+			case 3:
+				var requiredParameterCount = ppMacro1[3];
+				var func1 = ppMacro1[2];
+				try {
+					var functionCall1 = _g.readFunctionCall(tokens,i);
+					if(functionCall1.args.length != requiredParameterCount) {
+						var _g13 = functionCall1.args.length > requiredParameterCount;
+						switch(_g13) {
+						case true:
+							throw new js__$Boot_HaxeError("too many arguments for macro");
+							break;
+						case false:
+							throw new js__$Boot_HaxeError("not enough arguments for macro");
+							break;
+						}
+					}
+					var tmp5;
+					var content3 = func1(functionCall1.args);
+					var newTokens7 = glsl_tokens_Tokenizer.tokenize(content3,function(warning3) {
+						throw new js__$Boot_HaxeError("" + warning3);
+					},function(error3) {
+						throw new js__$Boot_HaxeError("" + error3);
+					});
+					var _g4 = 0;
+					while(_g4 < newTokens7.length) {
+						var t3 = newTokens7[_g4];
+						++_g4;
+						t3.line = token.line;
+						t3.column = token.column;
+					}
+					tmp5 = newTokens7;
+					var newTokens6 = tmp5;
+					glsl_tokens_TokenHelper.deleteTokens(tokens,i,functionCall1.len);
+					glsl_tokens_TokenHelper.insertTokens(tokens,i,newTokens6);
+					return newTokens6;
+				} catch( e1 ) {
+					if (e1 instanceof js__$Boot_HaxeError) e1 = e1.val;
+				}
+				break;
+			case 4:
+				var fm = ppMacro1[2];
+				if(_g.forceResolve && fm != null) return resolveMacro1(fm); else throw new js__$Boot_HaxeError(glsl_preprocess_PPError.Note("cannot resolve macro '" + id + "'",token));
+				break;
+			}
+			return null;
+		};
+		tmp = resolveMacro1;
+		var resolveMacro = tmp;
+		return resolveMacro(ppMacro);
+	}
+	,readFunctionCall: function(tokens,start) {
+		var ident = tokens[start];
+		if(ident == null || !(HxOverrides.indexOf(glsl_tokens_TokenHelper.identifierTokens,ident.type,0) >= 0)) throw new js__$Boot_HaxeError("invalid function call");
+		var args = [];
+		var j = glsl_tokens_TokenHelper.nextNonSkipTokenIndex(tokens,start);
+		if(j == -1) throw new js__$Boot_HaxeError("invalid function call");
+		var t = tokens[j];
+		if(Type.enumEq(t.type,glsl_tokens_TokenType.LEFT_PAREN)) {
+			var argBuffer = [];
+			var level = 1;
+			do {
+				t = tokens[++j];
+				if(t == null) throw new js__$Boot_HaxeError("expecting ')'");
+				if(HxOverrides.indexOf(glsl_tokens_Tokenizer.skippableTypes,t.type,0) != -1) continue;
+				var _g = t.type;
+				if(_g == null) throw new js__$Boot_HaxeError("" + Std.string(t) + " has no token type"); else switch(_g[1]) {
+				case 65:
+					level++;
+					break;
+				case 66:
+					level--;
+					break;
+				case 72:
+					if(level == 1) {
+						args.push(argBuffer);
+						argBuffer = [];
+					} else argBuffer.push(t);
+					break;
+				default:
+					argBuffer.push(t);
+				}
+				if(level <= 0) {
+					args.push(argBuffer);
+					argBuffer = [];
+					break;
+				}
+			} while(true);
+			return { ident : ident, args : args, start : start, len : j - start + 1};
+		}
+		throw new js__$Boot_HaxeError("expecting '('");
+	}
+	,evaluateExpr: function(expr) {
+	}
+	,note: function(msg,info) {
+		console.log("Preprocessor Note: " + msg + this.positionString(info));
+	}
+	,warn: function(msg,info) {
+		this._warnings.push("Preprocessor Warning: " + msg + this.positionString(info));
+	}
+	,error: function(msg,info) {
+		throw new js__$Boot_HaxeError("Preprocessor Error: " + msg + this.positionString(info));
+	}
+	,positionString: function(info) {
+		var str = "";
+		var line = Reflect.field(info,"line");
+		var col = Reflect.field(info,"column");
+		var tmp;
+		var a = Type["typeof"](line);
+		tmp = Type.enumEq(a,ValueType.TInt);
+		if(tmp) {
+			str += ", line " + line;
+			var tmp1;
+			var a1 = Type["typeof"](col);
+			tmp1 = Type.enumEq(a1,ValueType.TInt);
+			if(tmp1) str += ", column " + col;
+		}
+		return str;
+	}
+	,replaceErrorInfo: function(error,newInfo) {
+		var tmp;
+		var _g = Type["typeof"](error);
+		if(_g == null) tmp = glsl_preprocess_PPError.Warn(error,newInfo); else switch(_g[1]) {
+		case 7:
+			switch(_g[2]) {
+			case glsl_preprocess_PPError:
+				var tmp1;
+				var e = error;
+				tmp1 = e[1];
+				switch(tmp1) {
+				case 0:
+					tmp = glsl_preprocess_PPError.Note(error[2],newInfo);
+					break;
+				case 1:
+					tmp = glsl_preprocess_PPError.Warn(error[2],newInfo);
+					break;
+				case 2:
+					tmp = glsl_preprocess_PPError.Error(error[2],newInfo);
+					break;
+				}
+				break;
+			default:
+				tmp = glsl_preprocess_PPError.Warn(error,newInfo);
+			}
+			break;
+		default:
+			tmp = glsl_preprocess_PPError.Warn(error,newInfo);
+		}
+		return tmp;
+	}
+	,__class__: glsl_preprocess_Preprocessor
+};
+var glsl_preprocess_PPMacro = { __ename__ : true, __constructs__ : ["UserMacroObject","UserMacroFunction","BuiltinMacroObject","BuiltinMacroFunction","UnresolveableMacro"] };
+glsl_preprocess_PPMacro.UserMacroObject = function(content) { var $x = ["UserMacroObject",0,content]; $x.__enum__ = glsl_preprocess_PPMacro; $x.toString = $estr; return $x; };
+glsl_preprocess_PPMacro.UserMacroFunction = function(content,parameters) { var $x = ["UserMacroFunction",1,content,parameters]; $x.__enum__ = glsl_preprocess_PPMacro; $x.toString = $estr; return $x; };
+glsl_preprocess_PPMacro.BuiltinMacroObject = function(func) { var $x = ["BuiltinMacroObject",2,func]; $x.__enum__ = glsl_preprocess_PPMacro; $x.toString = $estr; return $x; };
+glsl_preprocess_PPMacro.BuiltinMacroFunction = function(func,parameterCount) { var $x = ["BuiltinMacroFunction",3,func,parameterCount]; $x.__enum__ = glsl_preprocess_PPMacro; $x.toString = $estr; return $x; };
+glsl_preprocess_PPMacro.UnresolveableMacro = function(ppMacro) { var $x = ["UnresolveableMacro",4,ppMacro]; $x.__enum__ = glsl_preprocess_PPMacro; $x.toString = $estr; return $x; };
+var glsl_preprocess_PPError = { __ename__ : true, __constructs__ : ["Note","Warn","Error"] };
+glsl_preprocess_PPError.Note = function(msg,info) { var $x = ["Note",0,msg,info]; $x.__enum__ = glsl_preprocess_PPError; $x.toString = $estr; return $x; };
+glsl_preprocess_PPError.Warn = function(msg,info) { var $x = ["Warn",1,msg,info]; $x.__enum__ = glsl_preprocess_PPError; $x.toString = $estr; return $x; };
+glsl_preprocess_PPError.Error = function(msg,info) { var $x = ["Error",2,msg,info]; $x.__enum__ = glsl_preprocess_PPError; $x.toString = $estr; return $x; };
 var glsl_printer_NodePrinter = function() { };
 glsl_printer_NodePrinter.__name__ = true;
 glsl_printer_NodePrinter.print = function(n,indentWith,indentLevel) {
@@ -3485,7 +3220,7 @@ glsl_printer_IdentifierPrinter.__name__ = true;
 glsl_printer_IdentifierPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var str = n.name;
-	if(n.parenWrap) str = "(" + str + ")";
+	if(n.enclosed) str = "(" + str + ")";
 	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
 };
 var glsl_printer_PrimitivePrinter = function() { };
@@ -3493,7 +3228,7 @@ glsl_printer_PrimitivePrinter.__name__ = true;
 glsl_printer_PrimitivePrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var str = n.raw;
-	if(n.parenWrap) str = "(" + str + ")";
+	if(n.enclosed) str = "(" + str + ")";
 	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
 };
 var glsl_printer_BinaryExpressionPrinter = function() { };
@@ -3505,7 +3240,7 @@ glsl_printer_BinaryExpressionPrinter.print = function(n,indentWith,indentLevel) 
 	str += glsl_printer_ExpressionPrinter.print(n.left,indentWith);
 	str += pretty?" " + glsl_printer_BinaryOperatorPrinter.print(n.op) + " ":glsl_printer_BinaryOperatorPrinter.print(n.op);
 	str += glsl_printer_ExpressionPrinter.print(n.right,indentWith);
-	if(n.parenWrap) str = "(" + str + ")";
+	if(n.enclosed) str = "(" + str + ")";
 	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
 };
 var glsl_printer_UnaryExpressionPrinter = function() { };
@@ -3514,7 +3249,7 @@ glsl_printer_UnaryExpressionPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var str = "";
 	if(n.isPrefix) str += glsl_printer_UnaryOperatorPrinter.print(n.op) + glsl_printer_ExpressionPrinter.print(n.arg,indentWith); else str += glsl_printer_ExpressionPrinter.print(n.arg,indentWith) + glsl_printer_UnaryOperatorPrinter.print(n.op);
-	if(n.parenWrap) str = "(" + str + ")";
+	if(n.enclosed) str = "(" + str + ")";
 	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
 };
 var glsl_printer_SequenceExpressionPrinter = function() { };
@@ -3534,7 +3269,7 @@ glsl_printer_ConditionalExpressionPrinter.print = function(n,indentWith,indentLe
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
 	var str = glsl_printer_ExpressionPrinter.print(n.test,indentWith) + (pretty?" ? ":"?") + glsl_printer_ExpressionPrinter.print(n.consequent,indentWith) + (pretty?" : ":":") + glsl_printer_ExpressionPrinter.print(n.alternate,indentWith);
-	if(n.parenWrap) str = "(" + str + ")";
+	if(n.enclosed) str = "(" + str + ")";
 	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
 };
 var glsl_printer_AssignmentExpressionPrinter = function() { };
@@ -3546,7 +3281,7 @@ glsl_printer_AssignmentExpressionPrinter.print = function(n,indentWith,indentLev
 	str += glsl_printer_ExpressionPrinter.print(n.left,indentWith);
 	str += pretty?" " + glsl_printer_AssignmentOperatorPrinter.print(n.op) + " ":glsl_printer_AssignmentOperatorPrinter.print(n.op);
 	str += glsl_printer_ExpressionPrinter.print(n.right,indentWith);
-	if(n.parenWrap) str = "(" + str + ")";
+	if(n.enclosed) str = "(" + str + ")";
 	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
 };
 var glsl_printer_FieldSelectionExpressionPrinter = function() { };
@@ -3554,7 +3289,7 @@ glsl_printer_FieldSelectionExpressionPrinter.__name__ = true;
 glsl_printer_FieldSelectionExpressionPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var str = glsl_printer_ExpressionPrinter.print(n.left,indentWith) + "." + glsl_printer_IdentifierPrinter.print(n.field,indentWith);
-	if(n.parenWrap) str = "(" + str + ")";
+	if(n.enclosed) str = "(" + str + ")";
 	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
 };
 var glsl_printer_ArrayElementSelectionExpressionPrinter = function() { };
@@ -3562,7 +3297,7 @@ glsl_printer_ArrayElementSelectionExpressionPrinter.__name__ = true;
 glsl_printer_ArrayElementSelectionExpressionPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var str = glsl_printer_ExpressionPrinter.print(n.left,indentWith) + "[" + glsl_printer_ExpressionPrinter.print(n.arrayIndexExpression,indentWith) + "]";
-	if(n.parenWrap) str = "(" + str + ")";
+	if(n.enclosed) str = "(" + str + ")";
 	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
 };
 var glsl_printer_FunctionCallPrinter = function() { };
@@ -3583,7 +3318,7 @@ glsl_printer_FunctionCallPrinter.print = function(n,indentWith,indentLevel) {
 		return glsl_printer_ExpressionPrinter.print(e,indentWith);
 	}).join(pretty?", ":",");
 	str += ")";
-	if(n.parenWrap) str = "(" + str + ")";
+	if(n.enclosed) str = "(" + str + ")";
 	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
 };
 var glsl_printer_ConstructorPrinter = function() { };
@@ -3596,7 +3331,7 @@ glsl_printer_ConstructorPrinter.print = function(n,indentWith,indentLevel) {
 		return glsl_printer_ExpressionPrinter.print(e,indentWith);
 	}).join(pretty?", ":",");
 	str += ")";
-	if(n.parenWrap) str = "(" + str + ")";
+	if(n.enclosed) str = "(" + str + ")";
 	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
 };
 var glsl_printer_DeclarationPrinter = function() { };
@@ -4262,6 +3997,375 @@ glsl_printer_Utils.glslFloatString = function(f) {
 glsl_printer_Utils.glslBoolString = function(b) {
 	return b == null?"null":"" + b;
 };
+var glsl_tokens_TokenHelper = function() { };
+glsl_tokens_TokenHelper.__name__ = true;
+glsl_tokens_TokenHelper.nextNonSkipToken = function(tokens,start,n,requiredType) {
+	if(n == null) n = 1;
+	var j = glsl_tokens_TokenHelper.nextNonSkipTokenIndex(tokens,start,n,requiredType);
+	return j != -1?tokens[j]:null;
+};
+glsl_tokens_TokenHelper.nextNonSkipTokenIndex = function(tokens,start,n,requiredType) {
+	if(n == null) n = 1;
+	var direction = n >= 0?1:-1;
+	var j = start;
+	var m = Math.abs(n);
+	var t;
+	while(m > 0) {
+		j += direction;
+		t = tokens[j];
+		if(t == null) return -1;
+		if(requiredType != null && !Type.enumEq(t.type,requiredType)) continue;
+		if(HxOverrides.indexOf(glsl_tokens_Tokenizer.skippableTypes,t.type,0) != -1) continue;
+		m--;
+	}
+	return j;
+};
+glsl_tokens_TokenHelper.deleteTokens = function(tokens,start,count) {
+	if(count == null) count = 1;
+	return tokens.splice(start,count);
+};
+glsl_tokens_TokenHelper.insertTokens = function(tokens,start,newTokens) {
+	var j = newTokens.length;
+	while(--j >= 0) tokens.splice(start,0,newTokens[j]);
+	return tokens;
+};
+glsl_tokens_TokenHelper.isIdentifierType = function(type) {
+	return HxOverrides.indexOf(glsl_tokens_TokenHelper.identifierTokens,type,0) >= 0;
+};
+var glsl_tokens__$Tokenizer_ScanMode = { __ename__ : true, __constructs__ : ["UNDETERMINED","BLOCK_COMMENT","LINE_COMMENT","PREPROCESSOR_DIRECTIVE","WHITESPACE","OPERATOR","LITERAL","INTEGER_CONSTANT","DECIMAL_CONSTANT","HEX_CONSTANT","OCTAL_CONSTANT","FLOATING_CONSTANT","FRACTIONAL_CONSTANT","EXPONENT_PART"] };
+glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED = ["UNDETERMINED",0];
+glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.BLOCK_COMMENT = ["BLOCK_COMMENT",1];
+glsl_tokens__$Tokenizer_ScanMode.BLOCK_COMMENT.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.BLOCK_COMMENT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.LINE_COMMENT = ["LINE_COMMENT",2];
+glsl_tokens__$Tokenizer_ScanMode.LINE_COMMENT.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.LINE_COMMENT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE = ["PREPROCESSOR_DIRECTIVE",3];
+glsl_tokens__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.WHITESPACE = ["WHITESPACE",4];
+glsl_tokens__$Tokenizer_ScanMode.WHITESPACE.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.WHITESPACE.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.OPERATOR = ["OPERATOR",5];
+glsl_tokens__$Tokenizer_ScanMode.OPERATOR.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.OPERATOR.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.LITERAL = ["LITERAL",6];
+glsl_tokens__$Tokenizer_ScanMode.LITERAL.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.LITERAL.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.INTEGER_CONSTANT = ["INTEGER_CONSTANT",7];
+glsl_tokens__$Tokenizer_ScanMode.INTEGER_CONSTANT.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.INTEGER_CONSTANT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.DECIMAL_CONSTANT = ["DECIMAL_CONSTANT",8];
+glsl_tokens__$Tokenizer_ScanMode.DECIMAL_CONSTANT.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.DECIMAL_CONSTANT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.HEX_CONSTANT = ["HEX_CONSTANT",9];
+glsl_tokens__$Tokenizer_ScanMode.HEX_CONSTANT.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.HEX_CONSTANT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.OCTAL_CONSTANT = ["OCTAL_CONSTANT",10];
+glsl_tokens__$Tokenizer_ScanMode.OCTAL_CONSTANT.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.OCTAL_CONSTANT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT = ["FLOATING_CONSTANT",11];
+glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT = ["FRACTIONAL_CONSTANT",12];
+glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART = ["EXPONENT_PART",13];
+glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART.toString = $estr;
+glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
+var glsl_tokens_Tokenizer = function() { };
+glsl_tokens_Tokenizer.__name__ = true;
+glsl_tokens_Tokenizer.tokenize = function(source,onWarn,onError) {
+	glsl_tokens_Tokenizer.source = source;
+	glsl_tokens_Tokenizer.onWarn = onWarn;
+	glsl_tokens_Tokenizer.onError = onError;
+	glsl_tokens_Tokenizer.tokens = [];
+	glsl_tokens_Tokenizer.i = 0;
+	glsl_tokens_Tokenizer.line = 1;
+	glsl_tokens_Tokenizer.col = 1;
+	glsl_tokens_Tokenizer.userDefinedTypes = [];
+	glsl_tokens_Tokenizer.warnings = [];
+	glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
+	var lastMode;
+	while(glsl_tokens_Tokenizer.i < source.length || glsl_tokens_Tokenizer.mode != glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED) {
+		lastMode = glsl_tokens_Tokenizer.mode;
+		var _g = glsl_tokens_Tokenizer.mode;
+		switch(_g[1]) {
+		case 0:
+			glsl_tokens_Tokenizer.determineMode();
+			break;
+		case 3:
+			glsl_tokens_Tokenizer.preprocessorMode();
+			break;
+		case 1:
+			glsl_tokens_Tokenizer.blockCommentMode();
+			break;
+		case 2:
+			glsl_tokens_Tokenizer.lineCommentMode();
+			break;
+		case 4:
+			glsl_tokens_Tokenizer.whitespaceMode();
+			break;
+		case 5:
+			glsl_tokens_Tokenizer.operatorMode();
+			break;
+		case 6:
+			glsl_tokens_Tokenizer.literalMode();
+			break;
+		case 11:
+			glsl_tokens_Tokenizer.floatingConstantMode();
+			break;
+		case 12:
+			glsl_tokens_Tokenizer.fractionalConstantMode();
+			break;
+		case 13:
+			glsl_tokens_Tokenizer.exponentPartMode();
+			break;
+		case 9:case 10:case 8:
+			glsl_tokens_Tokenizer.integerConstantMode();
+			break;
+		default:
+			glsl_tokens_Tokenizer.error("unhandled mode " + Std.string(glsl_tokens_Tokenizer.mode));
+		}
+		if(glsl_tokens_Tokenizer.mode == lastMode && glsl_tokens_Tokenizer.i == glsl_tokens_Tokenizer.last_i) {
+			glsl_tokens_Tokenizer.error("unclosed mode " + Std.string(glsl_tokens_Tokenizer.mode));
+			break;
+		}
+	}
+	var _g1 = 0;
+	var _g2 = glsl_tokens_Tokenizer.tokens.length;
+	while(_g1 < _g2) {
+		var j = _g1++;
+		var t = glsl_tokens_Tokenizer.tokens[j];
+		if(t.type != glsl_tokens_TokenType.IDENTIFIER) continue;
+		var previousTokenType = null;
+		var k = j - 1;
+		while(k >= 0 && previousTokenType == null) {
+			var tt = glsl_tokens_Tokenizer.tokens[k--].type;
+			if(HxOverrides.indexOf(glsl_tokens_Tokenizer.skippableTypes,tt,0) == -1) previousTokenType = tt;
+		}
+		if(previousTokenType == glsl_tokens_TokenType.STRUCT) {
+			glsl_tokens_Tokenizer.userDefinedTypes.push(t.data);
+			continue;
+		}
+		if(HxOverrides.indexOf(glsl_tokens_Tokenizer.userDefinedTypes,t.data,0) != -1) {
+			var nextTokenType = null;
+			var k1 = j + 1;
+			while(k1 < glsl_tokens_Tokenizer.tokens.length && nextTokenType == null) {
+				var tt1 = glsl_tokens_Tokenizer.tokens[k1++].type;
+				if(HxOverrides.indexOf(glsl_tokens_Tokenizer.skippableTypes,tt1,0) == -1) nextTokenType = tt1;
+			}
+			if(nextTokenType == glsl_tokens_TokenType.IDENTIFIER || nextTokenType == glsl_tokens_TokenType.LEFT_PAREN || nextTokenType == glsl_tokens_TokenType.LEFT_BRACKET) t.type = glsl_tokens_TokenType.TYPE_NAME;
+		}
+	}
+	return glsl_tokens_Tokenizer.tokens;
+};
+glsl_tokens_Tokenizer.startLen = function(m) {
+	return glsl_tokens_Tokenizer.startConditionsMap.get(m)();
+};
+glsl_tokens_Tokenizer.isStart = function(m) {
+	return glsl_tokens_Tokenizer.startLen(m) != null;
+};
+glsl_tokens_Tokenizer.isEnd = function(m) {
+	return glsl_tokens_Tokenizer.endConditionsMap.get(m)();
+};
+glsl_tokens_Tokenizer.tryMode = function(m) {
+	var n = glsl_tokens_Tokenizer.startConditionsMap.get(m)();
+	if(n != null) {
+		glsl_tokens_Tokenizer.mode = m;
+		glsl_tokens_Tokenizer.advance(n);
+		return true;
+	}
+	return false;
+};
+glsl_tokens_Tokenizer.advance = function(n) {
+	if(n == null) n = 1;
+	glsl_tokens_Tokenizer.last_i = glsl_tokens_Tokenizer.i;
+	while(n-- > 0 && glsl_tokens_Tokenizer.i < glsl_tokens_Tokenizer.source.length) {
+		glsl_tokens_Tokenizer.buf += glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i);
+		glsl_tokens_Tokenizer.i++;
+	}
+	var splitByLines = new EReg("\n","gm").split(glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.last_i,glsl_tokens_Tokenizer.i));
+	var nl = splitByLines.length - 1;
+	if(nl > 0) {
+		glsl_tokens_Tokenizer.line += nl;
+		glsl_tokens_Tokenizer.col = splitByLines[nl].length + 1;
+	} else glsl_tokens_Tokenizer.col += glsl_tokens_Tokenizer.i - glsl_tokens_Tokenizer.last_i;
+};
+glsl_tokens_Tokenizer.determineMode = function() {
+	glsl_tokens_Tokenizer.buf = "";
+	glsl_tokens_Tokenizer.lineStart = glsl_tokens_Tokenizer.line;
+	glsl_tokens_Tokenizer.colStart = glsl_tokens_Tokenizer.col;
+	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.BLOCK_COMMENT)) return;
+	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.LINE_COMMENT)) return;
+	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE)) return;
+	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.WHITESPACE)) return;
+	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.LITERAL)) return;
+	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT)) return;
+	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.OPERATOR)) return;
+	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.HEX_CONSTANT)) return;
+	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.OCTAL_CONSTANT)) return;
+	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.DECIMAL_CONSTANT)) return;
+	glsl_tokens_Tokenizer.warn("unrecognized token " + glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
+	glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
+	glsl_tokens_Tokenizer.advance();
+	return;
+};
+glsl_tokens_Tokenizer.preprocessorMode = function() {
+	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
+		glsl_tokens_Tokenizer.buildToken(glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE);
+		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_tokens_Tokenizer.advance();
+};
+glsl_tokens_Tokenizer.blockCommentMode = function() {
+	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
+		glsl_tokens_Tokenizer.buildToken(glsl_tokens_TokenType.BLOCK_COMMENT);
+		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_tokens_Tokenizer.advance();
+};
+glsl_tokens_Tokenizer.lineCommentMode = function() {
+	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
+		glsl_tokens_Tokenizer.buildToken(glsl_tokens_TokenType.LINE_COMMENT);
+		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_tokens_Tokenizer.advance();
+};
+glsl_tokens_Tokenizer.whitespaceMode = function() {
+	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
+		glsl_tokens_Tokenizer.buildToken(glsl_tokens_TokenType.WHITESPACE);
+		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_tokens_Tokenizer.advance();
+};
+glsl_tokens_Tokenizer.operatorMode = function() {
+	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
+		var tmp;
+		var _this = glsl_tokens_Tokenizer.operatorMap;
+		var key = glsl_tokens_Tokenizer.buf;
+		if(__map_reserved[key] != null) tmp = _this.getReserved(key); else tmp = _this.h[key];
+		glsl_tokens_Tokenizer.buildToken(tmp);
+		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_tokens_Tokenizer.advance();
+};
+glsl_tokens_Tokenizer.literalMode = function() {
+	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
+		var tt = null;
+		var tmp;
+		var _this = glsl_tokens_Tokenizer.keywordMap;
+		var key = glsl_tokens_Tokenizer.buf;
+		if(__map_reserved[key] != null) tmp = _this.getReserved(key); else tmp = _this.h[key];
+		tt = tmp;
+		if(tt == null && glsl_tokens_Tokenizer.previousTokenType() == glsl_tokens_TokenType.DOT) tt = glsl_tokens_TokenType.FIELD_SELECTION;
+		if(tt == null) tt = glsl_tokens_TokenType.IDENTIFIER;
+		glsl_tokens_Tokenizer.buildToken(tt);
+		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_tokens_Tokenizer.advance();
+};
+glsl_tokens_Tokenizer.floatingConstantMode = function() {
+	var _g = glsl_tokens_Tokenizer.floatMode;
+	switch(_g) {
+	case 0:
+		if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT)) {
+			glsl_tokens_Tokenizer.floatMode = 1;
+			return;
+		}
+		var j = glsl_tokens_Tokenizer.i;
+		while(new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i))) glsl_tokens_Tokenizer.advance();
+		if(glsl_tokens_Tokenizer.i > j) {
+			glsl_tokens_Tokenizer.floatMode = 2;
+			return;
+		}
+		glsl_tokens_Tokenizer.error("error parsing float, could not determine floatMode");
+		break;
+	case 1:
+		glsl_tokens_Tokenizer.floatMode = 3;
+		if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART)) return;
+		break;
+	case 2:
+		if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART)) {
+			glsl_tokens_Tokenizer.floatMode = 3;
+			return;
+		} else glsl_tokens_Tokenizer.error("float in floatMode 2 must have exponent part - none found");
+		break;
+	}
+	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
+		glsl_tokens_Tokenizer.buildToken(glsl_tokens_TokenType.FLOATCONSTANT);
+		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
+		glsl_tokens_Tokenizer.floatMode = 0;
+		return;
+	}
+	glsl_tokens_Tokenizer.error("error parsing float");
+};
+glsl_tokens_Tokenizer.fractionalConstantMode = function() {
+	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
+		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT;
+		return;
+	}
+	glsl_tokens_Tokenizer.advance();
+};
+glsl_tokens_Tokenizer.exponentPartMode = function() {
+	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
+		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT;
+		return;
+	}
+	glsl_tokens_Tokenizer.advance();
+};
+glsl_tokens_Tokenizer.integerConstantMode = function() {
+	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
+		glsl_tokens_Tokenizer.buildToken(glsl_tokens_TokenType.INTCONSTANT);
+		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_tokens_Tokenizer.advance();
+};
+glsl_tokens_Tokenizer.buildToken = function(type) {
+	if(type == null) glsl_tokens_Tokenizer.error("cannot have null token type");
+	if(glsl_tokens_Tokenizer.buf == "") glsl_tokens_Tokenizer.error("cannot have empty token data");
+	var token = { type : type, data : glsl_tokens_Tokenizer.buf, line : glsl_tokens_Tokenizer.lineStart, column : glsl_tokens_Tokenizer.colStart, position : glsl_tokens_Tokenizer.i - glsl_tokens_Tokenizer.buf.length};
+	if(glsl_tokens_Tokenizer.verbose) console.log("building token " + Std.string(type) + " (" + glsl_tokens_Tokenizer.buf + ")");
+	glsl_tokens_Tokenizer.tokens.push(token);
+	if(type == glsl_tokens_TokenType.RESERVED_KEYWORD) glsl_tokens_Tokenizer.warn("using reserved keyword " + glsl_tokens_Tokenizer.buf);
+};
+glsl_tokens_Tokenizer.c = function(j) {
+	return glsl_tokens_Tokenizer.source.charAt(j);
+};
+glsl_tokens_Tokenizer.previousToken = function(n,ignoreSkippable) {
+	if(ignoreSkippable == null) ignoreSkippable = false;
+	if(n == null) n = 0;
+	if(!ignoreSkippable) return glsl_tokens_Tokenizer.tokens[-n + glsl_tokens_Tokenizer.tokens.length - 1]; else {
+		var t = null;
+		var i = 0;
+		while(n >= 0 && i < glsl_tokens_Tokenizer.tokens.length) {
+			t = glsl_tokens_Tokenizer.tokens[-i + glsl_tokens_Tokenizer.tokens.length - 1];
+			if(HxOverrides.indexOf(glsl_tokens_Tokenizer.skippableTypes,t.type,0) == -1) n--;
+			i++;
+		}
+		return t;
+	}
+};
+glsl_tokens_Tokenizer.previousTokenType = function(n,ignoreSkippable) {
+	if(n == null) n = 0;
+	var pt = glsl_tokens_Tokenizer.previousToken(n,ignoreSkippable);
+	return pt != null?pt.type:null;
+};
+glsl_tokens_Tokenizer.warn = function(msg) {
+	if(glsl_tokens_Tokenizer.onWarn != null) glsl_tokens_Tokenizer.onWarn(msg); else glsl_tokens_Tokenizer.warnings.push("Tokenizer Warning: " + msg + ", line " + glsl_tokens_Tokenizer.line + ", column " + glsl_tokens_Tokenizer.col);
+};
+glsl_tokens_Tokenizer.error = function(msg) {
+	if(glsl_tokens_Tokenizer.onError != null) glsl_tokens_Tokenizer.onError(msg); else throw new js__$Boot_HaxeError("Tokenizer Error: " + msg + ", line " + glsl_tokens_Tokenizer.line + ", column " + glsl_tokens_Tokenizer.col);
+};
 var haxe_IMap = function() { };
 haxe_IMap.__name__ = true;
 var haxe_Timer = function(time_ms) {
@@ -4422,6 +4526,24 @@ haxe_ds_StringMap.prototype = {
 			return true;
 		}
 	}
+	,keys: function() {
+		var tmp;
+		var _this = this.arrayKeys();
+		tmp = HxOverrides.iter(_this);
+		return tmp;
+	}
+	,arrayKeys: function() {
+		var out = [];
+		for( var key in this.h ) {
+		if(this.h.hasOwnProperty(key)) out.push(key);
+		}
+		if(this.rh != null) {
+			for( var key in this.rh ) {
+			if(key.charCodeAt(0) == 36) out.push(key.substr(1));
+			}
+		}
+		return out;
+	}
 	,__class__: haxe_ds_StringMap
 };
 var js__$Boot_HaxeError = function(val) {
@@ -4434,6 +4556,143 @@ js__$Boot_HaxeError.__super__ = Error;
 js__$Boot_HaxeError.prototype = $extend(Error.prototype,{
 	__class__: js__$Boot_HaxeError
 });
+var js_Boot = function() { };
+js_Boot.__name__ = true;
+js_Boot.getClass = function(o) {
+	if((o instanceof Array) && o.__enum__ == null) return Array; else {
+		var cl = o.__class__;
+		if(cl != null) return cl;
+		var name = js_Boot.__nativeClassName(o);
+		if(name != null) return js_Boot.__resolveNativeClass(name);
+		return null;
+	}
+};
+js_Boot.__string_rec = function(o,s) {
+	if(o == null) return "null";
+	if(s.length >= 5) return "<...>";
+	var t = typeof(o);
+	if(t == "function" && (o.__name__ || o.__ename__)) t = "object";
+	switch(t) {
+	case "object":
+		if(o instanceof Array) {
+			if(o.__enum__) {
+				if(o.length == 2) return o[0];
+				var str2 = o[0] + "(";
+				s += "\t";
+				var _g1 = 2;
+				var _g = o.length;
+				while(_g1 < _g) {
+					var i1 = _g1++;
+					if(i1 != 2) str2 += "," + js_Boot.__string_rec(o[i1],s); else str2 += js_Boot.__string_rec(o[i1],s);
+				}
+				return str2 + ")";
+			}
+			var l = o.length;
+			var i;
+			var str1 = "[";
+			s += "\t";
+			var _g2 = 0;
+			while(_g2 < l) {
+				var i2 = _g2++;
+				str1 += (i2 > 0?",":"") + js_Boot.__string_rec(o[i2],s);
+			}
+			str1 += "]";
+			return str1;
+		}
+		var tostr;
+		try {
+			tostr = o.toString;
+		} catch( e ) {
+			if (e instanceof js__$Boot_HaxeError) e = e.val;
+			return "???";
+		}
+		if(tostr != null && tostr != Object.toString && typeof(tostr) == "function") {
+			var s2 = o.toString();
+			if(s2 != "[object Object]") return s2;
+		}
+		var k = null;
+		var str = "{\n";
+		s += "\t";
+		var hasp = o.hasOwnProperty != null;
+		for( var k in o ) {
+		if(hasp && !o.hasOwnProperty(k)) {
+			continue;
+		}
+		if(k == "prototype" || k == "__class__" || k == "__super__" || k == "__interfaces__" || k == "__properties__") {
+			continue;
+		}
+		if(str.length != 2) str += ", \n";
+		str += s + k + " : " + js_Boot.__string_rec(o[k],s);
+		}
+		s = s.substring(1);
+		str += "\n" + s + "}";
+		return str;
+	case "function":
+		return "<function>";
+	case "string":
+		return o;
+	default:
+		return String(o);
+	}
+};
+js_Boot.__interfLoop = function(cc,cl) {
+	if(cc == null) return false;
+	if(cc == cl) return true;
+	var intf = cc.__interfaces__;
+	if(intf != null) {
+		var _g1 = 0;
+		var _g = intf.length;
+		while(_g1 < _g) {
+			var i = _g1++;
+			var i1 = intf[i];
+			if(i1 == cl || js_Boot.__interfLoop(i1,cl)) return true;
+		}
+	}
+	return js_Boot.__interfLoop(cc.__super__,cl);
+};
+js_Boot.__instanceof = function(o,cl) {
+	if(cl == null) return false;
+	switch(cl) {
+	case Int:
+		return (o|0) === o;
+	case Float:
+		return typeof(o) == "number";
+	case Bool:
+		return typeof(o) == "boolean";
+	case String:
+		return typeof(o) == "string";
+	case Array:
+		return (o instanceof Array) && o.__enum__ == null;
+	case Dynamic:
+		return true;
+	default:
+		if(o != null) {
+			if(typeof(cl) == "function") {
+				if(o instanceof cl) return true;
+				if(js_Boot.__interfLoop(js_Boot.getClass(o),cl)) return true;
+			} else if(typeof(cl) == "object" && js_Boot.__isNativeObj(cl)) {
+				if(o instanceof cl) return true;
+			}
+		} else return false;
+		if(cl == Class && o.__name__ != null) return true;
+		if(cl == Enum && o.__ename__ != null) return true;
+		return o.__enum__ == cl;
+	}
+};
+js_Boot.__cast = function(o,t) {
+	if(js_Boot.__instanceof(o,t)) return o; else throw new js__$Boot_HaxeError("Cannot cast " + Std.string(o) + " to " + Std.string(t));
+};
+js_Boot.__nativeClassName = function(o) {
+	var name = js_Boot.__toStr.call(o).slice(8,-1);
+	if(name == "Object" || name == "Function" || name == "Math" || name == "JSON") return null;
+	return name;
+};
+js_Boot.__isNativeObj = function(o) {
+	return js_Boot.__nativeClassName(o) != null;
+};
+js_Boot.__resolveNativeClass = function(name) {
+	if(typeof window != "undefined") return window[name]; else return global[name];
+};
 var js_Browser = function() { };
 js_Browser.__name__ = true;
 js_Browser.getLocalStorage = function() {
@@ -4471,7 +4730,7 @@ if(Array.prototype.map == null) Array.prototype.map = function(f) {
 	return a;
 };
 var __map_reserved = {}
-glsl_parser_ParserTables.ignoredTokens = [glsl_parser_TokenType.WHITESPACE,glsl_parser_TokenType.LINE_COMMENT,glsl_parser_TokenType.BLOCK_COMMENT];
+glsl_parser_ParserTables.ignoredTokens = [glsl_tokens_TokenType.WHITESPACE,glsl_tokens_TokenType.LINE_COMMENT,glsl_tokens_TokenType.BLOCK_COMMENT];
 glsl_parser_ParserTables.errorsSymbol = false;
 glsl_parser_ParserTables.illegalSymbolNumber = 167;
 glsl_parser_ParserTables.nStates = 335;
@@ -4494,98 +4753,98 @@ glsl_parser_ParserTables.ruleInfo = [[94,1],[96,1],[97,1],[97,1],[97,1],[97,1],[
 glsl_parser_ParserTables.tokenIdMap = (function($this) {
 	var $r;
 	var _g = new haxe_ds_EnumValueMap();
-	_g.set(glsl_parser_TokenType.IDENTIFIER,1);
-	_g.set(glsl_parser_TokenType.INTCONSTANT,2);
-	_g.set(glsl_parser_TokenType.FLOATCONSTANT,3);
-	_g.set(glsl_parser_TokenType.BOOLCONSTANT,4);
-	_g.set(glsl_parser_TokenType.LEFT_PAREN,5);
-	_g.set(glsl_parser_TokenType.RIGHT_PAREN,6);
-	_g.set(glsl_parser_TokenType.LEFT_BRACKET,7);
-	_g.set(glsl_parser_TokenType.RIGHT_BRACKET,8);
-	_g.set(glsl_parser_TokenType.DOT,9);
-	_g.set(glsl_parser_TokenType.FIELD_SELECTION,10);
-	_g.set(glsl_parser_TokenType.INC_OP,11);
-	_g.set(glsl_parser_TokenType.DEC_OP,12);
-	_g.set(glsl_parser_TokenType.VOID,13);
-	_g.set(glsl_parser_TokenType.COMMA,14);
-	_g.set(glsl_parser_TokenType.FLOAT,15);
-	_g.set(glsl_parser_TokenType.INT,16);
-	_g.set(glsl_parser_TokenType.BOOL,17);
-	_g.set(glsl_parser_TokenType.VEC2,18);
-	_g.set(glsl_parser_TokenType.VEC3,19);
-	_g.set(glsl_parser_TokenType.VEC4,20);
-	_g.set(glsl_parser_TokenType.BVEC2,21);
-	_g.set(glsl_parser_TokenType.BVEC3,22);
-	_g.set(glsl_parser_TokenType.BVEC4,23);
-	_g.set(glsl_parser_TokenType.IVEC2,24);
-	_g.set(glsl_parser_TokenType.IVEC3,25);
-	_g.set(glsl_parser_TokenType.IVEC4,26);
-	_g.set(glsl_parser_TokenType.MAT2,27);
-	_g.set(glsl_parser_TokenType.MAT3,28);
-	_g.set(glsl_parser_TokenType.MAT4,29);
-	_g.set(glsl_parser_TokenType.TYPE_NAME,30);
-	_g.set(glsl_parser_TokenType.PLUS,31);
-	_g.set(glsl_parser_TokenType.DASH,32);
-	_g.set(glsl_parser_TokenType.BANG,33);
-	_g.set(glsl_parser_TokenType.TILDE,34);
-	_g.set(glsl_parser_TokenType.STAR,35);
-	_g.set(glsl_parser_TokenType.SLASH,36);
-	_g.set(glsl_parser_TokenType.PERCENT,37);
-	_g.set(glsl_parser_TokenType.LEFT_OP,38);
-	_g.set(glsl_parser_TokenType.RIGHT_OP,39);
-	_g.set(glsl_parser_TokenType.LEFT_ANGLE,40);
-	_g.set(glsl_parser_TokenType.RIGHT_ANGLE,41);
-	_g.set(glsl_parser_TokenType.LE_OP,42);
-	_g.set(glsl_parser_TokenType.GE_OP,43);
-	_g.set(glsl_parser_TokenType.EQ_OP,44);
-	_g.set(glsl_parser_TokenType.NE_OP,45);
-	_g.set(glsl_parser_TokenType.AMPERSAND,46);
-	_g.set(glsl_parser_TokenType.CARET,47);
-	_g.set(glsl_parser_TokenType.VERTICAL_BAR,48);
-	_g.set(glsl_parser_TokenType.AND_OP,49);
-	_g.set(glsl_parser_TokenType.XOR_OP,50);
-	_g.set(glsl_parser_TokenType.OR_OP,51);
-	_g.set(glsl_parser_TokenType.QUESTION,52);
-	_g.set(glsl_parser_TokenType.COLON,53);
-	_g.set(glsl_parser_TokenType.EQUAL,54);
-	_g.set(glsl_parser_TokenType.MUL_ASSIGN,55);
-	_g.set(glsl_parser_TokenType.DIV_ASSIGN,56);
-	_g.set(glsl_parser_TokenType.MOD_ASSIGN,57);
-	_g.set(glsl_parser_TokenType.ADD_ASSIGN,58);
-	_g.set(glsl_parser_TokenType.SUB_ASSIGN,59);
-	_g.set(glsl_parser_TokenType.LEFT_ASSIGN,60);
-	_g.set(glsl_parser_TokenType.RIGHT_ASSIGN,61);
-	_g.set(glsl_parser_TokenType.AND_ASSIGN,62);
-	_g.set(glsl_parser_TokenType.XOR_ASSIGN,63);
-	_g.set(glsl_parser_TokenType.OR_ASSIGN,64);
-	_g.set(glsl_parser_TokenType.SEMICOLON,65);
-	_g.set(glsl_parser_TokenType.PRECISION,66);
-	_g.set(glsl_parser_TokenType.IN,67);
-	_g.set(glsl_parser_TokenType.OUT,68);
-	_g.set(glsl_parser_TokenType.INOUT,69);
-	_g.set(glsl_parser_TokenType.INVARIANT,70);
-	_g.set(glsl_parser_TokenType.CONST,71);
-	_g.set(glsl_parser_TokenType.ATTRIBUTE,72);
-	_g.set(glsl_parser_TokenType.VARYING,73);
-	_g.set(glsl_parser_TokenType.UNIFORM,74);
-	_g.set(glsl_parser_TokenType.SAMPLER2D,75);
-	_g.set(glsl_parser_TokenType.SAMPLERCUBE,76);
-	_g.set(glsl_parser_TokenType.HIGH_PRECISION,77);
-	_g.set(glsl_parser_TokenType.MEDIUM_PRECISION,78);
-	_g.set(glsl_parser_TokenType.LOW_PRECISION,79);
-	_g.set(glsl_parser_TokenType.STRUCT,80);
-	_g.set(glsl_parser_TokenType.LEFT_BRACE,81);
-	_g.set(glsl_parser_TokenType.RIGHT_BRACE,82);
-	_g.set(glsl_parser_TokenType.IF,83);
-	_g.set(glsl_parser_TokenType.ELSE,84);
-	_g.set(glsl_parser_TokenType.WHILE,85);
-	_g.set(glsl_parser_TokenType.DO,86);
-	_g.set(glsl_parser_TokenType.FOR,87);
-	_g.set(glsl_parser_TokenType.CONTINUE,88);
-	_g.set(glsl_parser_TokenType.BREAK,89);
-	_g.set(glsl_parser_TokenType.RETURN,90);
-	_g.set(glsl_parser_TokenType.DISCARD,91);
-	_g.set(glsl_parser_TokenType.PREPROCESSOR_DIRECTIVE,92);
+	_g.set(glsl_tokens_TokenType.IDENTIFIER,1);
+	_g.set(glsl_tokens_TokenType.INTCONSTANT,2);
+	_g.set(glsl_tokens_TokenType.FLOATCONSTANT,3);
+	_g.set(glsl_tokens_TokenType.BOOLCONSTANT,4);
+	_g.set(glsl_tokens_TokenType.LEFT_PAREN,5);
+	_g.set(glsl_tokens_TokenType.RIGHT_PAREN,6);
+	_g.set(glsl_tokens_TokenType.LEFT_BRACKET,7);
+	_g.set(glsl_tokens_TokenType.RIGHT_BRACKET,8);
+	_g.set(glsl_tokens_TokenType.DOT,9);
+	_g.set(glsl_tokens_TokenType.FIELD_SELECTION,10);
+	_g.set(glsl_tokens_TokenType.INC_OP,11);
+	_g.set(glsl_tokens_TokenType.DEC_OP,12);
+	_g.set(glsl_tokens_TokenType.VOID,13);
+	_g.set(glsl_tokens_TokenType.COMMA,14);
+	_g.set(glsl_tokens_TokenType.FLOAT,15);
+	_g.set(glsl_tokens_TokenType.INT,16);
+	_g.set(glsl_tokens_TokenType.BOOL,17);
+	_g.set(glsl_tokens_TokenType.VEC2,18);
+	_g.set(glsl_tokens_TokenType.VEC3,19);
+	_g.set(glsl_tokens_TokenType.VEC4,20);
+	_g.set(glsl_tokens_TokenType.BVEC2,21);
+	_g.set(glsl_tokens_TokenType.BVEC3,22);
+	_g.set(glsl_tokens_TokenType.BVEC4,23);
+	_g.set(glsl_tokens_TokenType.IVEC2,24);
+	_g.set(glsl_tokens_TokenType.IVEC3,25);
+	_g.set(glsl_tokens_TokenType.IVEC4,26);
+	_g.set(glsl_tokens_TokenType.MAT2,27);
+	_g.set(glsl_tokens_TokenType.MAT3,28);
+	_g.set(glsl_tokens_TokenType.MAT4,29);
+	_g.set(glsl_tokens_TokenType.TYPE_NAME,30);
+	_g.set(glsl_tokens_TokenType.PLUS,31);
+	_g.set(glsl_tokens_TokenType.DASH,32);
+	_g.set(glsl_tokens_TokenType.BANG,33);
+	_g.set(glsl_tokens_TokenType.TILDE,34);
+	_g.set(glsl_tokens_TokenType.STAR,35);
+	_g.set(glsl_tokens_TokenType.SLASH,36);
+	_g.set(glsl_tokens_TokenType.PERCENT,37);
+	_g.set(glsl_tokens_TokenType.LEFT_OP,38);
+	_g.set(glsl_tokens_TokenType.RIGHT_OP,39);
+	_g.set(glsl_tokens_TokenType.LEFT_ANGLE,40);
+	_g.set(glsl_tokens_TokenType.RIGHT_ANGLE,41);
+	_g.set(glsl_tokens_TokenType.LE_OP,42);
+	_g.set(glsl_tokens_TokenType.GE_OP,43);
+	_g.set(glsl_tokens_TokenType.EQ_OP,44);
+	_g.set(glsl_tokens_TokenType.NE_OP,45);
+	_g.set(glsl_tokens_TokenType.AMPERSAND,46);
+	_g.set(glsl_tokens_TokenType.CARET,47);
+	_g.set(glsl_tokens_TokenType.VERTICAL_BAR,48);
+	_g.set(glsl_tokens_TokenType.AND_OP,49);
+	_g.set(glsl_tokens_TokenType.XOR_OP,50);
+	_g.set(glsl_tokens_TokenType.OR_OP,51);
+	_g.set(glsl_tokens_TokenType.QUESTION,52);
+	_g.set(glsl_tokens_TokenType.COLON,53);
+	_g.set(glsl_tokens_TokenType.EQUAL,54);
+	_g.set(glsl_tokens_TokenType.MUL_ASSIGN,55);
+	_g.set(glsl_tokens_TokenType.DIV_ASSIGN,56);
+	_g.set(glsl_tokens_TokenType.MOD_ASSIGN,57);
+	_g.set(glsl_tokens_TokenType.ADD_ASSIGN,58);
+	_g.set(glsl_tokens_TokenType.SUB_ASSIGN,59);
+	_g.set(glsl_tokens_TokenType.LEFT_ASSIGN,60);
+	_g.set(glsl_tokens_TokenType.RIGHT_ASSIGN,61);
+	_g.set(glsl_tokens_TokenType.AND_ASSIGN,62);
+	_g.set(glsl_tokens_TokenType.XOR_ASSIGN,63);
+	_g.set(glsl_tokens_TokenType.OR_ASSIGN,64);
+	_g.set(glsl_tokens_TokenType.SEMICOLON,65);
+	_g.set(glsl_tokens_TokenType.PRECISION,66);
+	_g.set(glsl_tokens_TokenType.IN,67);
+	_g.set(glsl_tokens_TokenType.OUT,68);
+	_g.set(glsl_tokens_TokenType.INOUT,69);
+	_g.set(glsl_tokens_TokenType.INVARIANT,70);
+	_g.set(glsl_tokens_TokenType.CONST,71);
+	_g.set(glsl_tokens_TokenType.ATTRIBUTE,72);
+	_g.set(glsl_tokens_TokenType.VARYING,73);
+	_g.set(glsl_tokens_TokenType.UNIFORM,74);
+	_g.set(glsl_tokens_TokenType.SAMPLER2D,75);
+	_g.set(glsl_tokens_TokenType.SAMPLERCUBE,76);
+	_g.set(glsl_tokens_TokenType.HIGH_PRECISION,77);
+	_g.set(glsl_tokens_TokenType.MEDIUM_PRECISION,78);
+	_g.set(glsl_tokens_TokenType.LOW_PRECISION,79);
+	_g.set(glsl_tokens_TokenType.STRUCT,80);
+	_g.set(glsl_tokens_TokenType.LEFT_BRACE,81);
+	_g.set(glsl_tokens_TokenType.RIGHT_BRACE,82);
+	_g.set(glsl_tokens_TokenType.IF,83);
+	_g.set(glsl_tokens_TokenType.ELSE,84);
+	_g.set(glsl_tokens_TokenType.WHILE,85);
+	_g.set(glsl_tokens_TokenType.DO,86);
+	_g.set(glsl_tokens_TokenType.FOR,87);
+	_g.set(glsl_tokens_TokenType.CONTINUE,88);
+	_g.set(glsl_tokens_TokenType.BREAK,89);
+	_g.set(glsl_tokens_TokenType.RETURN,90);
+	_g.set(glsl_tokens_TokenType.DISCARD,91);
+	_g.set(glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE,92);
 	$r = _g;
 	return $r;
 }(this));
@@ -4614,692 +4873,663 @@ glsl_parser_Parser.defaultAction = glsl_parser_ParserTables.defaultAction;
 glsl_parser_Parser.ruleInfo = glsl_parser_ParserTables.ruleInfo;
 glsl_parser_Parser.tokenIdMap = glsl_parser_ParserTables.tokenIdMap;
 glsl_parser_Parser.ignoredTokens = glsl_parser_ParserTables.ignoredTokens;
-js_Boot.__toStr = {}.toString;
-glsl_parser_Preprocessor.force = false;
-glsl_parser_Preprocessor.builtinMacros = (function($this) {
-	var $r;
-	var _g = new haxe_ds_StringMap();
-	{
-		var value = glsl_parser_PPMacro.UnresolveableMacro(glsl_parser_PPMacro.BuiltinMacroObject(function() {
-			return Std.string(glsl_parser_Preprocessor.version);
-		}));
-		if(__map_reserved.__VERSION__ != null) _g.setReserved("__VERSION__",value); else _g.h["__VERSION__"] = value;
-	}
-	{
-		var value1 = glsl_parser_PPMacro.UnresolveableMacro(glsl_parser_PPMacro.BuiltinMacroObject(function() {
-			return Std.string(glsl_parser_Preprocessor.tokens[glsl_parser_Preprocessor.i].line);
-		}));
-		if(__map_reserved.__LINE__ != null) _g.setReserved("__LINE__",value1); else _g.h["__LINE__"] = value1;
-	}
-	{
-		var value2 = glsl_parser_PPMacro.UnresolveableMacro(glsl_parser_PPMacro.BuiltinMacroObject(function() {
-			return "0";
-		}));
-		if(__map_reserved.__FILE__ != null) _g.setReserved("__FILE__",value2); else _g.h["__FILE__"] = value2;
-	}
-	{
-		var value3 = glsl_parser_PPMacro.UnresolveableMacro(glsl_parser_PPMacro.BuiltinMacroObject(function() {
-			return "1";
-		}));
-		if(__map_reserved.GL_ES != null) _g.setReserved("GL_ES",value3); else _g.h["GL_ES"] = value3;
-	}
-	$r = _g;
-	return $r;
-}(this));
-glsl_parser_Preprocessor.directiveTitleReg = new EReg("^#\\s*([^\\s]*)","");
-glsl_parser_Preprocessor.macroNameReg = new EReg("^([a-z_]\\w*)([^\\w]|$)","i");
-glsl_parser_PPTokensHelper.identifierTokens = [glsl_parser_TokenType.IDENTIFIER,glsl_parser_TokenType.ATTRIBUTE,glsl_parser_TokenType.UNIFORM,glsl_parser_TokenType.VARYING,glsl_parser_TokenType.CONST,glsl_parser_TokenType.VOID,glsl_parser_TokenType.INT,glsl_parser_TokenType.FLOAT,glsl_parser_TokenType.BOOL,glsl_parser_TokenType.VEC2,glsl_parser_TokenType.VEC3,glsl_parser_TokenType.VEC4,glsl_parser_TokenType.BVEC2,glsl_parser_TokenType.BVEC3,glsl_parser_TokenType.BVEC4,glsl_parser_TokenType.IVEC2,glsl_parser_TokenType.IVEC3,glsl_parser_TokenType.IVEC4,glsl_parser_TokenType.MAT2,glsl_parser_TokenType.MAT3,glsl_parser_TokenType.MAT4,glsl_parser_TokenType.SAMPLER2D,glsl_parser_TokenType.SAMPLERCUBE,glsl_parser_TokenType.BREAK,glsl_parser_TokenType.CONTINUE,glsl_parser_TokenType.WHILE,glsl_parser_TokenType.DO,glsl_parser_TokenType.FOR,glsl_parser_TokenType.IF,glsl_parser_TokenType.ELSE,glsl_parser_TokenType.RETURN,glsl_parser_TokenType.DISCARD,glsl_parser_TokenType.STRUCT,glsl_parser_TokenType.IN,glsl_parser_TokenType.OUT,glsl_parser_TokenType.INOUT,glsl_parser_TokenType.INVARIANT,glsl_parser_TokenType.PRECISION,glsl_parser_TokenType.HIGH_PRECISION,glsl_parser_TokenType.MEDIUM_PRECISION,glsl_parser_TokenType.LOW_PRECISION,glsl_parser_TokenType.BOOLCONSTANT,glsl_parser_TokenType.RESERVED_KEYWORD,glsl_parser_TokenType.TYPE_NAME,glsl_parser_TokenType.FIELD_SELECTION];
-glsl_parser_Tokenizer.verbose = false;
-glsl_parser_Tokenizer.floatMode = 0;
-glsl_parser_Tokenizer.operatorRegex = new EReg("[&<=>|*?!+%(){}.~:,;/\\-\\^\\[\\]]","");
-glsl_parser_Tokenizer.startConditionsMap = (function($this) {
+glsl_preprocess_Preprocessor.directiveTitleReg = new EReg("^#\\s*([^\\s]*)","");
+glsl_preprocess_Preprocessor.macroNameReg = new EReg("^([a-z_]\\w*)([^\\w]|$)","i");
+glsl_tokens_TokenHelper.identifierTokens = [glsl_tokens_TokenType.IDENTIFIER,glsl_tokens_TokenType.ATTRIBUTE,glsl_tokens_TokenType.UNIFORM,glsl_tokens_TokenType.VARYING,glsl_tokens_TokenType.CONST,glsl_tokens_TokenType.VOID,glsl_tokens_TokenType.INT,glsl_tokens_TokenType.FLOAT,glsl_tokens_TokenType.BOOL,glsl_tokens_TokenType.VEC2,glsl_tokens_TokenType.VEC3,glsl_tokens_TokenType.VEC4,glsl_tokens_TokenType.BVEC2,glsl_tokens_TokenType.BVEC3,glsl_tokens_TokenType.BVEC4,glsl_tokens_TokenType.IVEC2,glsl_tokens_TokenType.IVEC3,glsl_tokens_TokenType.IVEC4,glsl_tokens_TokenType.MAT2,glsl_tokens_TokenType.MAT3,glsl_tokens_TokenType.MAT4,glsl_tokens_TokenType.SAMPLER2D,glsl_tokens_TokenType.SAMPLERCUBE,glsl_tokens_TokenType.BREAK,glsl_tokens_TokenType.CONTINUE,glsl_tokens_TokenType.WHILE,glsl_tokens_TokenType.DO,glsl_tokens_TokenType.FOR,glsl_tokens_TokenType.IF,glsl_tokens_TokenType.ELSE,glsl_tokens_TokenType.RETURN,glsl_tokens_TokenType.DISCARD,glsl_tokens_TokenType.STRUCT,glsl_tokens_TokenType.IN,glsl_tokens_TokenType.OUT,glsl_tokens_TokenType.INOUT,glsl_tokens_TokenType.INVARIANT,glsl_tokens_TokenType.PRECISION,glsl_tokens_TokenType.HIGH_PRECISION,glsl_tokens_TokenType.MEDIUM_PRECISION,glsl_tokens_TokenType.LOW_PRECISION,glsl_tokens_TokenType.BOOLCONSTANT,glsl_tokens_TokenType.RESERVED_KEYWORD,glsl_tokens_TokenType.TYPE_NAME,glsl_tokens_TokenType.FIELD_SELECTION];
+glsl_tokens_Tokenizer.verbose = false;
+glsl_tokens_Tokenizer.floatMode = 0;
+glsl_tokens_Tokenizer.operatorRegex = new EReg("[&<=>|*?!+%(){}.~:,;/\\-\\^\\[\\]]","");
+glsl_tokens_Tokenizer.startConditionsMap = (function($this) {
 	var $r;
 	var _g = new haxe_ds_EnumValueMap();
-	_g.set(glsl_parser__$Tokenizer_ScanMode.BLOCK_COMMENT,function() {
-		return glsl_parser_Tokenizer.source.substring(glsl_parser_Tokenizer.i,glsl_parser_Tokenizer.i + 2) == "/*"?2:null;
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.BLOCK_COMMENT,function() {
+		return glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i,glsl_tokens_Tokenizer.i + 2) == "/*"?2:null;
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.LINE_COMMENT,function() {
-		return glsl_parser_Tokenizer.source.substring(glsl_parser_Tokenizer.i,glsl_parser_Tokenizer.i + 2) == "//"?2:null;
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.LINE_COMMENT,function() {
+		return glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i,glsl_tokens_Tokenizer.i + 2) == "//"?2:null;
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE,function() {
-		if(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i) == "#") {
-			var j = glsl_parser_Tokenizer.i - 1;
-			while(glsl_parser_Tokenizer.source.charAt(j) != "\n" && glsl_parser_Tokenizer.source.charAt(j) != "") {
-				if(!new EReg("\\s","").match(glsl_parser_Tokenizer.source.charAt(j))) return null;
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE,function() {
+		if(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i) == "#") {
+			var j = glsl_tokens_Tokenizer.i - 1;
+			while(glsl_tokens_Tokenizer.source.charAt(j) != "\n" && glsl_tokens_Tokenizer.source.charAt(j) != "") {
+				if(!new EReg("\\s","").match(glsl_tokens_Tokenizer.source.charAt(j))) return null;
 				j--;
 			}
 			return 1;
 		}
 		return null;
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.WHITESPACE,function() {
-		return new EReg("\\s","").match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i))?1:null;
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.WHITESPACE,function() {
+		return new EReg("\\s","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i))?1:null;
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.OPERATOR,function() {
-		return glsl_parser_Tokenizer.operatorRegex.match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i))?1:null;
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.OPERATOR,function() {
+		return glsl_tokens_Tokenizer.operatorRegex.match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i))?1:null;
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.LITERAL,function() {
-		return new EReg("[a-z_]","i").match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i))?1:null;
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.LITERAL,function() {
+		return new EReg("[a-z_]","i").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i))?1:null;
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.HEX_CONSTANT,function() {
-		return new EReg("0x[a-f0-9]","i").match(glsl_parser_Tokenizer.source.substring(glsl_parser_Tokenizer.i,glsl_parser_Tokenizer.i + 3))?3:null;
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.HEX_CONSTANT,function() {
+		return new EReg("0x[a-f0-9]","i").match(glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i,glsl_tokens_Tokenizer.i + 3))?3:null;
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.OCTAL_CONSTANT,function() {
-		return new EReg("0[0-7]","").match(glsl_parser_Tokenizer.source.substring(glsl_parser_Tokenizer.i,glsl_parser_Tokenizer.i + 2))?2:null;
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.OCTAL_CONSTANT,function() {
+		return new EReg("0[0-7]","").match(glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i,glsl_tokens_Tokenizer.i + 2))?2:null;
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.DECIMAL_CONSTANT,function() {
-		return new EReg("[0-9]","").match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i))?1:null;
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.DECIMAL_CONSTANT,function() {
+		return new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i))?1:null;
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.FLOATING_CONSTANT,function() {
-		if(glsl_parser_Tokenizer.startLen(glsl_parser__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT) != null) return 0;
-		var j1 = glsl_parser_Tokenizer.i;
-		while(new EReg("[0-9]","").match(glsl_parser_Tokenizer.source.charAt(j1))) j1++;
-		var _i = glsl_parser_Tokenizer.i;
-		glsl_parser_Tokenizer.i = j1;
-		var exponentFollows = glsl_parser_Tokenizer.startLen(glsl_parser__$Tokenizer_ScanMode.EXPONENT_PART) != null;
-		glsl_parser_Tokenizer.i = _i;
-		if(j1 > glsl_parser_Tokenizer.i && exponentFollows) return 0;
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT,function() {
+		if(glsl_tokens_Tokenizer.startLen(glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT) != null) return 0;
+		var j1 = glsl_tokens_Tokenizer.i;
+		while(new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(j1))) j1++;
+		var _i = glsl_tokens_Tokenizer.i;
+		glsl_tokens_Tokenizer.i = j1;
+		var exponentFollows = glsl_tokens_Tokenizer.startLen(glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART) != null;
+		glsl_tokens_Tokenizer.i = _i;
+		if(j1 > glsl_tokens_Tokenizer.i && exponentFollows) return 0;
 		return null;
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT,function() {
-		var j2 = glsl_parser_Tokenizer.i;
-		while(new EReg("[0-9]","").match(glsl_parser_Tokenizer.source.charAt(j2))) j2++;
-		if(j2 > glsl_parser_Tokenizer.i && glsl_parser_Tokenizer.source.charAt(j2) == ".") return ++j2 - glsl_parser_Tokenizer.i;
-		return new EReg("\\.\\d","").match(glsl_parser_Tokenizer.source.substring(glsl_parser_Tokenizer.i,glsl_parser_Tokenizer.i + 2))?2:null;
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT,function() {
+		var j2 = glsl_tokens_Tokenizer.i;
+		while(new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(j2))) j2++;
+		if(j2 > glsl_tokens_Tokenizer.i && glsl_tokens_Tokenizer.source.charAt(j2) == ".") return ++j2 - glsl_tokens_Tokenizer.i;
+		return new EReg("\\.\\d","").match(glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i,glsl_tokens_Tokenizer.i + 2))?2:null;
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.EXPONENT_PART,function() {
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART,function() {
 		var r = new EReg("^[e][+-]?\\d","i");
-		return r.match(glsl_parser_Tokenizer.source.substring(glsl_parser_Tokenizer.i,glsl_parser_Tokenizer.i + 3))?r.matched(0).length:null;
+		return r.match(glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i,glsl_tokens_Tokenizer.i + 3))?r.matched(0).length:null;
 	});
 	$r = _g;
 	return $r;
 }(this));
-glsl_parser_Tokenizer.endConditionsMap = (function($this) {
+glsl_tokens_Tokenizer.endConditionsMap = (function($this) {
 	var $r;
 	var _g = new haxe_ds_EnumValueMap();
-	_g.set(glsl_parser__$Tokenizer_ScanMode.BLOCK_COMMENT,function() {
-		return glsl_parser_Tokenizer.source.substring(glsl_parser_Tokenizer.i - 2,glsl_parser_Tokenizer.i) == "*/";
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.BLOCK_COMMENT,function() {
+		return glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i - 2,glsl_tokens_Tokenizer.i) == "*/";
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.LINE_COMMENT,function() {
-		return glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i) == "\n" || glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i) == "";
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.LINE_COMMENT,function() {
+		return glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i) == "\n" || glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i) == "";
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE,function() {
-		return glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i) == "\n" && glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i - 1) != "\\" || glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i) == "";
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE,function() {
+		return glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i) == "\n" && glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i - 1) != "\\" || glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i) == "";
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.WHITESPACE,function() {
-		return !new EReg("\\s","").match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i));
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.WHITESPACE,function() {
+		return !new EReg("\\s","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.OPERATOR,function() {
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.OPERATOR,function() {
 		var tmp;
-		var key = glsl_parser_Tokenizer.buf + glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i);
-		var _this = glsl_parser_Tokenizer.operatorMap;
+		var key = glsl_tokens_Tokenizer.buf + glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i);
+		var _this = glsl_tokens_Tokenizer.operatorMap;
 		if(__map_reserved[key] != null) tmp = _this.existsReserved(key); else tmp = _this.h.hasOwnProperty(key);
-		return !tmp || glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i) == "";
+		return !tmp || glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i) == "";
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.LITERAL,function() {
-		return !new EReg("[a-z0-9_]","i").match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i));
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.LITERAL,function() {
+		return !new EReg("[a-z0-9_]","i").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.HEX_CONSTANT,function() {
-		return !new EReg("[a-f0-9]","i").match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i));
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.HEX_CONSTANT,function() {
+		return !new EReg("[a-f0-9]","i").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.OCTAL_CONSTANT,function() {
-		return !new EReg("[0-7]","").match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i));
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.OCTAL_CONSTANT,function() {
+		return !new EReg("[0-7]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.DECIMAL_CONSTANT,function() {
-		return !new EReg("[0-9]","").match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i));
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.DECIMAL_CONSTANT,function() {
+		return !new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.FLOATING_CONSTANT,function() {
-		return !new EReg("[0-9]","").match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i));
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT,function() {
+		return !new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT,function() {
-		return !new EReg("[0-9]","").match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i));
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT,function() {
+		return !new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
 	});
-	_g.set(glsl_parser__$Tokenizer_ScanMode.EXPONENT_PART,function() {
-		return !new EReg("[0-9]","").match(glsl_parser_Tokenizer.source.charAt(glsl_parser_Tokenizer.i));
+	_g.set(glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART,function() {
+		return !new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
 	});
 	$r = _g;
 	return $r;
 }(this));
-glsl_parser_Tokenizer.operatorMap = (function($this) {
+glsl_tokens_Tokenizer.operatorMap = (function($this) {
 	var $r;
 	var _g = new haxe_ds_StringMap();
 	{
-		var value = glsl_parser_TokenType.LEFT_OP;
+		var value = glsl_tokens_TokenType.LEFT_OP;
 		if(__map_reserved["<<"] != null) _g.setReserved("<<",value); else _g.h["<<"] = value;
 	}
 	{
-		var value1 = glsl_parser_TokenType.RIGHT_OP;
+		var value1 = glsl_tokens_TokenType.RIGHT_OP;
 		if(__map_reserved[">>"] != null) _g.setReserved(">>",value1); else _g.h[">>"] = value1;
 	}
 	{
-		var value2 = glsl_parser_TokenType.INC_OP;
+		var value2 = glsl_tokens_TokenType.INC_OP;
 		if(__map_reserved["++"] != null) _g.setReserved("++",value2); else _g.h["++"] = value2;
 	}
 	{
-		var value3 = glsl_parser_TokenType.DEC_OP;
+		var value3 = glsl_tokens_TokenType.DEC_OP;
 		if(__map_reserved["--"] != null) _g.setReserved("--",value3); else _g.h["--"] = value3;
 	}
 	{
-		var value4 = glsl_parser_TokenType.LE_OP;
+		var value4 = glsl_tokens_TokenType.LE_OP;
 		if(__map_reserved["<="] != null) _g.setReserved("<=",value4); else _g.h["<="] = value4;
 	}
 	{
-		var value5 = glsl_parser_TokenType.GE_OP;
+		var value5 = glsl_tokens_TokenType.GE_OP;
 		if(__map_reserved[">="] != null) _g.setReserved(">=",value5); else _g.h[">="] = value5;
 	}
 	{
-		var value6 = glsl_parser_TokenType.EQ_OP;
+		var value6 = glsl_tokens_TokenType.EQ_OP;
 		if(__map_reserved["=="] != null) _g.setReserved("==",value6); else _g.h["=="] = value6;
 	}
 	{
-		var value7 = glsl_parser_TokenType.NE_OP;
+		var value7 = glsl_tokens_TokenType.NE_OP;
 		if(__map_reserved["!="] != null) _g.setReserved("!=",value7); else _g.h["!="] = value7;
 	}
 	{
-		var value8 = glsl_parser_TokenType.AND_OP;
+		var value8 = glsl_tokens_TokenType.AND_OP;
 		if(__map_reserved["&&"] != null) _g.setReserved("&&",value8); else _g.h["&&"] = value8;
 	}
 	{
-		var value9 = glsl_parser_TokenType.OR_OP;
+		var value9 = glsl_tokens_TokenType.OR_OP;
 		if(__map_reserved["||"] != null) _g.setReserved("||",value9); else _g.h["||"] = value9;
 	}
 	{
-		var value10 = glsl_parser_TokenType.XOR_OP;
+		var value10 = glsl_tokens_TokenType.XOR_OP;
 		if(__map_reserved["^^"] != null) _g.setReserved("^^",value10); else _g.h["^^"] = value10;
 	}
 	{
-		var value11 = glsl_parser_TokenType.MUL_ASSIGN;
+		var value11 = glsl_tokens_TokenType.MUL_ASSIGN;
 		if(__map_reserved["*="] != null) _g.setReserved("*=",value11); else _g.h["*="] = value11;
 	}
 	{
-		var value12 = glsl_parser_TokenType.DIV_ASSIGN;
+		var value12 = glsl_tokens_TokenType.DIV_ASSIGN;
 		if(__map_reserved["/="] != null) _g.setReserved("/=",value12); else _g.h["/="] = value12;
 	}
 	{
-		var value13 = glsl_parser_TokenType.ADD_ASSIGN;
+		var value13 = glsl_tokens_TokenType.ADD_ASSIGN;
 		if(__map_reserved["+="] != null) _g.setReserved("+=",value13); else _g.h["+="] = value13;
 	}
 	{
-		var value14 = glsl_parser_TokenType.MOD_ASSIGN;
+		var value14 = glsl_tokens_TokenType.MOD_ASSIGN;
 		if(__map_reserved["%="] != null) _g.setReserved("%=",value14); else _g.h["%="] = value14;
 	}
 	{
-		var value15 = glsl_parser_TokenType.SUB_ASSIGN;
+		var value15 = glsl_tokens_TokenType.SUB_ASSIGN;
 		if(__map_reserved["-="] != null) _g.setReserved("-=",value15); else _g.h["-="] = value15;
 	}
 	{
-		var value16 = glsl_parser_TokenType.LEFT_ASSIGN;
+		var value16 = glsl_tokens_TokenType.LEFT_ASSIGN;
 		if(__map_reserved["<<="] != null) _g.setReserved("<<=",value16); else _g.h["<<="] = value16;
 	}
 	{
-		var value17 = glsl_parser_TokenType.RIGHT_ASSIGN;
+		var value17 = glsl_tokens_TokenType.RIGHT_ASSIGN;
 		if(__map_reserved[">>="] != null) _g.setReserved(">>=",value17); else _g.h[">>="] = value17;
 	}
 	{
-		var value18 = glsl_parser_TokenType.AND_ASSIGN;
+		var value18 = glsl_tokens_TokenType.AND_ASSIGN;
 		if(__map_reserved["&="] != null) _g.setReserved("&=",value18); else _g.h["&="] = value18;
 	}
 	{
-		var value19 = glsl_parser_TokenType.XOR_ASSIGN;
+		var value19 = glsl_tokens_TokenType.XOR_ASSIGN;
 		if(__map_reserved["^="] != null) _g.setReserved("^=",value19); else _g.h["^="] = value19;
 	}
 	{
-		var value20 = glsl_parser_TokenType.OR_ASSIGN;
+		var value20 = glsl_tokens_TokenType.OR_ASSIGN;
 		if(__map_reserved["|="] != null) _g.setReserved("|=",value20); else _g.h["|="] = value20;
 	}
 	{
-		var value21 = glsl_parser_TokenType.LEFT_PAREN;
+		var value21 = glsl_tokens_TokenType.LEFT_PAREN;
 		if(__map_reserved["("] != null) _g.setReserved("(",value21); else _g.h["("] = value21;
 	}
 	{
-		var value22 = glsl_parser_TokenType.RIGHT_PAREN;
+		var value22 = glsl_tokens_TokenType.RIGHT_PAREN;
 		if(__map_reserved[")"] != null) _g.setReserved(")",value22); else _g.h[")"] = value22;
 	}
 	{
-		var value23 = glsl_parser_TokenType.LEFT_BRACKET;
+		var value23 = glsl_tokens_TokenType.LEFT_BRACKET;
 		if(__map_reserved["["] != null) _g.setReserved("[",value23); else _g.h["["] = value23;
 	}
 	{
-		var value24 = glsl_parser_TokenType.RIGHT_BRACKET;
+		var value24 = glsl_tokens_TokenType.RIGHT_BRACKET;
 		if(__map_reserved["]"] != null) _g.setReserved("]",value24); else _g.h["]"] = value24;
 	}
 	{
-		var value25 = glsl_parser_TokenType.LEFT_BRACE;
+		var value25 = glsl_tokens_TokenType.LEFT_BRACE;
 		if(__map_reserved["{"] != null) _g.setReserved("{",value25); else _g.h["{"] = value25;
 	}
 	{
-		var value26 = glsl_parser_TokenType.RIGHT_BRACE;
+		var value26 = glsl_tokens_TokenType.RIGHT_BRACE;
 		if(__map_reserved["}"] != null) _g.setReserved("}",value26); else _g.h["}"] = value26;
 	}
 	{
-		var value27 = glsl_parser_TokenType.DOT;
+		var value27 = glsl_tokens_TokenType.DOT;
 		if(__map_reserved["."] != null) _g.setReserved(".",value27); else _g.h["."] = value27;
 	}
 	{
-		var value28 = glsl_parser_TokenType.COMMA;
+		var value28 = glsl_tokens_TokenType.COMMA;
 		if(__map_reserved[","] != null) _g.setReserved(",",value28); else _g.h[","] = value28;
 	}
 	{
-		var value29 = glsl_parser_TokenType.COLON;
+		var value29 = glsl_tokens_TokenType.COLON;
 		if(__map_reserved[":"] != null) _g.setReserved(":",value29); else _g.h[":"] = value29;
 	}
 	{
-		var value30 = glsl_parser_TokenType.EQUAL;
+		var value30 = glsl_tokens_TokenType.EQUAL;
 		if(__map_reserved["="] != null) _g.setReserved("=",value30); else _g.h["="] = value30;
 	}
 	{
-		var value31 = glsl_parser_TokenType.SEMICOLON;
+		var value31 = glsl_tokens_TokenType.SEMICOLON;
 		if(__map_reserved[";"] != null) _g.setReserved(";",value31); else _g.h[";"] = value31;
 	}
 	{
-		var value32 = glsl_parser_TokenType.BANG;
+		var value32 = glsl_tokens_TokenType.BANG;
 		if(__map_reserved["!"] != null) _g.setReserved("!",value32); else _g.h["!"] = value32;
 	}
 	{
-		var value33 = glsl_parser_TokenType.DASH;
+		var value33 = glsl_tokens_TokenType.DASH;
 		if(__map_reserved["-"] != null) _g.setReserved("-",value33); else _g.h["-"] = value33;
 	}
 	{
-		var value34 = glsl_parser_TokenType.TILDE;
+		var value34 = glsl_tokens_TokenType.TILDE;
 		if(__map_reserved["~"] != null) _g.setReserved("~",value34); else _g.h["~"] = value34;
 	}
 	{
-		var value35 = glsl_parser_TokenType.PLUS;
+		var value35 = glsl_tokens_TokenType.PLUS;
 		if(__map_reserved["+"] != null) _g.setReserved("+",value35); else _g.h["+"] = value35;
 	}
 	{
-		var value36 = glsl_parser_TokenType.STAR;
+		var value36 = glsl_tokens_TokenType.STAR;
 		if(__map_reserved["*"] != null) _g.setReserved("*",value36); else _g.h["*"] = value36;
 	}
 	{
-		var value37 = glsl_parser_TokenType.SLASH;
+		var value37 = glsl_tokens_TokenType.SLASH;
 		if(__map_reserved["/"] != null) _g.setReserved("/",value37); else _g.h["/"] = value37;
 	}
 	{
-		var value38 = glsl_parser_TokenType.PERCENT;
+		var value38 = glsl_tokens_TokenType.PERCENT;
 		if(__map_reserved["%"] != null) _g.setReserved("%",value38); else _g.h["%"] = value38;
 	}
 	{
-		var value39 = glsl_parser_TokenType.LEFT_ANGLE;
+		var value39 = glsl_tokens_TokenType.LEFT_ANGLE;
 		if(__map_reserved["<"] != null) _g.setReserved("<",value39); else _g.h["<"] = value39;
 	}
 	{
-		var value40 = glsl_parser_TokenType.RIGHT_ANGLE;
+		var value40 = glsl_tokens_TokenType.RIGHT_ANGLE;
 		if(__map_reserved[">"] != null) _g.setReserved(">",value40); else _g.h[">"] = value40;
 	}
 	{
-		var value41 = glsl_parser_TokenType.VERTICAL_BAR;
+		var value41 = glsl_tokens_TokenType.VERTICAL_BAR;
 		if(__map_reserved["|"] != null) _g.setReserved("|",value41); else _g.h["|"] = value41;
 	}
 	{
-		var value42 = glsl_parser_TokenType.CARET;
+		var value42 = glsl_tokens_TokenType.CARET;
 		if(__map_reserved["^"] != null) _g.setReserved("^",value42); else _g.h["^"] = value42;
 	}
 	{
-		var value43 = glsl_parser_TokenType.AMPERSAND;
+		var value43 = glsl_tokens_TokenType.AMPERSAND;
 		if(__map_reserved["&"] != null) _g.setReserved("&",value43); else _g.h["&"] = value43;
 	}
 	{
-		var value44 = glsl_parser_TokenType.QUESTION;
+		var value44 = glsl_tokens_TokenType.QUESTION;
 		if(__map_reserved["?"] != null) _g.setReserved("?",value44); else _g.h["?"] = value44;
 	}
 	$r = _g;
 	return $r;
 }(this));
-glsl_parser_Tokenizer.keywordMap = (function($this) {
+glsl_tokens_Tokenizer.keywordMap = (function($this) {
 	var $r;
 	var _g = new haxe_ds_StringMap();
 	{
-		var value = glsl_parser_TokenType.ATTRIBUTE;
+		var value = glsl_tokens_TokenType.ATTRIBUTE;
 		if(__map_reserved.attribute != null) _g.setReserved("attribute",value); else _g.h["attribute"] = value;
 	}
 	{
-		var value1 = glsl_parser_TokenType.UNIFORM;
+		var value1 = glsl_tokens_TokenType.UNIFORM;
 		if(__map_reserved.uniform != null) _g.setReserved("uniform",value1); else _g.h["uniform"] = value1;
 	}
 	{
-		var value2 = glsl_parser_TokenType.VARYING;
+		var value2 = glsl_tokens_TokenType.VARYING;
 		if(__map_reserved.varying != null) _g.setReserved("varying",value2); else _g.h["varying"] = value2;
 	}
 	{
-		var value3 = glsl_parser_TokenType.CONST;
+		var value3 = glsl_tokens_TokenType.CONST;
 		if(__map_reserved["const"] != null) _g.setReserved("const",value3); else _g.h["const"] = value3;
 	}
 	{
-		var value4 = glsl_parser_TokenType.VOID;
+		var value4 = glsl_tokens_TokenType.VOID;
 		if(__map_reserved["void"] != null) _g.setReserved("void",value4); else _g.h["void"] = value4;
 	}
 	{
-		var value5 = glsl_parser_TokenType.INT;
+		var value5 = glsl_tokens_TokenType.INT;
 		if(__map_reserved["int"] != null) _g.setReserved("int",value5); else _g.h["int"] = value5;
 	}
 	{
-		var value6 = glsl_parser_TokenType.FLOAT;
+		var value6 = glsl_tokens_TokenType.FLOAT;
 		if(__map_reserved["float"] != null) _g.setReserved("float",value6); else _g.h["float"] = value6;
 	}
 	{
-		var value7 = glsl_parser_TokenType.BOOL;
+		var value7 = glsl_tokens_TokenType.BOOL;
 		if(__map_reserved.bool != null) _g.setReserved("bool",value7); else _g.h["bool"] = value7;
 	}
 	{
-		var value8 = glsl_parser_TokenType.VEC2;
+		var value8 = glsl_tokens_TokenType.VEC2;
 		if(__map_reserved.vec2 != null) _g.setReserved("vec2",value8); else _g.h["vec2"] = value8;
 	}
 	{
-		var value9 = glsl_parser_TokenType.VEC3;
+		var value9 = glsl_tokens_TokenType.VEC3;
 		if(__map_reserved.vec3 != null) _g.setReserved("vec3",value9); else _g.h["vec3"] = value9;
 	}
 	{
-		var value10 = glsl_parser_TokenType.VEC4;
+		var value10 = glsl_tokens_TokenType.VEC4;
 		if(__map_reserved.vec4 != null) _g.setReserved("vec4",value10); else _g.h["vec4"] = value10;
 	}
 	{
-		var value11 = glsl_parser_TokenType.BVEC2;
+		var value11 = glsl_tokens_TokenType.BVEC2;
 		if(__map_reserved.bvec2 != null) _g.setReserved("bvec2",value11); else _g.h["bvec2"] = value11;
 	}
 	{
-		var value12 = glsl_parser_TokenType.BVEC3;
+		var value12 = glsl_tokens_TokenType.BVEC3;
 		if(__map_reserved.bvec3 != null) _g.setReserved("bvec3",value12); else _g.h["bvec3"] = value12;
 	}
 	{
-		var value13 = glsl_parser_TokenType.BVEC4;
+		var value13 = glsl_tokens_TokenType.BVEC4;
 		if(__map_reserved.bvec4 != null) _g.setReserved("bvec4",value13); else _g.h["bvec4"] = value13;
 	}
 	{
-		var value14 = glsl_parser_TokenType.IVEC2;
+		var value14 = glsl_tokens_TokenType.IVEC2;
 		if(__map_reserved.ivec2 != null) _g.setReserved("ivec2",value14); else _g.h["ivec2"] = value14;
 	}
 	{
-		var value15 = glsl_parser_TokenType.IVEC3;
+		var value15 = glsl_tokens_TokenType.IVEC3;
 		if(__map_reserved.ivec3 != null) _g.setReserved("ivec3",value15); else _g.h["ivec3"] = value15;
 	}
 	{
-		var value16 = glsl_parser_TokenType.IVEC4;
+		var value16 = glsl_tokens_TokenType.IVEC4;
 		if(__map_reserved.ivec4 != null) _g.setReserved("ivec4",value16); else _g.h["ivec4"] = value16;
 	}
 	{
-		var value17 = glsl_parser_TokenType.MAT2;
+		var value17 = glsl_tokens_TokenType.MAT2;
 		if(__map_reserved.mat2 != null) _g.setReserved("mat2",value17); else _g.h["mat2"] = value17;
 	}
 	{
-		var value18 = glsl_parser_TokenType.MAT3;
+		var value18 = glsl_tokens_TokenType.MAT3;
 		if(__map_reserved.mat3 != null) _g.setReserved("mat3",value18); else _g.h["mat3"] = value18;
 	}
 	{
-		var value19 = glsl_parser_TokenType.MAT4;
+		var value19 = glsl_tokens_TokenType.MAT4;
 		if(__map_reserved.mat4 != null) _g.setReserved("mat4",value19); else _g.h["mat4"] = value19;
 	}
 	{
-		var value20 = glsl_parser_TokenType.SAMPLER2D;
+		var value20 = glsl_tokens_TokenType.SAMPLER2D;
 		if(__map_reserved.sampler2D != null) _g.setReserved("sampler2D",value20); else _g.h["sampler2D"] = value20;
 	}
 	{
-		var value21 = glsl_parser_TokenType.SAMPLERCUBE;
+		var value21 = glsl_tokens_TokenType.SAMPLERCUBE;
 		if(__map_reserved.samplerCube != null) _g.setReserved("samplerCube",value21); else _g.h["samplerCube"] = value21;
 	}
 	{
-		var value22 = glsl_parser_TokenType.BREAK;
+		var value22 = glsl_tokens_TokenType.BREAK;
 		if(__map_reserved["break"] != null) _g.setReserved("break",value22); else _g.h["break"] = value22;
 	}
 	{
-		var value23 = glsl_parser_TokenType.CONTINUE;
+		var value23 = glsl_tokens_TokenType.CONTINUE;
 		if(__map_reserved["continue"] != null) _g.setReserved("continue",value23); else _g.h["continue"] = value23;
 	}
 	{
-		var value24 = glsl_parser_TokenType.WHILE;
+		var value24 = glsl_tokens_TokenType.WHILE;
 		if(__map_reserved["while"] != null) _g.setReserved("while",value24); else _g.h["while"] = value24;
 	}
 	{
-		var value25 = glsl_parser_TokenType.DO;
+		var value25 = glsl_tokens_TokenType.DO;
 		if(__map_reserved["do"] != null) _g.setReserved("do",value25); else _g.h["do"] = value25;
 	}
 	{
-		var value26 = glsl_parser_TokenType.FOR;
+		var value26 = glsl_tokens_TokenType.FOR;
 		if(__map_reserved["for"] != null) _g.setReserved("for",value26); else _g.h["for"] = value26;
 	}
 	{
-		var value27 = glsl_parser_TokenType.IF;
+		var value27 = glsl_tokens_TokenType.IF;
 		if(__map_reserved["if"] != null) _g.setReserved("if",value27); else _g.h["if"] = value27;
 	}
 	{
-		var value28 = glsl_parser_TokenType.ELSE;
+		var value28 = glsl_tokens_TokenType.ELSE;
 		if(__map_reserved["else"] != null) _g.setReserved("else",value28); else _g.h["else"] = value28;
 	}
 	{
-		var value29 = glsl_parser_TokenType.RETURN;
+		var value29 = glsl_tokens_TokenType.RETURN;
 		if(__map_reserved["return"] != null) _g.setReserved("return",value29); else _g.h["return"] = value29;
 	}
 	{
-		var value30 = glsl_parser_TokenType.DISCARD;
+		var value30 = glsl_tokens_TokenType.DISCARD;
 		if(__map_reserved.discard != null) _g.setReserved("discard",value30); else _g.h["discard"] = value30;
 	}
 	{
-		var value31 = glsl_parser_TokenType.STRUCT;
+		var value31 = glsl_tokens_TokenType.STRUCT;
 		if(__map_reserved.struct != null) _g.setReserved("struct",value31); else _g.h["struct"] = value31;
 	}
 	{
-		var value32 = glsl_parser_TokenType.IN;
+		var value32 = glsl_tokens_TokenType.IN;
 		if(__map_reserved["in"] != null) _g.setReserved("in",value32); else _g.h["in"] = value32;
 	}
 	{
-		var value33 = glsl_parser_TokenType.OUT;
+		var value33 = glsl_tokens_TokenType.OUT;
 		if(__map_reserved.out != null) _g.setReserved("out",value33); else _g.h["out"] = value33;
 	}
 	{
-		var value34 = glsl_parser_TokenType.INOUT;
+		var value34 = glsl_tokens_TokenType.INOUT;
 		if(__map_reserved.inout != null) _g.setReserved("inout",value34); else _g.h["inout"] = value34;
 	}
 	{
-		var value35 = glsl_parser_TokenType.INVARIANT;
+		var value35 = glsl_tokens_TokenType.INVARIANT;
 		if(__map_reserved.invariant != null) _g.setReserved("invariant",value35); else _g.h["invariant"] = value35;
 	}
 	{
-		var value36 = glsl_parser_TokenType.PRECISION;
+		var value36 = glsl_tokens_TokenType.PRECISION;
 		if(__map_reserved.precision != null) _g.setReserved("precision",value36); else _g.h["precision"] = value36;
 	}
 	{
-		var value37 = glsl_parser_TokenType.HIGH_PRECISION;
+		var value37 = glsl_tokens_TokenType.HIGH_PRECISION;
 		if(__map_reserved.highp != null) _g.setReserved("highp",value37); else _g.h["highp"] = value37;
 	}
 	{
-		var value38 = glsl_parser_TokenType.MEDIUM_PRECISION;
+		var value38 = glsl_tokens_TokenType.MEDIUM_PRECISION;
 		if(__map_reserved.mediump != null) _g.setReserved("mediump",value38); else _g.h["mediump"] = value38;
 	}
 	{
-		var value39 = glsl_parser_TokenType.LOW_PRECISION;
+		var value39 = glsl_tokens_TokenType.LOW_PRECISION;
 		if(__map_reserved.lowp != null) _g.setReserved("lowp",value39); else _g.h["lowp"] = value39;
 	}
 	{
-		var value40 = glsl_parser_TokenType.BOOLCONSTANT;
+		var value40 = glsl_tokens_TokenType.BOOLCONSTANT;
 		if(__map_reserved["true"] != null) _g.setReserved("true",value40); else _g.h["true"] = value40;
 	}
 	{
-		var value41 = glsl_parser_TokenType.BOOLCONSTANT;
+		var value41 = glsl_tokens_TokenType.BOOLCONSTANT;
 		if(__map_reserved["false"] != null) _g.setReserved("false",value41); else _g.h["false"] = value41;
 	}
 	{
-		var value42 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value42 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.asm != null) _g.setReserved("asm",value42); else _g.h["asm"] = value42;
 	}
 	{
-		var value43 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value43 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["class"] != null) _g.setReserved("class",value43); else _g.h["class"] = value43;
 	}
 	{
-		var value44 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value44 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.union != null) _g.setReserved("union",value44); else _g.h["union"] = value44;
 	}
 	{
-		var value45 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value45 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["enum"] != null) _g.setReserved("enum",value45); else _g.h["enum"] = value45;
 	}
 	{
-		var value46 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value46 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.typedef != null) _g.setReserved("typedef",value46); else _g.h["typedef"] = value46;
 	}
 	{
-		var value47 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value47 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.template != null) _g.setReserved("template",value47); else _g.h["template"] = value47;
 	}
 	{
-		var value48 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value48 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["this"] != null) _g.setReserved("this",value48); else _g.h["this"] = value48;
 	}
 	{
-		var value49 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value49 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.packed != null) _g.setReserved("packed",value49); else _g.h["packed"] = value49;
 	}
 	{
-		var value50 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value50 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["goto"] != null) _g.setReserved("goto",value50); else _g.h["goto"] = value50;
 	}
 	{
-		var value51 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value51 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["switch"] != null) _g.setReserved("switch",value51); else _g.h["switch"] = value51;
 	}
 	{
-		var value52 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value52 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["default"] != null) _g.setReserved("default",value52); else _g.h["default"] = value52;
 	}
 	{
-		var value53 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value53 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.inline != null) _g.setReserved("inline",value53); else _g.h["inline"] = value53;
 	}
 	{
-		var value54 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value54 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.noinline != null) _g.setReserved("noinline",value54); else _g.h["noinline"] = value54;
 	}
 	{
-		var value55 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value55 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["volatile"] != null) _g.setReserved("volatile",value55); else _g.h["volatile"] = value55;
 	}
 	{
-		var value56 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value56 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["public"] != null) _g.setReserved("public",value56); else _g.h["public"] = value56;
 	}
 	{
-		var value57 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value57 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["static"] != null) _g.setReserved("static",value57); else _g.h["static"] = value57;
 	}
 	{
-		var value58 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value58 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.extern != null) _g.setReserved("extern",value58); else _g.h["extern"] = value58;
 	}
 	{
-		var value59 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value59 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.external != null) _g.setReserved("external",value59); else _g.h["external"] = value59;
 	}
 	{
-		var value60 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value60 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["interface"] != null) _g.setReserved("interface",value60); else _g.h["interface"] = value60;
 	}
 	{
-		var value61 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value61 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["long"] != null) _g.setReserved("long",value61); else _g.h["long"] = value61;
 	}
 	{
-		var value62 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value62 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["short"] != null) _g.setReserved("short",value62); else _g.h["short"] = value62;
 	}
 	{
-		var value63 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value63 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["double"] != null) _g.setReserved("double",value63); else _g.h["double"] = value63;
 	}
 	{
-		var value64 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value64 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.half != null) _g.setReserved("half",value64); else _g.h["half"] = value64;
 	}
 	{
-		var value65 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value65 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.fixed != null) _g.setReserved("fixed",value65); else _g.h["fixed"] = value65;
 	}
 	{
-		var value66 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value66 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.unsigned != null) _g.setReserved("unsigned",value66); else _g.h["unsigned"] = value66;
 	}
 	{
-		var value67 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value67 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.input != null) _g.setReserved("input",value67); else _g.h["input"] = value67;
 	}
 	{
-		var value68 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value68 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.output != null) _g.setReserved("output",value68); else _g.h["output"] = value68;
 	}
 	{
-		var value69 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value69 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.hvec2 != null) _g.setReserved("hvec2",value69); else _g.h["hvec2"] = value69;
 	}
 	{
-		var value70 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value70 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.hvec3 != null) _g.setReserved("hvec3",value70); else _g.h["hvec3"] = value70;
 	}
 	{
-		var value71 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value71 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.hvec4 != null) _g.setReserved("hvec4",value71); else _g.h["hvec4"] = value71;
 	}
 	{
-		var value72 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value72 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.dvec2 != null) _g.setReserved("dvec2",value72); else _g.h["dvec2"] = value72;
 	}
 	{
-		var value73 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value73 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.dvec3 != null) _g.setReserved("dvec3",value73); else _g.h["dvec3"] = value73;
 	}
 	{
-		var value74 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value74 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.dvec4 != null) _g.setReserved("dvec4",value74); else _g.h["dvec4"] = value74;
 	}
 	{
-		var value75 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value75 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.fvec2 != null) _g.setReserved("fvec2",value75); else _g.h["fvec2"] = value75;
 	}
 	{
-		var value76 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value76 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.fvec3 != null) _g.setReserved("fvec3",value76); else _g.h["fvec3"] = value76;
 	}
 	{
-		var value77 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value77 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.fvec4 != null) _g.setReserved("fvec4",value77); else _g.h["fvec4"] = value77;
 	}
 	{
-		var value78 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value78 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.sampler1DShadow != null) _g.setReserved("sampler1DShadow",value78); else _g.h["sampler1DShadow"] = value78;
 	}
 	{
-		var value79 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value79 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.sampler2DShadow != null) _g.setReserved("sampler2DShadow",value79); else _g.h["sampler2DShadow"] = value79;
 	}
 	{
-		var value80 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value80 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.sampler2DRect != null) _g.setReserved("sampler2DRect",value80); else _g.h["sampler2DRect"] = value80;
 	}
 	{
-		var value81 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value81 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.sampler3DRect != null) _g.setReserved("sampler3DRect",value81); else _g.h["sampler3DRect"] = value81;
 	}
 	{
-		var value82 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value82 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.sampler2DRectShadow != null) _g.setReserved("sampler2DRectShadow",value82); else _g.h["sampler2DRectShadow"] = value82;
 	}
 	{
-		var value83 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value83 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.sizeof != null) _g.setReserved("sizeof",value83); else _g.h["sizeof"] = value83;
 	}
 	{
-		var value84 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value84 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.cast != null) _g.setReserved("cast",value84); else _g.h["cast"] = value84;
 	}
 	{
-		var value85 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value85 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["namespace"] != null) _g.setReserved("namespace",value85); else _g.h["namespace"] = value85;
 	}
 	{
-		var value86 = glsl_parser_TokenType.RESERVED_KEYWORD;
+		var value86 = glsl_tokens_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.using != null) _g.setReserved("using",value86); else _g.h["using"] = value86;
 	}
 	$r = _g;
 	return $r;
 }(this));
-glsl_parser_Tokenizer.skippableTypes = [glsl_parser_TokenType.WHITESPACE,glsl_parser_TokenType.BLOCK_COMMENT,glsl_parser_TokenType.LINE_COMMENT];
+glsl_tokens_Tokenizer.skippableTypes = [glsl_tokens_TokenType.WHITESPACE,glsl_tokens_TokenType.BLOCK_COMMENT,glsl_tokens_TokenType.LINE_COMMENT];
+js_Boot.__toStr = {}.toString;
 Main.main();
 })(typeof console != "undefined" ? console : {log:function(){}});
+
+//# sourceMappingURL=main.js.map

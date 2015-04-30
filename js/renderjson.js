@@ -87,8 +87,7 @@ var module;
                                                    return a; };
 
     var ignoredKeys = [
-      'nodeName',
-      'newScope'
+      'nodeName'
     ];
 
     function _renderjson(json, indent, dont_indent, show_level, max_string, sort_objects) {
