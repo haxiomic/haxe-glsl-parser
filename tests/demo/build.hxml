@@ -1,6 +1,6 @@
 -js bin/js/main.js 
 -main Main 
 -cp src 
--cp ../../../ 
+-cp ../../ 
 -D analyzer 
 -debug
