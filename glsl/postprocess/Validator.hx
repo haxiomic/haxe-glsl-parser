@@ -2,7 +2,7 @@
 	Todo
 */
 
-package glsl;
+package glsl.postprocess;
 
 import glsl.SyntaxTree.Node;
 

@@ -1,8 +1,8 @@
 package;
 
-import glsl.parser.Preprocessor;
+import glsl.preprocess.Preprocessor;
 import glsl.parser.Parser;
-import glsl.tokenizer.Tokenizer;
+import glsl.tokens.Tokenizer;
 import glsl.SyntaxTree.Node;
 import js.Browser;
 import js.html.DOMElement;
@@ -96,10 +96,10 @@ class Main{
 	}
 
 	function parse(input:String):Node{
-		var tokens = glsl.tokenizer.Tokenizer.tokenize(input);
+		var tokens = Tokenizer.tokenize(input);
 		warnings = warnings.concat(Tokenizer.warnings);
 		
-		tokens = glsl.parser.Preprocessor.process(tokens);
+		tokens = Preprocessor.process(tokens);
 		warnings = warnings.concat(Preprocessor.warnings);
 
 		var ast = Parser.parseTokens(tokens);

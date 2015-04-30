@@ -9,10 +9,10 @@ Supports all platforms available to the [haxe](haxe.org) compiler (notably JavaS
 
 ###[Demo](http://haxiomic.github.io/haxe-glsl-parser/)
 
-##Project Status:
+##Project Status
 ###Complete
 - Parser
-- Printer: pretty and ugly
+- Printer: pretty and compact
 - Preprocessor
 
 ###In progress

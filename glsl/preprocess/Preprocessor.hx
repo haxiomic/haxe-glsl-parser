@@ -10,33 +10,17 @@
 	- handle #line and #extension
 
 	#Notes
-	- operates on glsl tokens and uses its own tokenizer for constant expressions
-
-	--------------------
-	#Dev Notes
-	- some preprocessor directives can only be evaluated on the target platform
-
-	- if's process only a simple subset of expressions and also paste in defines in place
-		(tokenize content to find identifiers)
-
-	- can regular composite variables be used in preprocessor expressions?
-		> in #define, yes, any nonsense can be used - it's just pasting the text string in place
-		> in #if, no, only preprocessor constant expressions are allowed
-
-	- "Undefined identifiers not consumed by the defined operator do not default to '0'. Use of such
+	- in expressions: "Undefined identifiers not consumed by the defined operator do not default to '0'. Use of such
 	identifiers causes an error."
-
-	- defined operator is only available in macro expressions!
-		-> this necessitates a specialized preprocessor expression grammar and evaluator
 */
 
-package glsl.parser;
+package glsl.preprocess;
 
 import glsl.SyntaxTree;
 
-import glsl.tokenizer.Tokenizer;
+import glsl.tokens.Tokenizer;
 
-using glsl.tokenizer.TokenHelper;
+using glsl.tokens.TokenHelper;
 using glsl.printer.TokenHelper;
 
 class Preprocessor{
@@ -305,7 +289,7 @@ class Preprocessor{
 						//handle branches in reverse order to prevent position conflicts
 						var c = branches[branches.length - 1 - bi];
 						//if any macros are referenced in the branch directive, they should be marked as required
-						//@! this uses glsl tokenizer to extract identifiers rather than specialized pp tokenizer
+						//@! this uses glsl.tokens to extract identifiers rather than specialized pp tokenizer
 						switch readDirectiveData(c.directiveToken.data) {
 							case {title: 'if', content: content}, {title: 'elif', content: content}:
 								var directiveTokens = Tokenizer.tokenize(content);

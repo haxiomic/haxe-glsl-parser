@@ -1,4 +1,4 @@
-import glsl.tokenizer.Tokenizer;
+import glsl.tokens.Tokenizer;
 
 class Main{
 

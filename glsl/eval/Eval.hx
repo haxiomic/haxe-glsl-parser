@@ -375,7 +375,6 @@ class Eval{
 
 	//Error Reporting
 	static function warn(msg){
-		trace('Eval warning: $msg');//@!
 		warnings.push('Eval warning: $msg');
 	}
 
