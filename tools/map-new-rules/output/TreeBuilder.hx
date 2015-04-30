@@ -5,15 +5,15 @@
 	@author George Corney
 */
 
-package glsl.parser;
+package glsl.parse;
 
-import glsl.tokens.Tokenizer.Token;
+import glsl.token.Tokenizer.Token;
 import glsl.SyntaxTree;
 
 typedef MinorType = Dynamic;
 
 
-@:access(glsl.parser.Parser)
+@:access(glsl.parse.Parser)
 class TreeBuilder{
 
 	static var i(get, null):Int;

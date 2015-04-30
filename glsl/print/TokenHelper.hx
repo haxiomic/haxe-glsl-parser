@@ -6,7 +6,7 @@
 
 */
 
-package glsl.printer;
+package glsl.print;
 
 typedef PrintableToken = {data:String};
 

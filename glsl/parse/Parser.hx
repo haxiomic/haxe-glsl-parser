@@ -7,11 +7,11 @@
 	@author George Corney
 */
 
-package glsl.parser;
+package glsl.parse;
 
-import glsl.parser.TreeBuilder.MinorType;
+import glsl.parse.TreeBuilder.MinorType;
 
-import glsl.tokens.Tokenizer;
+import glsl.token.Tokenizer;
 
 class Parser{
 	

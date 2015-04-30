@@ -2,7 +2,7 @@
 	Modified GLSL ES 1.0 Rules 
 	(https://www.khronos.org/files/opengles_shading_language.pdf)
 
-	Modified to support preprocessor tokens as translation_units and statements
+	Modified to accept preprocessor tokens as translation_units and statements
 */
 
 package rulemaps;

@@ -114,9 +114,9 @@ class Primitive<T> implements Expression implements TypedExpression{
 
 	private function set_value(v:T):T{
 		switch(dataType){
-			case INT: raw = glsl.printer.Utils.glslIntString(cast v);
-			case FLOAT: raw = glsl.printer.Utils.glslFloatString(cast v);
-			case BOOL: raw = glsl.printer.Utils.glslBoolString(cast v);
+			case INT: raw = glsl.print.Utils.glslIntString(cast v);
+			case FLOAT: raw = glsl.print.Utils.glslFloatString(cast v);
+			case BOOL: raw = glsl.print.Utils.glslBoolString(cast v);
 			default: raw = '';
 		}
 		return value = v;

@@ -22,7 +22,34 @@
 
 #Notes
 
+##TYPE_NAME scope test
+```
+struct A{
+    int a;
+};
+
+void main(in A, out A[5]){
+    	struct S {
+			int x, y;
+		};
+		{
+			S S = S(0,0); // 'S' is only visible as a struct and constructor
+			S; // 'S' is now visible only as a variable
+		}
+}
+```
+
+
+
+
+
+
+
+
+
+
 Preprocessor ifs
+```
 #ifdef A
 1
 #elif B == 12
@@ -32,7 +59,7 @@ Preprocessor ifs
 #else
 4
 #endif
-
+```
 {isDefined(A), [1]} , {eval(B == 12), [2]} , {eval(B == 3), [3]} , {!eval(B == 3), [3]}
 
 

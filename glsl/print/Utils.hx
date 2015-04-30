@@ -1,4 +1,4 @@
-package glsl.printer;
+package glsl.print;
 
 class Utils{
 

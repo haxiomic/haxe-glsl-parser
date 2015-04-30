@@ -7,11 +7,11 @@
 		- faster indentation?
 */
 
-package glsl.printer;
+package glsl.print;
 
 import glsl.SyntaxTree;
 
-using glsl.printer.SyntaxTreeHelper;
+using glsl.print.SyntaxTreeHelper;
 using glsl.SyntaxTree.NodeEnumHelper;
 
 class NodePrinter{

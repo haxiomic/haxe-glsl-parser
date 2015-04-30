@@ -1,6 +1,6 @@
-package glsl.tokens;
+package glsl.token;
 
-import glsl.tokens.Tokenizer;
+import glsl.token.Tokenizer;
 
 class TokenHelper{
 

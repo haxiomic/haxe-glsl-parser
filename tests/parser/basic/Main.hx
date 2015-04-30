@@ -1,4 +1,4 @@
-import glsl.tokens.Tokenizer;
+import glsl.token.Tokenizer;
 
 class Main{
 
@@ -21,7 +21,7 @@ class Main{
 
 		//traceCTokenArray();
 
-		var ast = glsl.parser.Parser.parseTokens(tokens);
+		var ast = glsl.parse.Parser.parseTokens(tokens);
 		trace('\n\n\n');
 		trace(haxe.Json.stringify(ast));
 	}
@@ -30,7 +30,7 @@ class Main{
 	static function traceCTokenArray(tokens:Array<Token>){
 		var ids:Array<Int> = [];
 		for(t in tokens){
-			var id = glsl.parser.ParserTables.tokenIdMap.get(t.type);
+			var id = glsl.parse.ParserTables.tokenIdMap.get(t.type);
 			if(id != null) ids.push(id);
 		}
 
