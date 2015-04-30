@@ -1,7 +1,7 @@
 #!/bin/bash
 {
 
-	DEMO_DIR=tests/parser/demo/
+	DEMO_DIR=tests/demo/
 	DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 	#enter directory of the script
