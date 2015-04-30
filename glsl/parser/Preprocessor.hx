@@ -7,6 +7,7 @@
 	@! Todo
 	- create custom expression tokenizer
 		- example shader https://www.shadertoy.com/view/Xl2GDm
+	- handle #line and #extension
 
 	#Notes
 	- operates on glsl tokens and uses its own tokenizer for constant expressions
@@ -33,9 +34,9 @@ package glsl.parser;
 
 import glsl.SyntaxTree;
 
-import glsl.parser.Tokenizer;
+import glsl.tokenizer.Tokenizer;
 
-using Preprocessor.PPTokensHelper;
+using glsl.tokenizer.TokenHelper;
 using glsl.printer.TokenHelper;
 
 class Preprocessor{
@@ -266,10 +267,8 @@ class Preprocessor{
 				}
 				//close the last block
 				closeBlock();
-			}catch(msg:String){
-				throw Warn(msg, t); //set line information to current token
 			}catch(e:Dynamic){
-				throw alterErrorInfo(e, t);
+				throw replaceErrorInfo(e, t);
 			}
 
 			//if-switch extent = i -> j (inclusive of j)
@@ -310,13 +309,14 @@ class Preprocessor{
 						switch readDirectiveData(c.directiveToken.data) {
 							case {title: 'if', content: content}, {title: 'elif', content: content}:
 								var directiveTokens = Tokenizer.tokenize(content);
-								for(dt in directiveTokens) 
+								for(dt in directiveTokens){
 									if(dt.type.isIdentifierType() && dt.data != 'defined'){ //(ignore defined operator)
 										var ppMacro = this.getMacro(dt.data);
 										if(ppMacro != null){
 											requiredMacros.set(dt.data, ppMacro);
 										}
 									}
+								}
 							case null, _:
 						}
 
@@ -334,9 +334,9 @@ class Preprocessor{
 							userDefinedMacros.set(id, UnresolveableMacro(ppMacro));
 						}
 						pp.onMacroUndefined = function(id){
-							//mark macro as unresolvable
 							var existingMacro = userMacrosBefore.get(id);
 							if(existingMacro == null) return;
+							//mark macro as unresolvable
 							userDefinedMacros.set(id, UnresolveableMacro(existingMacro));
 							//references will be left in the source; mark as required macro
 							requiredMacros.set(id, existingMacro);
@@ -358,19 +358,19 @@ class Preprocessor{
 					for(id in requiredMacros.keys()){
 						var requiredMacro = requiredMacros.get(id);
 
+						var undefineStr = '#undef $id';
 						var defineStr = switch requiredMacro {
 							case UserMacroObject(content): '#define $id $content';
 							case UserMacroFunction(content, params): '#define $id(${params.join(", ")}) $content';
 							default: continue;
 						}
-						var undefineStr = '#undef $id';
 
 						var glsl = undefineStr + '\n' + defineStr + '\n';
 						//build tokens
 						prependTokens = prependTokens.concat(Tokenizer.tokenize(glsl));
 					}
 
-					//insert token (and newline) above first #if directive
+					//insert definition tokens above first #if directive
 					tokens.insertTokens(start, prependTokens);
 
 					//everything's been shifted - update position trackers
@@ -384,7 +384,7 @@ class Preprocessor{
 					
 					//pass error on
 					//attach correct token position info to error
-					throw alterErrorInfo(e, b.directiveToken);
+					throw replaceErrorInfo(e, b.directiveToken);
 				}
 			}
 
@@ -663,6 +663,7 @@ class Preprocessor{
 					}catch(e:Dynamic){
 						//identifier isn't a function call; ignore
 					}
+					
 				case BuiltinMacroObject(func):
 					var newTokens = tokenizeContent(func());
 					//delete identifier token (current token)
@@ -798,7 +799,7 @@ class Preprocessor{
 		return str;
 	}
 
-	function alterErrorInfo(error:Dynamic, newInfo:Dynamic):Dynamic{
+	function replaceErrorInfo(error:Dynamic, newInfo:Dynamic):Dynamic{
 		return switch Type.typeof(error){
 			case Type.ValueType.TEnum(PPError):
 				switch error{
@@ -861,93 +862,4 @@ enum PPError{
 	Note(msg:String, info:Dynamic);
 	Warn(msg:String, info:Dynamic);
 	Error(msg:String, info:Dynamic);
-}
-
-@:access(glsl.parser.Preprocessor)
-class PPTokensHelper{
-
-	//returns the token n tokens away from token start, ignoring skippables. Supports negative n
-	static public function nextNonSkipToken(tokens:Array<Token>, start:Int, n:Int = 1, ?requiredType:TokenType):Token{
-		var j = nextNonSkipTokenIndex(tokens, start, n, requiredType);
-		return j != -1 ? tokens[j] : null;
-	}
-
-	static public function nextNonSkipTokenIndex(tokens:Array<Token>, start:Int, n:Int = 1, ?requiredType:TokenType):Int{
-		var direction = n >= 0 ? 1 : -1;
-		var j = start;
-		var m = Math.abs(n);
-		var t:Token;
-		while(m > 0){
-			j += direction;//advance token
-			t = tokens[j];
-			if(t == null) return -1;
-			//continue for skip over
-			if(requiredType != null && !t.type.equals(requiredType)) continue;
-			if(Tokenizer.skippableTypes.indexOf(t.type) != -1) continue;
-			m--;
-		}
-		return j;
-	}
-
-	static public function deleteTokens(tokens:Array<Token>, start:Int, count:Int = 1){
-		return tokens.splice(start, count);
-	}
-
-	static public function insertTokens(tokens:Array<Token>, start:Int, newTokens:Array<Token>){
-		var j = newTokens.length;
-		while(--j >= 0) tokens.insert(start, newTokens[j]);
-		return tokens;
-	}
-
-	static public inline function isIdentifierType(type:TokenType){
-		return identifierTokens.indexOf(type) >= 0;
-	}
-
-	static var identifierTokens:Array<TokenType> = [
-		IDENTIFIER,
-		ATTRIBUTE,
-		UNIFORM,
-		VARYING,
-		CONST,
-		VOID,
-		INT,
-		FLOAT,
-		BOOL,
-		VEC2,
-		VEC3,
-		VEC4,
-		BVEC2,
-		BVEC3,
-		BVEC4,
-		IVEC2,
-		IVEC3,
-		IVEC4,
-		MAT2,
-		MAT3,
-		MAT4,
-		SAMPLER2D,
-		SAMPLERCUBE,
-		BREAK,
-		CONTINUE,
-		WHILE,
-		DO,
-		FOR,
-		IF,
-		ELSE,
-		RETURN,
-		DISCARD,
-		STRUCT,
-		IN,
-		OUT,
-		INOUT,
-		INVARIANT,
-		PRECISION,
-		HIGH_PRECISION,
-		MEDIUM_PRECISION,
-		LOW_PRECISION,
-		BOOLCONSTANT,
-		RESERVED_KEYWORD,
-		TYPE_NAME,
-		FIELD_SELECTION
-	];
 }

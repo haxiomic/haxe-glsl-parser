@@ -2,7 +2,7 @@ package;
 
 import glsl.parser.Preprocessor;
 import glsl.parser.Parser;
-import glsl.parser.Tokenizer;
+import glsl.tokenizer.Tokenizer;
 import glsl.SyntaxTree.Node;
 import js.Browser;
 import js.html.DOMElement;
@@ -96,7 +96,7 @@ class Main{
 	}
 
 	function parse(input:String):Node{
-		var tokens = glsl.parser.Tokenizer.tokenize(input);
+		var tokens = glsl.tokenizer.Tokenizer.tokenize(input);
 		warnings = warnings.concat(Tokenizer.warnings);
 		
 		tokens = glsl.parser.Preprocessor.process(tokens);

@@ -11,8 +11,7 @@ package glsl.parser;
 
 import glsl.parser.TreeBuilder.MinorType;
 
-import glsl.parser.Tokenizer.Token;
-import glsl.parser.Tokenizer.TokenType;
+import glsl.tokenizer.Tokenizer;
 
 class Parser{
 	

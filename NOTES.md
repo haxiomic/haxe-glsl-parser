@@ -1,34 +1,12 @@
 #Todo
 -----
-- account for scoping when finding TYPE_NAME references in Tokenizer
-	Scoping:
-
-		void functionName( new< ){
-			no_new
-		} >
-
-		if( no_new ){ new< > }else{ new< > }
-
-		while( no_new ){ no_new }
-		do{ no_new }while( no_new )
-
-		for( new< > ){ no_new }
-
-
-	Unusual situations:
-		struct S {
-			int x, y;
-		};
-		{
-			S S = S(0,0); // 'S' is only visible as a struct and constructor
-			S; // 'S' is now visible only as a variable
-		}
-
-	-> ** this requires that variable definitions are tracked and override user types **
-
-	- type name can either be a type-specifier's dataType or a constructor
-
-- The parser knows nothing about scope
+- Scoping within parser
+	- Ensure correct behavior of TYPE_NAME
+- Refactor, move out Tokenizer, TokenHelper and Preprocessor
+- Support for complex types in Eval + Improved operator selection in Eval
+- Parser core separation
+- Preprocessor expression parser and eval
+- Validator
 
 - Move demo out of test/parser
 

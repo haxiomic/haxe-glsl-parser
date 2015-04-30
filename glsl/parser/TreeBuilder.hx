@@ -7,7 +7,7 @@
 
 package glsl.parser;
 
-import glsl.parser.Tokenizer.Token;
+import glsl.tokenizer.Tokenizer.Token;
 import glsl.SyntaxTree;
 
 typedef MinorType = Dynamic;

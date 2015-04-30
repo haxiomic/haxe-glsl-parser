@@ -7,7 +7,7 @@
 	* Scan and read ahead technique
 */
 
-package glsl.parser;
+package glsl.tokenizer;
 
 typedef Token = {
 	var type:TokenType;
@@ -163,25 +163,6 @@ class Tokenizer{
 					t.type = TYPE_NAME;
 			}
 		}
-
-		//@! new method
-		//identify type references
-		//keep as minimal and flexible as possible
-		//essentially writing a mini parser
-
-		//scopes
-		/*	
-			//minimal function definition
-			IDENTIFIER( new< * ){ * >}
-
-			IF( no_new ){ new< * > }ELSE{ new< * > }
-			IF( no_new ) new< * >; ELSE new< * >;
-
-			WHILE( no_new ){ no_new }
-			DO{ no_new }WHILE( no_new )
-
-			FOR( new< * >){ no_new }
-		*/
 
 		return tokens;
 	}

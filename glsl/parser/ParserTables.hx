@@ -4,8 +4,7 @@
 
 package glsl.parser;
 
-import glsl.parser.Tokenizer.Token;
-import glsl.parser.Tokenizer.TokenType;
+import glsl.tokenizer.Tokenizer.TokenType;
 import glsl.parser.Parser.RuleInfoEntry;
 
 class ParserTables{

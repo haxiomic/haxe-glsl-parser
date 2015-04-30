@@ -1,4 +1,4 @@
-import glsl.parser.Tokenizer;
+import glsl.tokenizer.Tokenizer;
 
 class Main{
 	static var input:String;
