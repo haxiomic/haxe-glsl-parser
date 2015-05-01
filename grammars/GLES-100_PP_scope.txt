@@ -1,5 +1,9 @@
 // GLSL ES 1.0 Grammar
-// Taken from https://www.khronos.org/files/opengles_shading_language.pdf  
+// Taken from https://www.khronos.org/files/opengles_shading_language.pdf
+
+// Modifications:
+// - accept preprocessor tokens as translation_units and statements
+// - dummy rules for tracking scope
 
 variable_identifier:
     IDENTIFIER
@@ -283,9 +287,18 @@ initializer:
 declaration_statement:
     declaration
 
-statement_no_new_scope:
+//@! new
+statement:
     compound_statement_with_scope
     simple_statement
+
+statement_no_new_scope:
+    compound_statement_no_new_scope //@! was compound_statement_with_scope
+    simple_statement
+
+statement_with_scope:
+    scope_push compound_statement_no_new_scope scope_pop
+    scope_push simple_statement scope_pop
 
 simple_statement:
     declaration_statement
@@ -297,19 +310,15 @@ simple_statement:
 
 compound_statement_with_scope:
     LEFT_BRACE RIGHT_BRACE
-    LEFT_BRACE statement_list RIGHT_BRACE
-
-statement_with_scope:
-    compound_statement_no_new_scope
-    simple_statement
+    LEFT_BRACE scope_push statement_list scope_pop RIGHT_BRACE
 
 compound_statement_no_new_scope:
     LEFT_BRACE RIGHT_BRACE
     LEFT_BRACE statement_list RIGHT_BRACE
 
 statement_list:
-    statement_no_new_scope
-    statement_list statement_no_new_scope
+    statement
+    statement_list statement
 
 expression_statement:
     SEMICOLON
@@ -327,9 +336,9 @@ condition:
     fully_specified_type IDENTIFIER EQUAL initializer
 
 iteration_statement:
-    WHILE LEFT_PAREN condition RIGHT_PAREN statement_no_new_scope
+    WHILE LEFT_PAREN scope_push condition RIGHT_PAREN statement_no_new_scope scope_pop
     DO statement_with_scope WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON
-    FOR LEFT_PAREN for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope
+    FOR LEFT_PAREN scope_push for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope scope_pop
 
 for_init_statement:
     expression_statement
@@ -360,8 +369,16 @@ external_declaration:
     preprocessor_directive //non-spec
 
 function_definition:
-    function_prototype compound_statement_no_new_scope
+    function_prototype scope_push compound_statement_no_new_scope scope_pop
 
 //non-spec support for preprocessor directives in the AST
 preprocessor_directive:
     PREPROCESSOR_DIRECTIVE
+
+
+//dummy rules for tracking scope
+scope_push:
+    *empty*
+
+scope_pop:
+    *empty*

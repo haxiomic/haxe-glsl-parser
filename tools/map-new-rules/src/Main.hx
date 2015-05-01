@@ -14,10 +14,12 @@ enum ChangeType{
 
 class Main{
 	static function main(){
-		var c = getChanges(rulemaps.GLSL_ES_100_PP.map, rulemaps.GLSL_ES_100.map);
+
+		//start
+		var c = getChanges(rulemaps.GLES_100_PP_scope_v2.map, rulemaps.GLES_100_PP_scope_v1.map);
 
 		var filename = 'TreeBuilder.hx';
-		var treeBuilderPath = Path.join([getProjectRoot(), 'glsl', 'parser', filename]);
+		var treeBuilderPath = Path.join([getProjectRoot(), 'glsl', 'parse', filename]);
 		var input = sys.io.File.getContent(treeBuilderPath);
 		var processed = applyChanges(c, input);
 

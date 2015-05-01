@@ -2,7 +2,7 @@ import haxe.io.Path;
 
 class Main{
 	static var projectRoot = getProjectRoot();
-	static var grammarFile = Path.join([projectRoot, 'grammars', 'glsl-es-100.txt']);
+	static var grammarFile = Path.join([projectRoot, 'grammars', 'GLES-100_pp_scope.txt']);
 
 	static function main() {
 		var grammar = sys.io.File.getContent(grammarFile);
@@ -16,7 +16,10 @@ class Main{
 		//generate lemon grammar file
 		var lemonGrammar = LemonGrammarGenerator.generate(ast, 'translation_unit');
 		
-		var savePath = Path.join([projectRoot, 'grammars', 'glsl-es-100-lemon.y']);
+		var grammarFilename = Path.withoutExtension(Path.withoutDirectory(grammarFile));
+		var grammarDirectory = Path.directory(grammarFile);
+
+		var savePath = Path.join([grammarDirectory, '$grammarFilename.lemon']);
 		sys.io.File.saveContent(savePath, lemonGrammar);
 		trace('Lemon grammar generated as $savePath');
 	}

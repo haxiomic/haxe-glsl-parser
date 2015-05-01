@@ -7,7 +7,7 @@
 
 package rulemaps;
 
-class GLSL_ES_100_PP{
+class GLES_100_PP_scope_v1{
 	static public var map:Map<String, Int> = [
 		'root ::= translation_unit' => 0,
 		'variable_identifier ::= IDENTIFIER' => 1,
@@ -187,9 +187,9 @@ class GLSL_ES_100_PP{
 		'simple_statement ::= jump_statement' => 175,
 		'simple_statement ::= preprocessor_directive' => 176,
 		'compound_statement_with_scope ::= LEFT_BRACE RIGHT_BRACE' => 177,
-		'compound_statement_with_scope ::= LEFT_BRACE statement_list RIGHT_BRACE' => 178,
+		'compound_statement_with_scope ::= LEFT_BRACE scope_push statement_list scope_pop RIGHT_BRACE' => 178,
 		'statement_with_scope ::= compound_statement_no_new_scope' => 179,
-		'statement_with_scope ::= simple_statement' => 180,
+		'statement_with_scope ::= scope_push simple_statement scope_pop' => 180,
 		'compound_statement_no_new_scope ::= LEFT_BRACE RIGHT_BRACE' => 181,
 		'compound_statement_no_new_scope ::= LEFT_BRACE statement_list RIGHT_BRACE' => 182,
 		'statement_list ::= statement_no_new_scope' => 183,
@@ -203,7 +203,7 @@ class GLSL_ES_100_PP{
 		'condition ::= fully_specified_type IDENTIFIER EQUAL initializer' => 191,
 		'iteration_statement ::= WHILE LEFT_PAREN condition RIGHT_PAREN statement_no_new_scope' => 192,
 		'iteration_statement ::= DO statement_with_scope WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON' => 193,
-		'iteration_statement ::= FOR LEFT_PAREN for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope' => 194,
+		'iteration_statement ::= FOR LEFT_PAREN scope_push for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope scope_pop' => 194,
 		'for_init_statement ::= expression_statement' => 195,
 		'for_init_statement ::= declaration_statement' => 196,
 		'conditionopt ::= condition' => 197,
@@ -220,7 +220,9 @@ class GLSL_ES_100_PP{
 		'external_declaration ::= function_definition' => 208,
 		'external_declaration ::= declaration' => 209,
 		'external_declaration ::= preprocessor_directive' => 210,
-		'function_definition ::= function_prototype compound_statement_no_new_scope' => 211,
-		'preprocessor_directive ::= PREPROCESSOR_DIRECTIVE' => 212
+		'function_definition ::= function_prototype scope_push compound_statement_no_new_scope scope_pop' => 211,
+		'preprocessor_directive ::= PREPROCESSOR_DIRECTIVE' => 212,
+		'scope_push ::=' => 213,
+		'scope_pop ::=' => 214
 	];
 }

@@ -1,11 +1,13 @@
 /*
-	Unaltered GLSL ES 1.0 Rules
-	Generated from https://www.khronos.org/files/opengles_shading_language.pdf
+	Modified GLSL ES 1.0 Rules 
+	(https://www.khronos.org/files/opengles_shading_language.pdf)
+
+	Modified to accept preprocessor tokens as translation_units and statements
 */
 
 package rulemaps;
 
-class GLSL_ES_100{
+class GLES_100_PP{
 	static public var map:Map<String, Int> = [
 		'root ::= translation_unit' => 0,
 		'variable_identifier ::= IDENTIFIER' => 1,
@@ -183,39 +185,42 @@ class GLSL_ES_100{
 		'simple_statement ::= selection_statement' => 173,
 		'simple_statement ::= iteration_statement' => 174,
 		'simple_statement ::= jump_statement' => 175,
-		'compound_statement_with_scope ::= LEFT_BRACE RIGHT_BRACE' => 176,
-		'compound_statement_with_scope ::= LEFT_BRACE statement_list RIGHT_BRACE' => 177,
-		'statement_with_scope ::= compound_statement_no_new_scope' => 178,
-		'statement_with_scope ::= simple_statement' => 179,
-		'compound_statement_no_new_scope ::= LEFT_BRACE RIGHT_BRACE' => 180,
-		'compound_statement_no_new_scope ::= LEFT_BRACE statement_list RIGHT_BRACE' => 181,
-		'statement_list ::= statement_no_new_scope' => 182,
-		'statement_list ::= statement_list statement_no_new_scope' => 183,
-		'expression_statement ::= SEMICOLON' => 184,
-		'expression_statement ::= expression SEMICOLON' => 185,
-		'selection_statement ::= IF LEFT_PAREN expression RIGHT_PAREN selection_rest_statement' => 186,
-		'selection_rest_statement ::= statement_with_scope ELSE statement_with_scope' => 187,
-		'selection_rest_statement ::= statement_with_scope' => 188,
-		'condition ::= expression' => 189,
-		'condition ::= fully_specified_type IDENTIFIER EQUAL initializer' => 190,
-		'iteration_statement ::= WHILE LEFT_PAREN condition RIGHT_PAREN statement_no_new_scope' => 191,
-		'iteration_statement ::= DO statement_with_scope WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON' => 192,
-		'iteration_statement ::= FOR LEFT_PAREN for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope' => 193,
-		'for_init_statement ::= expression_statement' => 194,
-		'for_init_statement ::= declaration_statement' => 195,
-		'conditionopt ::= condition' => 196,
-		'conditionopt ::=' => 197,
-		'for_rest_statement ::= conditionopt SEMICOLON' => 198,
-		'for_rest_statement ::= conditionopt SEMICOLON expression' => 199,
-		'jump_statement ::= CONTINUE SEMICOLON' => 200,
-		'jump_statement ::= BREAK SEMICOLON' => 201,
-		'jump_statement ::= RETURN SEMICOLON' => 202,
-		'jump_statement ::= RETURN expression SEMICOLON' => 203,
-		'jump_statement ::= DISCARD SEMICOLON' => 204,
-		'translation_unit ::= external_declaration' => 205,
-		'translation_unit ::= translation_unit external_declaration' => 206,
-		'external_declaration ::= function_definition' => 207,
-		'external_declaration ::= declaration' => 208,
-		'function_definition ::= function_prototype compound_statement_no_new_scope' => 209
+		'simple_statement ::= preprocessor_directive' => 176,
+		'compound_statement_with_scope ::= LEFT_BRACE RIGHT_BRACE' => 177,
+		'compound_statement_with_scope ::= LEFT_BRACE statement_list RIGHT_BRACE' => 178,
+		'statement_with_scope ::= compound_statement_no_new_scope' => 179,
+		'statement_with_scope ::= simple_statement' => 180,
+		'compound_statement_no_new_scope ::= LEFT_BRACE RIGHT_BRACE' => 181,
+		'compound_statement_no_new_scope ::= LEFT_BRACE statement_list RIGHT_BRACE' => 182,
+		'statement_list ::= statement_no_new_scope' => 183,
+		'statement_list ::= statement_list statement_no_new_scope' => 184,
+		'expression_statement ::= SEMICOLON' => 185,
+		'expression_statement ::= expression SEMICOLON' => 186,
+		'selection_statement ::= IF LEFT_PAREN expression RIGHT_PAREN selection_rest_statement' => 187,
+		'selection_rest_statement ::= statement_with_scope ELSE statement_with_scope' => 188,
+		'selection_rest_statement ::= statement_with_scope' => 189,
+		'condition ::= expression' => 190,
+		'condition ::= fully_specified_type IDENTIFIER EQUAL initializer' => 191,
+		'iteration_statement ::= WHILE LEFT_PAREN condition RIGHT_PAREN statement_no_new_scope' => 192,
+		'iteration_statement ::= DO statement_with_scope WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON' => 193,
+		'iteration_statement ::= FOR LEFT_PAREN for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope' => 194,
+		'for_init_statement ::= expression_statement' => 195,
+		'for_init_statement ::= declaration_statement' => 196,
+		'conditionopt ::= condition' => 197,
+		'conditionopt ::=' => 198,
+		'for_rest_statement ::= conditionopt SEMICOLON' => 199,
+		'for_rest_statement ::= conditionopt SEMICOLON expression' => 200,
+		'jump_statement ::= CONTINUE SEMICOLON' => 201,
+		'jump_statement ::= BREAK SEMICOLON' => 202,
+		'jump_statement ::= RETURN SEMICOLON' => 203,
+		'jump_statement ::= RETURN expression SEMICOLON' => 204,
+		'jump_statement ::= DISCARD SEMICOLON' => 205,
+		'translation_unit ::= external_declaration' => 206,
+		'translation_unit ::= translation_unit external_declaration' => 207,
+		'external_declaration ::= function_definition' => 208,
+		'external_declaration ::= declaration' => 209,
+		'external_declaration ::= preprocessor_directive' => 210,
+		'function_definition ::= function_prototype compound_statement_no_new_scope' => 211,
+		'preprocessor_directive ::= PREPROCESSOR_DIRECTIVE' => 212
 	];
 }
