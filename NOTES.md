@@ -1,16 +1,15 @@
 #Todo
 -----
-- Scoping within parser
-	- Ensure correct behavior of TYPE_NAME
-- Refactor, move out Tokenizer, TokenHelper and Preprocessor
+- TYPE_NAME scoping:
+	-> fix function parameter scope issue
+	-> define parameters in parseContext
 - Support for complex types in Eval + Improved operator selection in Eval
 - Parser core separation
 - Preprocessor expression parser and eval
 - Validator
 
-- Move demo out of test/parser
+- Handle setting the default precision with parseContext
 
-- create preprocess/, postprocess/ and tokenizer/
 - isolate core parser for resuse by preprocessor
 
 - We probably need a preprocessor expression parser that includes the defined operator

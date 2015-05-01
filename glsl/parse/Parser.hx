@@ -37,12 +37,10 @@ class Parser{
 		errorCount = 0;
 		currentNode = null;
 		warnings = [];
-		TreeBuilder.reset();
+		TreeBuilder.init();
 	}
 
 	static public function parse(input:String){
-		init();
-
 		var tokens = Tokenizer.tokenize(input);
 		return parseTokens(tokens);
 	}
@@ -54,6 +52,7 @@ class Parser{
 		var lastToken = null;
 		for(t in tokens){
 			if(ignoredTokens.indexOf(t.type) != -1) continue;
+			t = TreeBuilder.processToken(t);
 			parseStep(tokenIdMap.get(t.type), t);
 			lastToken = t;
 		}
@@ -247,43 +246,43 @@ class Parser{
 	}
 
 	//Language Data & Parser Settings
-	static inline var errorsSymbol:Bool       = ParserTables.errorsSymbol;
+	static inline var errorsSymbol:Bool       = Tables.errorsSymbol;
 	//consts
-	static inline var illegalSymbolNumber:Int = ParserTables.illegalSymbolNumber;
+	static inline var illegalSymbolNumber:Int = Tables.illegalSymbolNumber;
 
-	static inline var nStates                 = ParserTables.nStates;
-	static inline var nRules                  = ParserTables.nRules;
+	static inline var nStates                 = Tables.nStates;
+	static inline var nRules                  = Tables.nRules;
 	static inline var noAction                = nStates + nRules + 2;
 	static inline var acceptAction            = nStates + nRules + 1;
 	static inline var errorAction             = nStates + nRules;
 
 	//tables
-	static var actionCount                    = ParserTables.actionCount;
-	static var action:Array<Int>              = ParserTables.action;
-	static var lookahead:Array<Int>           = ParserTables.lookahead;
+	static var actionCount                    = Tables.actionCount;
+	static var action:Array<Int>              = Tables.action;
+	static var lookahead:Array<Int>           = Tables.lookahead;
 
-	static inline var shiftUseDefault         = ParserTables.shiftUseDefault;
-	static inline var shiftCount              = ParserTables.shiftCount;
-	static inline var shiftOffsetMin          = ParserTables.shiftOffsetMin;
-	static inline var shiftOffsetMax          = ParserTables.shiftOffsetMax;
-	static var shiftOffset:Array<Int>         = ParserTables.shiftOffset;
+	static inline var shiftUseDefault         = Tables.shiftUseDefault;
+	static inline var shiftCount              = Tables.shiftCount;
+	static inline var shiftOffsetMin          = Tables.shiftOffsetMin;
+	static inline var shiftOffsetMax          = Tables.shiftOffsetMax;
+	static var shiftOffset:Array<Int>         = Tables.shiftOffset;
 
-	static inline var reduceUseDefault        = ParserTables.reduceUseDefault;
-	static inline var reduceCount             = ParserTables.reduceCount;
-	static inline var reduceMin               = ParserTables.reduceMin;
-	static inline var reduceMax               = ParserTables.reduceMax;
-	static var reduceOffset:Array<Int>        = ParserTables.reduceOffset;
+	static inline var reduceUseDefault        = Tables.reduceUseDefault;
+	static inline var reduceCount             = Tables.reduceCount;
+	static inline var reduceMin               = Tables.reduceMin;
+	static inline var reduceMax               = Tables.reduceMax;
+	static var reduceOffset:Array<Int>        = Tables.reduceOffset;
 
-	static var defaultAction:Array<Int>       = ParserTables.defaultAction;
+	static var defaultAction:Array<Int>       = Tables.defaultAction;
 
 	//rule info table
-	static var ruleInfo:Array<RuleInfoEntry>  = ParserTables.ruleInfo;
+	static var ruleInfo:Array<RuleInfoEntry>  = Tables.ruleInfo;
 
 	//tokenId
-	static var tokenIdMap:Map<TokenType, Int> = ParserTables.tokenIdMap;
+	static var tokenIdMap:Map<TokenType, Int> = Tables.tokenIdMap;
 
 	//skip-over tokens
-	static var ignoredTokens:Array<TokenType> = ParserTables.ignoredTokens;
+	static var ignoredTokens:Array<TokenType> = Tables.ignoredTokens;
 }
 
 abstract RuleInfoEntry(Array<Int>) from Array<Int> {

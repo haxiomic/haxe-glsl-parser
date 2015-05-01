@@ -58,7 +58,7 @@ class Main{
 					var r = new EReg('(\\bcase\\s+'+oldIdx+'\\s*\\:)', '');
 					result = r.replace(result, 'case '+newIdx+':');
 					reportChange(c);
-				case ct: 
+				case ct:
 					incomplete.push(ct);
 			}
 		}

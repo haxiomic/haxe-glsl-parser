@@ -10,6 +10,7 @@
 package glsl.parse;
 
 import glsl.token.Tokenizer.Token;
+import glsl.token.Tokenizer.TokenType;
 import glsl.SyntaxTree;
 
 typedef MinorType = Dynamic;
@@ -22,6 +23,33 @@ class TreeBuilder{
 	static var stack(get, null):Parser.Stack;
 
 	static var ruleno;
+	static var parseContext:ParseContext;
+	static var lastToken:Token;
+
+	static public function init(){
+		ruleno = -1;
+		parseContext = new ParseContext();
+	}
+
+	static public function processToken(t:Token){
+		//check if identifier refers to a user defined type
+		//if so, change the token's type to TYPE_NAME
+		if(t.type.equals(TokenType.IDENTIFIER)){
+			switch parseContext.searchScope(t.data) {
+				case ParseContext.Object.USER_TYPE(_):
+					trace('replacing with TYPE_NAME for ${t.data}');
+					//ensure the previous token isn't a TYPE_NAME (ie to cases like S S = S();)
+					var prevent = lastToken != null && lastToken.type.equals(TokenType.TYPE_NAME);
+					if(!prevent){
+						t.type = TokenType.TYPE_NAME;
+					}
+				case null, _:
+			}
+		}
+
+		lastToken = t;
+		return t;
+	}
 
 	static public function buildRule(ruleno:Int):MinorType{
 		TreeBuilder.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
@@ -193,14 +221,38 @@ class TreeBuilder{
 
 			/* Declarations */
 			case 117: return s(1); //init_declarator_list ::= single_declaration
-			case 118: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, null, null)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER
-			case 119: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, null, e(5))); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
-			case 120: cast(n(1), VariableDeclaration).declarators.push(new Declarator(t(3).data, e(5), null)); return s(1); //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER EQUAL initializer
+			case 118: //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER
+						var declarator = new Declarator(t(3).data, null, null);
+						cast(n(1), VariableDeclaration).declarators.push(declarator);
+						parseContext.variableDeclaration(declarator);
+						return s(1);
+			case 119: //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
+						var declarator = new Declarator(t(3).data, null, e(5));
+						cast(n(1), VariableDeclaration).declarators.push(declarator);
+						parseContext.variableDeclaration(declarator);
+						return s(1);
+			case 120: //init_declarator_list ::= init_declarator_list COMMA IDENTIFIER EQUAL initializer
+						var declarator = new Declarator(t(3).data, e(5), null);
+						cast(n(1), VariableDeclaration).declarators.push(declarator);
+						parseContext.variableDeclaration(declarator);
+						return s(1);
 			case 121: return new VariableDeclaration(untyped n(1), []); //single_declaration ::= fully_specified_type
-			case 122: return new VariableDeclaration(untyped n(1), [new Declarator(t(2).data, null, null)]); //single_declaration ::= fully_specified_type IDENTIFIER
-			case 123: return new VariableDeclaration(untyped n(1), [new Declarator(t(2).data, null, e(4))]); //single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
-			case 124: return new VariableDeclaration(untyped n(1), [new Declarator(t(2).data, e(4), null)]); //single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer
-			case 125: return new VariableDeclaration(new TypeSpecifier(null, null, null, true), [new Declarator(t(2).data, null, null)]); //single_declaration ::= INVARIANT IDENTIFIER
+			case 122: //single_declaration ::= fully_specified_type IDENTIFIER
+						var declarator = new Declarator(t(2).data, null, null);
+						parseContext.variableDeclaration(declarator);
+						return new VariableDeclaration(untyped n(1), [declarator]);
+			case 123: //single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET
+						var declarator = new Declarator(t(2).data, null, e(4));
+						parseContext.variableDeclaration(declarator);
+						return new VariableDeclaration(untyped n(1), [declarator]);
+			case 124: //single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer
+						var declarator = new Declarator(t(2).data, e(4), null);
+						parseContext.variableDeclaration(declarator);
+						return new VariableDeclaration(untyped n(1), [declarator]);
+			case 125: //single_declaration ::= INVARIANT IDENTIFIER
+						var declarator = new Declarator(t(2).data, null, null);
+						parseContext.variableDeclaration(declarator);
+						return new VariableDeclaration(new TypeSpecifier(null, null, null, true), [declarator]);
 			case 126: return s(1); //fully_specified_type ::= type_specifier
 			case 127: var ts = cast(n(2), TypeSpecifier); //fully_specified_type ::= type_qualifier type_specifier
 						if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
@@ -216,7 +268,7 @@ class TreeBuilder{
 			case 131: return Instructions.SET_INVARIANT_VARYING; //type_qualifier ::= INVARIANT VARYING
 			case 132: return StorageQualifier.UNIFORM; //type_qualifier ::= UNIFORM
 			case 133: return s(1); //type_specifier ::= type_specifier_no_prec
-			case 134: var ts = cast(n(2), TypeSpecifier);ts.precision = untyped ev(1); return ts; //type_specifier ::= precision_qualifier type_specifier_no_prec
+			case 134: var ts = cast(n(2), TypeSpecifier); ts.precision = untyped ev(1); return ts; //type_specifier ::= precision_qualifier type_specifier_no_prec
 			case 135: return new TypeSpecifier(DataType.VOID); //type_specifier_no_prec ::= VOID
 			case 136: return new TypeSpecifier(DataType.FLOAT); //type_specifier_no_prec ::= FLOAT
 			case 137: return new TypeSpecifier(DataType.INT); //type_specifier_no_prec ::= INT
@@ -240,8 +292,13 @@ class TreeBuilder{
 			case 155: return PrecisionQualifier.HIGH_PRECISION; //precision_qualifier ::= HIGH_PRECISION
 			case 156: return PrecisionQualifier.MEDIUM_PRECISION; //precision_qualifier ::= MEDIUM_PRECISION
 			case 157: return PrecisionQualifier.LOW_PRECISION; //precision_qualifier ::= LOW_PRECISION
-			case 158: return new StructSpecifier(t(2).data, untyped a(4)); //struct_specifier ::= STRUCT IDENTIFIER LEFT_BRACE struct_declaration_list RIGHT_BRACE
-			case 159: return new StructSpecifier(null, untyped a(3)); //struct_specifier ::= STRUCT LEFT_BRACE struct_declaration_list RIGHT_BRACE
+			case 158: //struct_specifier ::= STRUCT IDENTIFIER LEFT_BRACE struct_declaration_list RIGHT_BRACE
+						var ss = new StructSpecifier(t(2).data, untyped a(4));
+						parseContext.typeDefinition(ss);
+						return ss;
+			case 159: //struct_specifier ::= STRUCT LEFT_BRACE struct_declaration_list RIGHT_BRACE
+						var ss = new StructSpecifier(null, untyped a(3));
+						return ss;
 			case 160: return [n(1)]; //struct_declaration_list ::= struct_declaration
 			case 161: a(1).push(n(2)); return s(1); //struct_declaration_list ::= struct_declaration_list struct_declaration
 			case 162: return new StructFieldDeclaration(untyped n(1), untyped a(2)); //struct_declaration ::= type_specifier struct_declarator_list SEMICOLON
@@ -278,7 +335,10 @@ class TreeBuilder{
 			case 190: return [n(1), n(3)]; //selection_rest_statement ::= statement_with_scope ELSE statement_with_scope
 			case 191: return [n(1), null]; //selection_rest_statement ::= statement_with_scope
 			case 192: return s(1); //condition ::= expression
-			case 193: return new VariableDeclaration(untyped n(1), [new Declarator(t(2).data, e(4), null)]); //condition ::= fully_specified_type IDENTIFIER EQUAL initializer
+			case 193: //condition ::= fully_specified_type IDENTIFIER EQUAL initializer
+						var declarator = new Declarator(t(2).data, e(4), null);
+						parseContext.variableDeclaration(declarator);
+						return new VariableDeclaration(untyped n(1), [declarator]);
 			case 194: return new WhileStatement(e(4), untyped n(6)); //iteration_statement ::= WHILE LEFT_PAREN scope_push condition RIGHT_PAREN statement_no_new_scope scope_pop
 			case 195: return new DoWhileStatement(e(5), untyped n(2)); //iteration_statement ::= DO statement_with_scope WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON
 			case 196: return new ForStatement(untyped n(4), a(5)[0], a(5)[1], untyped n(7)); //iteration_statement ::= FOR LEFT_PAREN scope_push for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope scope_pop
@@ -299,17 +359,14 @@ class TreeBuilder{
 			case 211: cast(n(1), Declaration).external = true; return s(1); //external_declaration ::= declaration
 			case 212: cast(n(1), Declaration).external = true; return s(1); //external_declaration ::= preprocessor_directive
 			case 213: return new FunctionDefinition(untyped n(1), untyped n(3)); //function_definition ::= function_prototype scope_push compound_statement_no_new_scope scope_pop
+						//@! parameters need to be added to parseContext
 			case 214: return new PreprocessorDirective(t(1).data); //preprocessor_directive ::= PREPROCESSOR_DIRECTIVE
-			case 215: return null; //scope_push ::=
-			case 216: return null; //scope_pop ::=
+			case 215: parseContext.scopePush(); return null; //scope_push ::=
+			case 216: parseContext.scopePop(); return null; //scope_pop ::=
 		}
 		
 		Parser.warn('unhandled reduce rule number $ruleno');
 		return null;
-	}
-
-	static public function reset(){
-		ruleno = -1;
 	}
 
 	//Access rule symbols from left to right
@@ -327,7 +384,7 @@ class TreeBuilder{
 	static inline function t(m:Int):Token
 		return untyped s(m);
 	static inline function e(m:Int):Expression
-		return cast(s(m), Expression);
+		return untyped s(m);
 	static inline function ev(m:Int):EnumValue
 		return s(m) != null ? untyped s(m) : null;
 	static inline function a(m):Array<Dynamic>

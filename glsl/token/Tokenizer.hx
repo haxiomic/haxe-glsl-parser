@@ -128,42 +128,6 @@ class Tokenizer{
 			}
 		}
 
-		//identify type references
-		//it is somewhat of a hack to do this in the tokenizer but the spec requires
-		//type references to be identified before grammar parsing
-		//@! this currently doesn't account for scoping!
-		for(j in 0...tokens.length){
-			var t = tokens[j];
-
-			if(t.type != IDENTIFIER) continue;
-			//record a new type if it's a type definition 
-			var previousTokenType = null;
-			var k = j - 1;
-			while(k >= 0 && previousTokenType == null){
-				var tt = tokens[k--].type;
-				if(skippableTypes.indexOf(tt) == -1) previousTokenType = tt;
-			}
-
-			if(previousTokenType == STRUCT){
-				userDefinedTypes.push(t.data);
-				continue;
-			}
-
-			if(userDefinedTypes.indexOf(t.data) != -1){
-				//check if next token is identifier or left paren
-				//in this case it must be referencing
-				var nextTokenType = null;
-				var k = j+1;
-				while(k < tokens.length && nextTokenType == null){
-					var tt = tokens[k++].type;
-					if(skippableTypes.indexOf(tt) == -1) nextTokenType = tt;
-				}
-
-				if(nextTokenType == IDENTIFIER || nextTokenType == LEFT_PAREN || nextTokenType == LEFT_BRACKET) //@! not fully defined
-					t.type = TYPE_NAME;
-			}
-		}
-
 		return tokens;
 	}
 
