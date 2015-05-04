@@ -38,10 +38,14 @@ class TokenHelper{
 	}
 
 	static public inline function isIdentifierType(type:TokenType){
-		return identifierTokens.indexOf(type) >= 0;
+		return identifierTokenTypes.indexOf(type) >= 0;
 	}
 
-	static var identifierTokens:Array<TokenType> = [
+	static public inline function isTypeReferenceType(type:TokenType){
+		return typeTokenTypes.indexOf(type) >= 0;
+	}
+
+	static var identifierTokenTypes:Array<TokenType> = [
 		IDENTIFIER,
 		ATTRIBUTE,
 		UNIFORM,
@@ -87,5 +91,27 @@ class TokenHelper{
 		RESERVED_KEYWORD,
 		TYPE_NAME,
 		FIELD_SELECTION
+	];
+
+	static var typeTokenTypes:Array<TokenType> = [
+		VOID,
+		INT,
+		FLOAT,
+		BOOL,
+		VEC2,
+		VEC3,
+		VEC4,
+		BVEC2,
+		BVEC3,
+		BVEC4,
+		IVEC2,
+		IVEC3,
+		IVEC4,
+		MAT2,
+		MAT3,
+		MAT4,
+		SAMPLER2D,
+		SAMPLERCUBE,
+		TYPE_NAME
 	];
 }

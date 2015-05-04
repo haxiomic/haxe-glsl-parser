@@ -81,7 +81,7 @@ class Parser{
 			}else{
 				//syntax error
 				assert( act == errorAction );
-				if(errorsSymbol){
+				if(errorRecovery){
 					//@! error recovery code if the error symbol in the grammar is supported
 				}else{
 					if(errorCount <= 0){
@@ -132,7 +132,7 @@ class Parser{
 	static function findReduceAction(stateno:Int, iLookAhead:Int){
 		var j:Int;
 
-		if(errorsSymbol){
+		if(errorRecovery){
 			if(stateno > reduceCount) return defaultAction[stateno];
 		}else{
 			assert( stateno <= reduceCount);
@@ -144,7 +144,7 @@ class Parser{
 		assert( iLookAhead != illegalSymbolNumber );
 		j += iLookAhead;
 
-		if(errorsSymbol){
+		if(errorRecovery){
 			if( j < 0 || j >= actionCount || lookahead[j] != iLookAhead ){
 				return defaultAction[stateno];
 			}
@@ -246,7 +246,7 @@ class Parser{
 	}
 
 	//Language Data & Parser Settings
-	static inline var errorsSymbol:Bool       = Tables.errorsSymbol;
+	static inline var errorRecovery:Bool       = Tables.errorRecovery;
 	//consts
 	static inline var illegalSymbolNumber:Int = Tables.illegalSymbolNumber;
 
