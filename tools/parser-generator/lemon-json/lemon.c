@@ -210,6 +210,7 @@ void Plink_delete(struct plink *);
 void Reprint(struct lemon *);
 void ReportOutput(struct lemon *);
 void ReportTable(struct lemon *, int);
+void ReportJSON(struct lemon *);
 void ReportHeader(struct lemon *);
 void CompressTables(struct lemon *);
 void ResortStates(struct lemon *);
@@ -1486,6 +1487,7 @@ int main(int argc, char **argv)
 {
   static int version = 0;
   static int rpflag = 0;
+  static int jsonmodeflag = 0;
   static int basisflag = 0;
   static int compress = 0;
   static int quiet = 0;
@@ -1500,6 +1502,7 @@ int main(int argc, char **argv)
     {OPT_FSTR, "f", 0, "Ignored.  (Placeholder for -f compiler options.)"},
     {OPT_FLAG, "g", (char*)&rpflag, "Print grammar without actions."},
     {OPT_FSTR, "I", 0, "Ignored.  (Placeholder for '-I' compiler options.)"},
+    {OPT_FLAG, "j", (char*)&jsonmodeflag, "JSON output mode"},
     {OPT_FLAG, "m", (char*)&mhflag, "Output a makeheaders compatible file."},
     {OPT_FLAG, "l", (char*)&nolinenosflag, "Do not print #line statements."},
     {OPT_FSTR, "O", 0, "Ignored.  (Placeholder for '-O' compiler options.)"},
@@ -1604,12 +1607,13 @@ int main(int argc, char **argv)
     if( !quiet ) ReportOutput(&lem);
 
     /* Generate the source code for the parser */
-    ReportTable(&lem, mhflag);
+    if(jsonmodeflag) ReportJSON(&lem);
+    if(!jsonmodeflag) ReportTable(&lem, mhflag);
 
     /* Produce a header file for use by the scanner.  (This step is
     ** omitted if the "-m" option is used because makeheaders will
     ** generate the file for us.) */
-    if( !mhflag ) ReportHeader(&lem);
+    if( !mhflag && !jsonmodeflag) ReportHeader(&lem);
   }
   if( statistics ){
     printf("Parser statistics: %d terminals, %d nonterminals, %d rules\n",
@@ -2457,7 +2461,10 @@ to follow the previous rule.");
         n = nOld + nNew + 20;
         addLineMacro = !psp->gp->nolinenosflag && psp->insertLineMacro &&
                         (psp->decllinenoslot==0 || psp->decllinenoslot[0]!=0);
-        if( addLineMacro ){
+        //@! disabled; really shouldn't be doing this here.
+        addLineMacro = 0;
+
+        if( addLineMacro){
           for(z=psp->filename, nBack=0; *z; z++){
             if( *z=='\\' ) nBack++;
           }
@@ -2853,6 +2860,42 @@ void Plink_delete(struct plink *plp)
 ** name comes from malloc() and must be freed by the calling
 ** function.
 */
+
+char* without_dir(char* filepath){
+  char *filename = (strrchr(filepath, '/'))+1;
+  char *c = filename;
+  int requiredSize = 1;
+  while(*c++) requiredSize ++;
+
+  char *result = (char *)malloc( requiredSize * sizeof(char));
+  strcpy(result, filename);
+  return result;
+}
+
+char * without_ext(const char * filename){
+  char *result;
+  int requiredSize = 1;
+  const char * c = filename;
+  while(*c){
+    if(*c == '.') break;
+    requiredSize++;
+    c++;
+  }
+
+  result = (char *)malloc( requiredSize * sizeof(char));
+
+  c = filename;
+  int i = 0;
+  while(*c){
+    if(*c == '.') break;
+    result[i] = *c;
+    c++;
+    i++;
+  }
+  result[requiredSize - 1] = '\0';
+  return result;
+}
+
 PRIVATE char *file_makename(struct lemon *lemp, const char *suffix)
 {
   char *name;
@@ -3295,10 +3338,78 @@ PRIVATE void tplt_print(FILE *out, struct lemon *lemp, char *str, int *lineno)
   return;
 }
 
+/* returns a string with instances of " replaced with \" */
+char * escape_double_quotes(const char * str){
+  char *result;
+  if(!str){
+    result = (char*) malloc(1 * sizeof(char));
+    result[0] = '\0';
+    return result;
+  }
+  //calculate required length of result
+  const char *c = str;
+  int requiredLength = 0;
+  while (*c++)
+    requiredLength +=  *c == '"' ? 2 : 1;
+  requiredLength++;
+  //allocate string
+  result = (char*) malloc(requiredLength * sizeof(char));
+  //build result
+  c = str;
+  int ri = 0;
+  while (*c){
+    if(*c == '"'){
+      result[ri++] = '\\';
+      result[ri++] = '"';
+    }else{
+      result[ri++] = *c;
+    }
+    c++;
+  }
+  result[requiredLength - 1] = '\0';
+  return result;
+}
+
+
 /*
-** The following routine emits code for the destructor for the
+** The following routines emits code for the destructor for the
 ** symbol sp
 */
+void emit_destructor_code_for_json(
+  FILE *out,
+  struct symbol *sp,
+  struct lemon *lemp,
+  int *lineno
+){
+  char *cp = 0;
+
+  if( sp->type==TERMINAL ){
+    cp = lemp->tokendest;
+    if( cp==0 ) return;
+  }else if( sp->destructor ){
+    cp = sp->destructor;
+  }else if( lemp->vardest ){
+    cp = lemp->vardest;
+    if( cp==0 ) return;
+  }else{
+    assert( 0 );  /* Cannot happen */
+  }
+
+  cp = escape_double_quotes(cp);
+
+  for(; *cp; cp++){
+    if( *cp=='$' && cp[1]=='$' ){
+      fprintf(out,"s(%d)",sp->dtnum);
+      cp++;
+      continue;
+    }
+    if( *cp=='\n' ) (*lineno)++;
+    fputc(*cp,out);
+  }
+
+  return;
+}
+
 void emit_destructor_code(
   FILE *out,
   struct symbol *sp,
@@ -3322,6 +3433,7 @@ void emit_destructor_code(
  }else{
    assert( 0 );  /* Cannot happen */
  }
+
  for(; *cp; cp++){
    if( *cp=='$' && cp[1]=='$' ){
      fprintf(out,"(yypminor->yy%d)",sp->dtnum);
@@ -3331,6 +3443,7 @@ void emit_destructor_code(
    if( *cp=='\n' ) (*lineno)++;
    fputc(*cp,out);
  }
+
  fprintf(out,"\n"); (*lineno)++;
  if (!lemp->nolinenosflag) { 
    (*lineno)++; tplt_linedir(out,*lineno,lemp->outname); 
@@ -3520,6 +3633,22 @@ PRIVATE void emit_code(
    if (!lemp->nolinenosflag) { (*lineno)++; tplt_linedir(out,*lineno,lemp->outname); }
  } /* End if( rp->code ) */
 
+ return;
+}
+
+PRIVATE void emit_code_for_json(
+  FILE *out,
+  struct rule *rp,
+  struct lemon *lemp,
+  int *lineno
+){
+ const char *cp;
+ /* Generate code to do the reduce action */
+ if( rp->code ){
+  char * escaped = escape_double_quotes(rp->code);
+  fprintf(out, "%s", escaped);
+  free(escaped);
+ } /* End if( rp->code ) */
  return;
 }
 
@@ -3716,6 +3845,476 @@ static void writeRuleText(FILE *out, struct rule *rp){
   }
 }
 
+/* Generate JSON for the parser */
+void ReportJSON(
+  struct lemon *lemp
+){
+  FILE *out;
+  int i, j, k, n;
+  int nPerLine;
+  char * escaped;
+
+  //disable #line printing for the course of this function
+  int old_nolinenosflag = lemp->nolinenosflag;
+  lemp->nolinenosflag = 1;
+
+  out = file_open(lemp, ".json", "wb");
+
+  //open root
+  fprintf(out, "{\n");
+
+  /* Add grammar name */
+  fprintf(out, "\t\"grammar_name\": \"%s\",\n", without_ext(without_dir(lemp->filename)));
+
+  /* Add token type */
+  escaped = escape_double_quotes(lemp->tokentype);
+  fprintf(out, "\t\"token_type\": \"%s\",\n", escaped);
+  free(escaped);
+
+  /* Generate the tokens with ids */
+  fprintf(out, "\t\"tokens\": {\n");
+  const char *prefix;
+  prefix = lemp->tokenprefix ? lemp->tokenprefix : "";
+  for(i=1; i < lemp->nterminal; i++){
+    fprintf(out,"\t\t\"%s%s\": %d",prefix,lemp->symbols[i]->name,i);
+    //add comma if not last
+    if(i < lemp->nterminal - 1)
+      fprintf(out, ",");
+    fprintf(out, "\n");
+  }
+  fprintf(out, "\t},\n");
+
+  /* Generate the defines */
+  fprintf(out,"\t\"YYNOCODE\": %d,\n", lemp->nsymbol+1);
+  if( lemp->wildcard ){
+    fprintf(out,"\t\"YYWILDCARD\": %d,\n", lemp->wildcard->index);
+  }
+  if( lemp->stacksize ){
+    fprintf(out,"\t\"YYSTACKDEPTH\": %s,\n", lemp->stacksize);
+  }else{
+    fprintf(out,"\t\"YYSTACKDEPTH\": 100,\n");
+  }
+
+  const char *name = lemp->name ? lemp->name : "Parse";
+  if( lemp->arg && lemp->arg[0] ){
+    int i;
+    i = lemonStrlen(lemp->arg);
+    while( i>=1 && isspace(lemp->arg[i-1]) ) i--;
+    while( i>=1 && (isalnum(lemp->arg[i-1]) || lemp->arg[i-1]=='_') ) i--;
+    fprintf(out,"\t\"%sARG_SDECL\": \"%s\",\n", name, lemp->arg);
+    fprintf(out,"\t\"%sARG_PDECL\": \"%s\",\n", name, lemp->arg);
+    fprintf(out,"\t\"%sARG_FETCH\": \"%s = yypParser->%s\",\n", name, lemp->arg, &lemp->arg[i]);
+    fprintf(out,"\t\"%sARG_STORE\": \"yypParser->%s = %s\",\n", name, &lemp->arg[i], &lemp->arg[i]);
+  }else{ 
+    //@! don't print these?
+    fprintf(out,"\t\"%sARG_SDECL\": \"\",\n", name);
+    fprintf(out,"\t\"%sARG_PDECL\": \"\",\n", name);
+    fprintf(out,"\t\"%sARG_FETCH\": \"\",\n", name);
+    fprintf(out,"\t\"%sARG_STORE\": \"\",\n", name);
+  }
+
+  fprintf(out,"\t\"YYNSTATE\": %d,\n",lemp->nstate);
+  fprintf(out,"\t\"YYNRULE\": %d,\n",lemp->nrule);
+  if( lemp->errsym->useCnt ){
+    fprintf(out,"\t\"YYERRORSYMBOL\": %d,\n",lemp->errsym->index);
+    fprintf(out,"\t\"YYERRSYMDT\": \"yy%d\",\n",lemp->errsym->dtnum);
+  }
+  if( lemp->has_fallback ){
+    fprintf(out,"\t\"YYFALLBACK\": 1,\n");
+  }
+
+  //@! should be in a separate function?
+  /* Generate the action table and its associates:
+  **
+  **  yy_action[]        A single table containing all actions.
+  **  yy_lookahead[]     A table containing the lookahead for each entry in
+  **                     yy_action.  Used to detect hash collisions.
+  **  yy_shift_ofst[]    For each state, the offset into yy_action for
+  **                     shifting terminals.
+  **  yy_reduce_ofst[]   For each state, the offset into yy_action for
+  **                     shifting non-terminals after a reduce.
+  **  yy_default[]       Default action for each state.
+  */
+
+  /* Compute the actions on all states and count them up */
+  int mnTknOfst, mxTknOfst;
+  int mnNtOfst, mxNtOfst;
+  struct axset *ax;
+
+  struct state *stp;
+  struct action *ap;
+  struct rule *rp;
+  struct acttab *pActtab;
+
+  ax = (struct axset *) calloc(lemp->nstate*2, sizeof(ax[0]));
+  if( ax==0 ){
+    fprintf(stderr,"malloc failed\n");
+    exit(1);
+  }
+  for(i=0; i<lemp->nstate; i++){
+    stp = lemp->sorted[i];
+    ax[i*2].stp = stp;
+    ax[i*2].isTkn = 1;
+    ax[i*2].nAction = stp->nTknAct;
+    ax[i*2+1].stp = stp;
+    ax[i*2+1].isTkn = 0;
+    ax[i*2+1].nAction = stp->nNtAct;
+  }
+  mxTknOfst = mnTknOfst = 0;
+  mxNtOfst = mnNtOfst = 0;
+
+  /* Compute the action table.  In order to try to keep the size of the
+  ** action table to a minimum, the heuristic of placing the largest action
+  ** sets first is used.
+  */
+  for(i=0; i<lemp->nstate*2; i++) ax[i].iOrder = i;
+  qsort(ax, lemp->nstate*2, sizeof(ax[0]), axset_compare);
+  pActtab = acttab_alloc();
+  for(i=0; i<lemp->nstate*2 && ax[i].nAction>0; i++){
+    stp = ax[i].stp;
+    if( ax[i].isTkn ){
+      for(ap=stp->ap; ap; ap=ap->next){
+        int action;
+        if( ap->sp->index>=lemp->nterminal ) continue;
+        action = compute_action(lemp, ap);
+        if( action<0 ) continue;
+        acttab_action(pActtab, ap->sp->index, action);
+      }
+      stp->iTknOfst = acttab_insert(pActtab);
+      if( stp->iTknOfst<mnTknOfst ) mnTknOfst = stp->iTknOfst;
+      if( stp->iTknOfst>mxTknOfst ) mxTknOfst = stp->iTknOfst;
+    }else{
+      for(ap=stp->ap; ap; ap=ap->next){
+        int action;
+        if( ap->sp->index<lemp->nterminal ) continue;
+        if( ap->sp->index==lemp->nsymbol ) continue;
+        action = compute_action(lemp, ap);
+        if( action<0 ) continue;
+        acttab_action(pActtab, ap->sp->index, action);
+      }
+      stp->iNtOfst = acttab_insert(pActtab);
+      if( stp->iNtOfst<mnNtOfst ) mnNtOfst = stp->iNtOfst;
+      if( stp->iNtOfst>mxNtOfst ) mxNtOfst = stp->iNtOfst;
+    }
+  }
+  free(ax);
+
+  /* Output the yy_action table */
+  n = acttab_size(pActtab);
+  fprintf(out,"\t\"YY_ACTTAB_COUNT\": %d,\n", n);
+  fprintf(out,"\t\"yy_action\": [\n");
+  for(i=j=0; i<n; i++){
+    int action = acttab_yyaction(pActtab, i);
+    if( action<0 ) action = lemp->nstate + lemp->nrule + 2;
+    if( j==0 ) fprintf(out,"\t\t");
+    fprintf(out, " %4d", action);
+    //add comma if not last
+    if(i < n - 1) fprintf(out, ",");
+    if( j==9 || i==n-1 ){
+      fprintf(out, "\n");
+      j = 0;
+    }else{
+      j++;
+    }
+  }
+  fprintf(out, "\t],\n");
+
+  /* Output the yy_lookahead table */
+  fprintf(out,"\t\"yy_lookahead\": [\n");
+  for(i=j=0; i<n; i++){
+    int la = acttab_yylookahead(pActtab, i);
+    if( la<0 ) la = lemp->nsymbol;
+    if( j==0 ) fprintf(out,"\t\t");
+    fprintf(out, " %4d", la);
+    //add comma if not last
+    if(i < n - 1) fprintf(out, ",");
+    if( j==9 || i==n-1 ){
+      fprintf(out, "\n");
+      j = 0;
+    }else{
+      j++;
+    }
+  }
+  fprintf(out, "\t],\n");
+
+  /* Output the yy_shift_ofst[] table */
+  fprintf(out, "\t\"YY_SHIFT_USE_DFLT\": %d,\n", mnTknOfst-1);
+  n = lemp->nstate;
+  while( n>0 && lemp->sorted[n-1]->iTknOfst==NO_OFFSET ) n--;
+  fprintf(out, "\t\"YY_SHIFT_COUNT\": %d,\n", n-1);
+  fprintf(out, "\t\"YY_SHIFT_MIN\": %d,\n", mnTknOfst);
+  fprintf(out, "\t\"YY_SHIFT_MAX\": %d,\n", mxTknOfst);
+  fprintf(out, "\t\"yy_shift_ofst\": [\n");
+  for(i=j=0; i<n; i++){
+    int ofst;
+    stp = lemp->sorted[i];
+    ofst = stp->iTknOfst;
+    if( ofst==NO_OFFSET ) ofst = mnTknOfst - 1;
+    if( j==0 ) fprintf(out,"\t\t");
+    fprintf(out, " %4d", ofst);
+    //add comma if not last
+    if(i < n - 1) fprintf(out, ",");
+    if( j==9 || i==n-1 ){
+      fprintf(out, "\n");
+      j = 0;
+    }else{
+      j++;
+    }
+  }
+  fprintf(out, "\t],\n");
+
+  /* Output the yy_reduce_ofst[] table */
+  fprintf(out, "\t\"YY_REDUCE_USE_DFLT\": %d,\n", mnNtOfst-1);
+  n = lemp->nstate;
+  while( n>0 && lemp->sorted[n-1]->iNtOfst==NO_OFFSET ) n--;
+  fprintf(out, "\t\"YY_REDUCE_COUNT\": %d,\n", n-1);
+  fprintf(out, "\t\"YY_REDUCE_MIN\": %d,\n", mnNtOfst);
+  fprintf(out, "\t\"YY_REDUCE_MAX\": %d,\n", mxNtOfst);
+  fprintf(out, "\t\"yy_reduce_ofst\": [\n");
+  for(i=j=0; i<n; i++){
+    int ofst;
+    stp = lemp->sorted[i];
+    ofst = stp->iNtOfst;
+    if( ofst==NO_OFFSET ) ofst = mnNtOfst - 1;
+    if( j==0 ) fprintf(out,"\t\t");
+    fprintf(out, " %4d", ofst);
+    //add comma if not last
+    if(i < n - 1) fprintf(out, ",");
+    if( j==9 || i==n-1 ){
+      fprintf(out, "\n");
+      j = 0;
+    }else{
+      j++;
+    }
+  }
+  fprintf(out, "\t],\n");
+
+  /* Output the default action table */
+  fprintf(out, "\t\"yy_default\": [\n");
+  n = lemp->nstate;
+  for(i=j=0; i<n; i++){
+    stp = lemp->sorted[i];
+    if( j==0 ) fprintf(out,"\t\t");
+    fprintf(out, " %4d", stp->iDflt);
+    //add comma if not last
+    if(i < n - 1) fprintf(out, ",");
+    if( j==9 || i==n-1 ){
+      fprintf(out, "\n");
+      j = 0;
+    }else{
+      j++;
+    }
+  }
+  fprintf(out, "\t],\n");
+
+  /* Generate the table of rule information 
+  **
+  ** Note: This code depends on the fact that rules are number
+  ** sequentually beginning with 0.
+  */
+  fprintf(out, "\t\"yy_rule_info\": [\n");
+  k = 0;
+  nPerLine = 5;
+  for(rp=lemp->rule; rp; rp=rp->next){
+    if(k % nPerLine == 0) fprintf(out,"\t\t");
+    fprintf(out,"[%d, %d]",rp->lhs->index,rp->nrhs);
+    if(rp->next) fprintf(out,",\t");
+    if(k % nPerLine == (nPerLine - 1)) fprintf(out,"\n");
+    else if(!rp->next) fprintf(out,"\n");
+    k++;
+  }
+  fprintf(out,"\t],\n");
+
+  /* Generate the table of fallback tokens. */
+  if( lemp->has_fallback ){
+    fprintf(out, "\t\"fallback_tokens\": [\n");
+    int mx = lemp->nterminal - 1;
+    while( mx>0 && lemp->symbols[mx]->fallback==0 ){ mx--; }
+    for(i=0; i<=mx; i++){
+      struct symbol *p = lemp->symbols[i];
+      if( p->fallback==0 ){
+        fprintf(out, "\t\t0  /* %s => nothing */\n", p->name);
+      }else{
+        fprintf(out, "\t\t%3d  /* %s => %s */\n", p->fallback->index, p->name, p->fallback->name);
+      }
+      //add comma if not last
+      if(i < mx) fprintf(out, ",");
+    }
+    fprintf(out, "\t],\n");
+  }
+
+  /* Generate a table containing the symbolic name of every symbol */
+  fprintf(out, "\t\"symbols\": [\n");
+  nPerLine = 4;
+  for(i=0; i<lemp->nsymbol; i++){
+    if( (i%nPerLine)==0 ){ fprintf(out,"\t\t"); }
+    fprintf(out,"\"%s\"", lemp->symbols[i]->name);
+    //add comma if not last
+    if( i < lemp->nsymbol - 1 ) fprintf(out, ", ");
+    if( (i%nPerLine)==(nPerLine-1) ) fprintf(out,"\n");
+    else if( i == lemp->nsymbol - 1 ) fprintf(out,"\n");
+  }
+  fprintf(out, "\t],\n");
+
+  /* Generate a table containing a text string that describes every
+  ** rule in the rule set of the grammar.  This information is used
+  ** when tracing REDUCE actions.
+  */
+  fprintf(out, "\t\"rules\": {\n");
+  for(i=0, rp=lemp->rule; rp; rp=rp->next, i++){
+    assert( rp->index==i );
+    fprintf(out,"\t\t\"%d\": \"", i);
+    writeRuleText(out, rp);
+    fprintf(out,"\"");
+    //add comma if not last
+    if( rp->next ) fprintf(out, ", ");
+    fprintf(out,"\n");
+  }
+  fprintf(out, "\t},\n");
+
+  /* Generate code which executes every time a symbol is popped from
+  ** the stack while processing errors or while destroying the parser. 
+  ** (In other words, generate the %destructor actions)
+  */
+  fprintf(out, "\t\"token_destructor\": \"");
+  if( lemp->tokendest ){
+    for(i=0; i < lemp->nsymbol && lemp->symbols[i]->type!=TERMINAL; i++);//get first terminal symbol
+    if( i<lemp->nsymbol ){
+      int n = 0;
+      emit_destructor_code_for_json(out,lemp->symbols[i],lemp,&n);
+    }
+  }
+  fprintf(out,"\",\n");
+  fprintf(out, "\t\"default_destructor\": \"");
+  if( lemp->vardest ){
+
+    struct symbol *dflt_sp = 0;
+    for(i=0; i<lemp->nsymbol; i++){
+      struct symbol *sp = lemp->symbols[i];
+      if( sp==0 || sp->type==TERMINAL || sp->index<=0 || sp->destructor!=0 )
+        continue;
+      dflt_sp = sp;
+    }
+    if( dflt_sp!=0 ){
+      int n = 0;
+      emit_destructor_code_for_json(out,dflt_sp,lemp,&n);
+    }
+  }
+  fprintf(out,"\",\n");
+  fprintf(out, "\t\"destructors\": {");
+  k = 0;
+  for(i=0; i < lemp->nsymbol; i++){
+    struct symbol *sp = lemp->symbols[i];
+    if( sp==0 || sp->type==TERMINAL || sp->destructor==0 ) continue;
+
+    //new line and comma print (reversed because condition of next is complex)
+    if(k) fprintf(out,",");
+    fprintf(out,"\n");
+
+    // fprintf(out,"\t\t/* %s */\n", sp->name);
+    fprintf(out,"\t\t\"%d\": ", sp->index);
+
+    /* Combine duplicate destructors into a single case */
+    // for(j=i+1; j<lemp->nsymbol; j++){
+    //   struct symbol *sp2 = lemp->symbols[j];
+    //   if( sp2 && sp2->type!=TERMINAL && sp2->destructor && sp2->dtnum==sp->dtnum && strcmp(sp->destructor,sp2->destructor)==0 ){
+    //      fprintf(out,"    case %d: /* %s */\n", sp2->index, sp2->name);
+    //      sp2->destructor = 0;
+    //   }
+    // }
+
+    fprintf(out,"\"");
+    int n = 0;
+    emit_destructor_code_for_json(out,lemp->symbols[i],lemp,&n);
+    fprintf(out,"\"");
+    k++;
+  }
+  if(k) fprintf(out,"\n\t");
+  fprintf(out,"},\n");
+
+
+  /* Generate code which execution during each REDUCE action */
+  //@! for the moment don't translate code
+  // for(rp=lemp->rule; rp; rp=rp->next){
+  //   translate_code(lemp, rp);
+  // }
+  /* First output rules other than the default: rule */
+  fprintf(out, "\t\"rule_actions\": {");
+  k = 0;
+  for(rp=lemp->rule; rp; rp=rp->next){
+    struct rule *rp2;               /* Other rules with the same action */
+    if( rp->code==0 ) continue;
+    if( rp->code[0]=='\n' && rp->code[1]==0 ) continue; /* Will be default: */
+
+    //new line and comma print (reversed because condition of next is complex)
+    if(k) fprintf(out,",");
+    fprintf(out,"\n");
+
+    // fprintf(out,"\t\t/* ");
+    // writeRuleText(out, rp);
+    // fprintf(out," */\n");
+
+    fprintf(out,"\t\t\"%d\": ", rp->index);
+
+    fprintf(out,"\"");
+    int n = 0;
+    emit_code_for_json(out,rp,lemp,&n);
+    fprintf(out,"\"");
+
+    rp->code = 0;
+    k++;
+  }
+  if(k) fprintf(out,"\n\t");
+  fprintf(out,"},\n");
+
+  /* Generate code which executes whenever the parser stack overflows */
+  fprintf(out, "\t\"stack_overflow\": \"");
+  escaped = escape_double_quotes(lemp->overflow);
+  fprintf(out,"%s",escaped);
+  free(escaped);
+  fprintf(out,"\",\n");
+
+  /* Generate code which executes if a parse fails */
+  fprintf(out, "\t\"failure\": \"");
+  escaped = escape_double_quotes(lemp->failure);
+  fprintf(out,"%s",escaped);
+  free(escaped);
+  fprintf(out,"\",\n");
+
+  /* Generate code which executes when a syntax error occurs */
+  fprintf(out, "\t\"error\": \"");
+  escaped = escape_double_quotes(lemp->error);
+  fprintf(out,"%s",escaped);
+  free(escaped);
+  fprintf(out,"\",\n");
+
+  /* Generate code which executes when the parser accepts its input */
+  fprintf(out, "\t\"accept\": \"");
+  escaped = escape_double_quotes(lemp->accept);
+  fprintf(out,"%s",escaped);
+  free(escaped);
+  fprintf(out,"\",\n");
+
+  /* Append any addition code the user desires */
+  fprintf(out, "\t\"extra_code\": \"");
+  escaped = escape_double_quotes(lemp->extracode);
+  fprintf(out,"%s",escaped);
+  free(escaped);
+  fprintf(out,"\",\n");
+
+  /* Additional flags */
+  fprintf(out, "\t\"error_recovery\": %s\n", lemp->error ? "true" : "false");
+
+  //close root
+  fprintf(out, "}");
+
+  fclose(out);
+
+  //reset no lines flag
+  lemp->nolinenosflag = old_nolinenosflag;
+
+  return;
+}
 
 /* Generate C source code for the parser */
 void ReportTable(

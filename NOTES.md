@@ -2,7 +2,16 @@
 -----
 - TYPE_NAME scoping:
 	-> fix function parameter scope issue
+		Define types at variable definition
+		Create new dummy rule to handle function definition
+		Pass parameters to context
 	-> define parameters in parseContext
+	-> tokens are processed in the wrong order?
+		-> type putting scope_push and pop outside of braces
+	-> TYPE_NAME is being replaced in the wrong places, for example, int a, S;
+- TreeBuilder to ParserActions?
+- warn on redefinitions in parseContext?
+- TreeBuilder should be Parser and Parser should be ParserCore. processToken() shouldn't need to track lastToken
 - Support for complex types in Eval + Improved operator selection in Eval
 - Parser core separation
 - Preprocessor expression parser and eval
@@ -35,7 +44,23 @@ void main(in A, out A[5]){
 			S S = S(0,0); // 'S' is only visible as a struct and constructor
 			S; // 'S' is now visible only as a variable
 		}
+
+		if(true){
+		    struct Q{
+		        float f;
+		    };
+		}
+		
+	    Q q = Q(4.4);
 }
+```
+
+###TYPE_NAME parameter scope leak
+```
+void main(struct X{int j;}){
+}
+
+X test = X(10);
 ```
 
 

@@ -1,5 +1,3 @@
-//backtracking tokenizer
-
 typedef Token = {
 	var type:TokenType;
 	var data:String;
@@ -9,10 +7,15 @@ typedef Token = {
 }
 
 enum TokenType {
+	DIRECTIVE;
+	CODE_BLOCK;
 	RULE_DECL;
 	RULE;
 	TOKEN;
+	WORD;
+	NUMBER;
 	EMPTY;
+	PERIOD;
 	LINE_COMMENT;
 	BLOCK_COMMENT;
 	SPACE;
@@ -35,7 +38,8 @@ class GrammarTokenizer{
 		col = 1;
 		tokens = [];
 
-		while(i < source.length) root();
+		while(i < source.length)
+			root();
 
 		//append newline to end if not already (simplifies the grammar so we don't have to introduce an EOF token)
 		if(tokens[tokens.length - 1].type != NEWLINE)
@@ -82,13 +86,18 @@ class GrammarTokenizer{
 		if(tryToken(newline)) return;
 		if(tryToken(block_comment)) return;
 		if(tryToken(line_comment)) return;
+		if(tryToken(number)) return;
+		if(tryToken(code_block)) return;
+		if(tryToken(directive)) return;
 		if(tryToken(rule_decl)) return;
 		if(tryToken(rule)) return;
 		if(tryToken(token)) return;
+		if(tryToken(word)) return;
 		if(tryToken(empty)) return;
+		if(tryToken(period)) return;
 
 		warn("unhandled token " + source.charAt(i));
-		advance();
+		advance(1);
 	}
 
 	static function space(){
@@ -135,6 +144,68 @@ class GrammarTokenizer{
 		return false;
 	}
 
+	static function number(){
+		var s = "", c = "";
+		var digits = 0;
+		var dots = 0;
+		while(true){
+			c = nextString(1);
+
+			if(~/\d/.match(c)){
+				digits++;
+			}else if(c == '.'){
+				dots++;
+				if(dots > 1) break;
+			}else{
+				break;
+			}
+
+			s += advance(1);
+		}
+		if(digits > 0){
+			buildToken(NUMBER, s);
+			return true;
+		}
+		return false;
+	}
+
+	static function code_block(){
+		if(nextString(1) == "{"){
+			var lastOpen = line;
+			var s = advance(1);
+			var level = 1;
+			while(level > 0){
+				var c = advance(1);
+				switch c{
+					case '{': level++; lastOpen = line;
+					case '}': level--;
+					case null, '':	//reached eof without exiting code block
+						//temporarily change line info for better reporting
+						var lineOld = line;
+						line = lastOpen;
+						warn('unmatched parentheses');
+						line = lineOld;
+						return false;
+				}
+				s += c;
+			}
+			buildToken(CODE_BLOCK, s);
+			return true;
+		}
+		return false;
+	}
+
+	static function directive(){
+		var s = "";
+		if((s = advance(1)) == "%"){
+			//read name
+			while(directiveNameRegex.match(nextString(1))) s += advance(1);
+			buildToken(DIRECTIVE, s);
+			return true;
+		}
+		return false;
+	}
+
 	static function rule_decl(){
 		var s = "";
 		var previousCharacter = source.charAt(i-1);
@@ -155,6 +226,7 @@ class GrammarTokenizer{
 		var s = "";
 		while(ruleRegex.match(nextString(1))) s += advance(1);
 		if(s.length > 0){
+			if(~/\w/i.match(nextString(1))) return false; //next character cannot be another word character
 			buildToken(RULE, s);
 			return true;
 		}
@@ -165,22 +237,40 @@ class GrammarTokenizer{
 		var s = "";
 		while(tokenRegex.match(nextString(1))) s += advance(1);
 		if(s.length > 0){
+			if(~/\w/i.match(nextString(1))) return false; //next character cannot be another word character
 			buildToken(TOKEN, s);
 			return true;
 		}
 		return false;
 	}
 
-	static function empty(){
-		var str = '*empty*';
+	static function word(){
 		var s = "";
-		if((s = advance(str.length)) == str){
+		while(~/\w/i.match(nextString(1))) s += advance(1);
+		if(s.length > 0){
+			buildToken(WORD, s);
+			return true;
+		}
+		return false;
+	}
+
+	static function empty(){
+		var emptyStr = '*empty*';
+		var s = "";
+		if((s = advance(emptyStr.length)) == emptyStr){
 			buildToken(EMPTY, s);
 			return true;
 		}
 		return false;
 	}
 
+	static function period(){
+		if(nextString(1) == '.'){
+			buildToken(PERIOD, advance(1));
+			return true;
+		}
+		return false;
+	}
 
 	static function buildToken(type:TokenType, data:String){
 		if(type == null) error('cannot have null token type');
@@ -207,5 +297,6 @@ class GrammarTokenizer{
 	static var spaceRegex = ~/[ \t]/;
 	// static var whitespaceRegex = ~/\s/;
 	static var ruleRegex = ~/[a-z0-9_]/;
+	static var directiveNameRegex = ~/[a-z0-9_]/;
 	static var tokenRegex = ~/[A-Z0-9_]/;
 }

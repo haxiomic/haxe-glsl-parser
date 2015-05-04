@@ -1,0 +1,9 @@
+%token_type {some code;}
+%left 1000.0 {some more code}
+
+hello:
+    WORLD {hello-WORLD build code;}
+
+some_rule:
+	another_rule {some_rule-another_rule build code;}
+    SOME_TOKEN {some_rule-SOME_TOKEN build code;}

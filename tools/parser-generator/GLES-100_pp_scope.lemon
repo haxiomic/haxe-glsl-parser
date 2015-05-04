@@ -1,0 +1,358 @@
+%start_symbol root
+%token_type {glsl.token.Tokenizer.TokenType}
+root ::= translation_unit. {new Root(untyped a(1));}
+variable_identifier ::= IDENTIFIER. {new Identifier(t(1).data);}
+primary_expression ::= variable_identifier. {s(1);}
+primary_expression ::= INTCONSTANT. {
+        var l = new Primitive<Int>(Std.parseInt(t(1).data), DataType.INT); 
+        l.raw = t(1).data;
+        $$ = l;
+    }
+primary_expression ::= FLOATCONSTANT. {
+        var l = new Primitive<Float>(Std.parseFloat(t(1).data), DataType.FLOAT);
+        l.raw = t(1).data;
+        $$ = l;
+    }
+primary_expression ::= BOOLCONSTANT. {
+        var l = new Primitive<Bool>(t(1).data == 'true', DataType.BOOL);
+        l.raw = t(1).data;
+        $$ = l;
+    }
+primary_expression ::= LEFT_PAREN expression RIGHT_PAREN. {
+        e(2).enclosed = true;
+        $$ = s(2);
+    }
+postfix_expression ::= primary_expression. {s(1);}
+postfix_expression ::= postfix_expression LEFT_BRACKET integer_expression RIGHT_BRACKET. {new ArrayElementSelectionExpression(e(1), e(3));}
+postfix_expression ::= function_call. {s(1);}
+postfix_expression ::= postfix_expression DOT FIELD_SELECTION. {new FieldSelectionExpression(e(1), new Identifier(t(3).data));}
+postfix_expression ::= postfix_expression INC_OP. {new UnaryExpression(UnaryOperator.INC_OP, e(1), false);}
+postfix_expression ::= postfix_expression DEC_OP. {new  UnaryExpression(UnaryOperator.DEC_OP, e(1), false);}
+integer_expression ::= expression. {s(1);}
+function_call ::= function_call_generic. {s(1);}
+function_call_generic ::= function_call_header_with_parameters RIGHT_PAREN. {s(1);}
+function_call_generic ::= function_call_header_no_parameters RIGHT_PAREN. {s(1);}
+function_call_header_no_parameters ::= function_call_header VOID. {s(1);}
+function_call_header_no_parameters ::= function_call_header. {s(1);}
+function_call_header_with_parameters ::= function_call_header assignment_expression. {
+        cast(n(1), ExpressionParameters).parameters.push(untyped n(2));
+        $$ = s(1);
+    }
+function_call_header_with_parameters ::= function_call_header_with_parameters COMMA assignment_expression. {
+        cast(n(1), ExpressionParameters).parameters.push(untyped n(3));
+        $$ = s(1);
+    }
+function_call_header ::= function_identifier LEFT_PAREN. {s(1);}
+function_identifier ::= constructor_identifier. {new Constructor(untyped ev(1));}
+function_identifier ::= IDENTIFIER. {new FunctionCall(t(1).data);}
+constructor_identifier ::= FLOAT. {DataType.FLOAT;}
+constructor_identifier ::= INT. {DataType.INT;}
+constructor_identifier ::= BOOL. {DataType.BOOL;}
+constructor_identifier ::= VEC2. {DataType.VEC2;}
+constructor_identifier ::= VEC3. {DataType.VEC3;}
+constructor_identifier ::= VEC4. {DataType.VEC4;}
+constructor_identifier ::= BVEC2. {DataType.BVEC2;}
+constructor_identifier ::= BVEC3. {DataType.BVEC3;}
+constructor_identifier ::= BVEC4. {DataType.BVEC4;}
+constructor_identifier ::= IVEC2. {DataType.IVEC2;}
+constructor_identifier ::= IVEC3. {DataType.IVEC3;}
+constructor_identifier ::= IVEC4. {DataType.IVEC4;}
+constructor_identifier ::= MAT2. {DataType.MAT2;}
+constructor_identifier ::= MAT3. {DataType.MAT3;}
+constructor_identifier ::= MAT4. {DataType.MAT4;}
+constructor_identifier ::= TYPE_NAME. {DataType.USER_TYPE(t(1).data);}
+unary_expression ::= postfix_expression. {s(1);}
+unary_expression ::= INC_OP unary_expression. {new UnaryExpression(UnaryOperator.INC_OP, e(2), true);}
+unary_expression ::= DEC_OP unary_expression. {new UnaryExpression(UnaryOperator.DEC_OP, e(2), true);}
+unary_expression ::= unary_operator unary_expression. {new UnaryExpression(untyped ev(1), e(2), true);}
+unary_operator ::= PLUS. {UnaryOperator.PLUS;}
+unary_operator ::= DASH. {UnaryOperator.DASH;}
+unary_operator ::= BANG. {UnaryOperator.BANG;}
+unary_operator ::= TILDE. {UnaryOperator.TILDE;}
+multiplicative_expression ::= unary_expression. {s(1);}
+multiplicative_expression ::= multiplicative_expression STAR unary_expression. {new BinaryExpression(BinaryOperator.STAR, e(1), e(3));}
+multiplicative_expression ::= multiplicative_expression SLASH unary_expression. {new BinaryExpression(BinaryOperator.SLASH, e(1), e(3));}
+multiplicative_expression ::= multiplicative_expression PERCENT unary_expression. {new BinaryExpression(BinaryOperator.PERCENT, e(1), e(3));}
+additive_expression ::= multiplicative_expression. {s(1);}
+additive_expression ::= additive_expression PLUS multiplicative_expression. {new BinaryExpression(BinaryOperator.PLUS, e(1), e(3));}
+additive_expression ::= additive_expression DASH multiplicative_expression. {new BinaryExpression(BinaryOperator.DASH, e(1), e(3));}
+shift_expression ::= additive_expression. {s(1);}
+shift_expression ::= shift_expression LEFT_OP additive_expression. {new BinaryExpression(BinaryOperator.LEFT_OP, untyped n(1), untyped n(3));}
+shift_expression ::= shift_expression RIGHT_OP additive_expression. {new BinaryExpression(BinaryOperator.RIGHT_OP, untyped n(1), untyped n(3));}
+relational_expression ::= shift_expression. {s(1);}
+relational_expression ::= relational_expression LEFT_ANGLE shift_expression. {new BinaryExpression(BinaryOperator.LEFT_ANGLE, untyped n(1), untyped n(3));}
+relational_expression ::= relational_expression RIGHT_ANGLE shift_expression. {new BinaryExpression(BinaryOperator.RIGHT_ANGLE, untyped n(1), untyped n(3));}
+relational_expression ::= relational_expression LE_OP shift_expression. {new BinaryExpression(BinaryOperator.LE_OP, untyped n(1), untyped n(3));}
+relational_expression ::= relational_expression GE_OP shift_expression. {new BinaryExpression(BinaryOperator.GE_OP, untyped n(1), untyped n(3));}
+equality_expression ::= relational_expression. {s(1);}
+equality_expression ::= equality_expression EQ_OP relational_expression. {new BinaryExpression(BinaryOperator.EQ_OP, untyped n(1), untyped n(3));}
+equality_expression ::= equality_expression NE_OP relational_expression. {new BinaryExpression(BinaryOperator.NE_OP, untyped n(1), untyped n(3));}
+and_expression ::= equality_expression. {s(1);}
+and_expression ::= and_expression AMPERSAND equality_expression. {new BinaryExpression(BinaryOperator.AMPERSAND, untyped n(1), untyped n(3));}
+exclusive_or_expression ::= and_expression. {s(1);}
+exclusive_or_expression ::= exclusive_or_expression CARET and_expression. {new BinaryExpression(BinaryOperator.CARET, untyped n(1), untyped n(3));}
+inclusive_or_expression ::= exclusive_or_expression. {s(1);}
+inclusive_or_expression ::= inclusive_or_expression VERTICAL_BAR exclusive_or_expression. {new BinaryExpression(BinaryOperator.VERTICAL_BAR, untyped n(1), untyped n(3));}
+logical_and_expression ::= inclusive_or_expression. {s(1);}
+logical_and_expression ::= logical_and_expression AND_OP inclusive_or_expression. {new BinaryExpression(BinaryOperator.AND_OP, untyped n(1), untyped n(3));}
+logical_xor_expression ::= logical_and_expression. {s(1);}
+logical_xor_expression ::= logical_xor_expression XOR_OP logical_and_expression. {new BinaryExpression(BinaryOperator.XOR_OP, untyped n(1), untyped n(3));}
+logical_or_expression ::= logical_xor_expression. {s(1);}
+logical_or_expression ::= logical_or_expression OR_OP logical_xor_expression. {new BinaryExpression(BinaryOperator.OR_OP, untyped n(1), untyped n(3));}
+conditional_expression ::= logical_or_expression. {s(1);}
+conditional_expression ::= logical_or_expression QUESTION expression COLON assignment_expression. {new ConditionalExpression(untyped n(1), untyped n(3), untyped n(5));}
+assignment_expression ::= conditional_expression. {s(1);}
+assignment_expression ::= unary_expression assignment_operator assignment_expression. {new AssignmentExpression(untyped ev(2), untyped n(1), untyped n(3));}
+assignment_operator ::= EQUAL. {AssignmentOperator.EQUAL;}
+assignment_operator ::= MUL_ASSIGN. {AssignmentOperator.MUL_ASSIGN;}
+assignment_operator ::= DIV_ASSIGN. {AssignmentOperator.DIV_ASSIGN;}
+assignment_operator ::= MOD_ASSIGN. {AssignmentOperator.MOD_ASSIGN;}
+assignment_operator ::= ADD_ASSIGN. {AssignmentOperator.ADD_ASSIGN;}
+assignment_operator ::= SUB_ASSIGN. {AssignmentOperator.SUB_ASSIGN;}
+assignment_operator ::= LEFT_ASSIGN. {AssignmentOperator.LEFT_ASSIGN;}
+assignment_operator ::= RIGHT_ASSIGN. {AssignmentOperator.RIGHT_ASSIGN;}
+assignment_operator ::= AND_ASSIGN. {AssignmentOperator.AND_ASSIGN;}
+assignment_operator ::= XOR_ASSIGN. {AssignmentOperator.XOR_ASSIGN;}
+assignment_operator ::= OR_ASSIGN. {AssignmentOperator.OR_ASSIGN;}
+expression ::= assignment_expression. {s(1);}
+expression ::= expression COMMA assignment_expression. {
+        if(Std.is(e(1), SequenceExpression)){
+            cast(e(1), SequenceExpression).expressions.push(e(3));
+            $$ = s(1);
+        }else{
+            $$ = new SequenceExpression([e(1), e(3)]);
+        }
+    }
+constant_expression ::= conditional_expression. {s(1);}
+declaration ::= function_prototype SEMICOLON. {new FunctionPrototype(untyped s(1));}
+declaration ::= init_declarator_list SEMICOLON. {
+        handleVariableDeclaration(untyped s(1));
+        $$ = s(1); 
+    }
+declaration ::= PRECISION precision_qualifier type_specifier_no_prec SEMICOLON. {new PrecisionDeclaration(untyped ev(2), cast(n(3), TypeSpecifier).dataType);}
+function_prototype ::= function_declarator RIGHT_PAREN. {s(1);}
+function_declarator ::= function_header. {s(1);}
+function_declarator ::= function_header_with_parameters. {s(1);}
+function_header_with_parameters ::= function_header parameter_declaration. {
+        var fh = cast(n(1), FunctionHeader);
+        fh.parameters.push(untyped n(2));
+        $$ = fh;
+    }
+function_header_with_parameters ::= function_header_with_parameters COMMA parameter_declaration. {
+        var fh = cast(n(1), FunctionHeader);
+        fh.parameters.push(untyped n(3));
+        $$ = fh; 
+    }
+function_header ::= fully_specified_type IDENTIFIER LEFT_PAREN. {new FunctionHeader(t(2).data, untyped n(1));}
+parameter_declarator ::= type_specifier IDENTIFIER. {new ParameterDeclaration(t(2).data, untyped n(1));}
+parameter_declarator ::= type_specifier IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET. {new ParameterDeclaration(t(2).data, untyped n(1), null, e(4));}
+parameter_declaration ::= type_qualifier parameter_qualifier parameter_declarator. {
+        var pd = cast(n(3), ParameterDeclaration);
+        pd.parameterQualifier = untyped ev(2);
+
+        if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
+            //even though invariant varying isn't allowed, set anyway and catch in the validator
+            pd.typeSpecifier.storage = StorageQualifier.VARYING;
+            pd.typeSpecifier.invariant = true;
+        }else{
+            pd.typeSpecifier.storage = untyped ev(1);
+        }
+        $$ = pd;
+    }
+parameter_declaration ::= parameter_qualifier parameter_declarator. {
+        var pd = cast(n(2), ParameterDeclaration);
+        pd.parameterQualifier = untyped ev(1);
+        $$ = pd;
+    }
+parameter_declaration ::= type_qualifier parameter_qualifier parameter_type_specifier. {
+        var pd = cast(n(3), ParameterDeclaration);
+        pd.parameterQualifier = untyped ev(2);
+
+        if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
+            //even though invariant varying isn't allowed, set anyway and catch in the validator
+            pd.typeSpecifier.storage = StorageQualifier.VARYING;
+            pd.typeSpecifier.invariant = true;
+        }else{
+            pd.typeSpecifier.storage = untyped ev(1);
+        }
+        $$ = pd;
+    }
+parameter_declaration ::= parameter_qualifier parameter_type_specifier. {
+        var pd = cast(n(2), ParameterDeclaration); //parameter_declaration ::= parameter_qualifier parameter_type_specifier
+        pd.parameterQualifier = untyped ev(1);
+        $$ = pd;
+    }
+parameter_qualifier ::= . {null;}
+parameter_qualifier ::= IN. {ParameterQualifier.IN;}
+parameter_qualifier ::= OUT. {ParameterQualifier.OUT;}
+parameter_qualifier ::= INOUT. {ParameterQualifier.INOUT;}
+parameter_type_specifier ::= type_specifier. {new ParameterDeclaration(null, untyped n(1));}
+parameter_type_specifier ::= type_specifier LEFT_BRACKET constant_expression RIGHT_BRACKET. {new ParameterDeclaration(null, untyped n(1), null, e(3));}
+init_declarator_list ::= single_declaration. {s(1);}
+init_declarator_list ::= init_declarator_list COMMA IDENTIFIER. {
+        var declarator = new Declarator(t(3).data, null, null);
+        cast(n(1), VariableDeclaration).declarators.push(declarator);
+        $$ = s(1);
+    }
+init_declarator_list ::= init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET. {
+        var declarator = new Declarator(t(3).data, null, e(5));
+        cast(n(1), VariableDeclaration).declarators.push(declarator);
+        $$ = s(1);
+    }
+init_declarator_list ::= init_declarator_list COMMA IDENTIFIER EQUAL initializer. {
+        var declarator = new Declarator(t(3).data, e(5), null);
+        cast(n(1), VariableDeclaration).declarators.push(declarator);
+        $$ = s(1);
+    }
+single_declaration ::= fully_specified_type. {$$ = new VariableDeclaration(untyped n(1), []);}
+single_declaration ::= fully_specified_type IDENTIFIER. {
+        var declarator = new Declarator(t(2).data, null, null);
+        $$ = new VariableDeclaration(untyped n(1), [declarator]);
+    }
+single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET. {
+        var declarator = new Declarator(t(2).data, null, e(4));
+        $$ = new VariableDeclaration(untyped n(1), [declarator]);
+    }
+single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer. {
+        var declarator = new Declarator(t(2).data, e(4), null);
+        $$ = new VariableDeclaration(untyped n(1), [declarator]);
+    }
+single_declaration ::= INVARIANT IDENTIFIER. {
+        var declarator = new Declarator(t(2).data, null, null);
+        $$ = new VariableDeclaration(new TypeSpecifier(null, null, null, true), [declarator]);
+    }
+fully_specified_type ::= type_specifier. {s(1);}
+fully_specified_type ::= type_qualifier type_specifier. {
+        var ts = cast(n(2), TypeSpecifier);
+        if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
+            ts.storage = StorageQualifier.VARYING;
+            ts.invariant = true;
+        }else{
+            ts.storage = untyped ev(1);
+        }
+        $$ = s(2);
+    }
+type_qualifier ::= CONST. {StorageQualifier.CONST;}
+type_qualifier ::= ATTRIBUTE. {StorageQualifier.ATTRIBUTE;}
+type_qualifier ::= VARYING. {StorageQualifier.VARYING;}
+type_qualifier ::= INVARIANT VARYING. {Instructions.SET_INVARIANT_VARYING;}
+type_qualifier ::= UNIFORM. {StorageQualifier.UNIFORM;}
+type_specifier ::= type_specifier_no_prec. {s(1);}
+type_specifier ::= precision_qualifier type_specifier_no_prec. {
+        var ts = cast(n(2), TypeSpecifier);
+        ts.precision = untyped ev(1);
+        $$ = ts;
+    }
+type_specifier_no_prec ::= VOID. {new TypeSpecifier(DataType.VOID);}
+type_specifier_no_prec ::= FLOAT. {new TypeSpecifier(DataType.FLOAT);}
+type_specifier_no_prec ::= INT. {new TypeSpecifier(DataType.INT);}
+type_specifier_no_prec ::= BOOL. {new TypeSpecifier(DataType.BOOL);}
+type_specifier_no_prec ::= VEC2. {new TypeSpecifier(DataType.VEC2);}
+type_specifier_no_prec ::= VEC3. {new TypeSpecifier(DataType.VEC3);}
+type_specifier_no_prec ::= VEC4. {new TypeSpecifier(DataType.VEC4);}
+type_specifier_no_prec ::= BVEC2. {new TypeSpecifier(DataType.BVEC2);}
+type_specifier_no_prec ::= BVEC3. {new TypeSpecifier(DataType.BVEC3);}
+type_specifier_no_prec ::= BVEC4. {new TypeSpecifier(DataType.BVEC4);}
+type_specifier_no_prec ::= IVEC2. {new TypeSpecifier(DataType.IVEC2);}
+type_specifier_no_prec ::= IVEC3. {new TypeSpecifier(DataType.IVEC3);}
+type_specifier_no_prec ::= IVEC4. {new TypeSpecifier(DataType.IVEC4);}
+type_specifier_no_prec ::= MAT2. {new TypeSpecifier(DataType.MAT2);}
+type_specifier_no_prec ::= MAT3. {new TypeSpecifier(DataType.MAT3);}
+type_specifier_no_prec ::= MAT4. {new TypeSpecifier(DataType.MAT4);}
+type_specifier_no_prec ::= SAMPLER2D. {new TypeSpecifier(DataType.SAMPLER2D);}
+type_specifier_no_prec ::= SAMPLERCUBE. {new TypeSpecifier(DataType.SAMPLERCUBE);}
+type_specifier_no_prec ::= struct_specifier. {s(1);}
+type_specifier_no_prec ::= TYPE_NAME. {new TypeSpecifier(DataType.USER_TYPE(t(1).data));}
+precision_qualifier ::= HIGH_PRECISION. {PrecisionQualifier.HIGH_PRECISION;}
+precision_qualifier ::= MEDIUM_PRECISION. {PrecisionQualifier.MEDIUM_PRECISION;}
+precision_qualifier ::= LOW_PRECISION. {PrecisionQualifier.LOW_PRECISION;}
+struct_specifier ::= STRUCT IDENTIFIER LEFT_BRACE struct_declaration_list RIGHT_BRACE. {
+        var ss = new StructSpecifier(t(2).data, untyped a(4));
+        //parse context type definition's are handled at variable declaration
+        $$ = ss;
+    }
+struct_specifier ::= STRUCT LEFT_BRACE struct_declaration_list RIGHT_BRACE. {
+        var ss = new StructSpecifier(null, untyped a(3));
+        $$ = ss;
+    }
+struct_declaration_list ::= struct_declaration. {[n(1)];}
+struct_declaration_list ::= struct_declaration_list struct_declaration. {a(1).push(n(2)); $$ = s(1);}
+struct_declaration ::= type_specifier struct_declarator_list SEMICOLON. {new StructFieldDeclaration(untyped n(1), untyped a(2));}
+struct_declarator_list ::= struct_declarator. {[n(1)];}
+struct_declarator_list ::= struct_declarator_list COMMA struct_declarator. {a(1).push(n(3)); $$ = s(1);}
+struct_declarator ::= IDENTIFIER. {new StructDeclarator(t(1).data);}
+struct_declarator ::= IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET. {new StructDeclarator(t(1).data, e(3));}
+initializer ::= assignment_expression. {s(1);}
+declaration_statement ::= declaration. {new DeclarationStatement(untyped n(1));}
+statement ::= scope_push compound_statement_no_new_scope scope_pop. {s(2);}
+statement ::= simple_statement. {s(1);}
+statement_no_new_scope ::= compound_statement_no_new_scope. {s(1);}
+statement_no_new_scope ::= simple_statement. {s(1);}
+statement_with_scope ::= scope_push compound_statement_no_new_scope scope_pop. {s(2);}
+statement_with_scope ::= scope_push simple_statement scope_pop. {s(2);}
+simple_statement ::= declaration_statement. {s(1);}
+simple_statement ::= expression_statement. {s(1);}
+simple_statement ::= selection_statement. {s(1);}
+simple_statement ::= iteration_statement. {s(1);}
+simple_statement ::= jump_statement. {s(1);}
+simple_statement ::= preprocessor_directive. {s(1);}
+compound_statement_no_new_scope ::= LEFT_BRACE RIGHT_BRACE. {new CompoundStatement([]);}
+compound_statement_no_new_scope ::= LEFT_BRACE statement_list RIGHT_BRACE. {new CompoundStatement(untyped a(2));}
+statement_list ::= statement. {[n(1)];}
+statement_list ::= statement_list statement. {
+        a(1).push(n(2)); 
+        $$ = s(1);
+    }
+expression_statement ::= SEMICOLON. {new ExpressionStatement(null);}
+expression_statement ::= expression SEMICOLON. {new ExpressionStatement(e(1));}
+selection_statement ::= IF LEFT_PAREN expression RIGHT_PAREN selection_rest_statement. {new IfStatement(e(3), a(5)[0], a(5)[1]);}
+selection_rest_statement ::= statement_with_scope ELSE statement_with_scope. {[n(1), n(3)];}
+selection_rest_statement ::= statement_with_scope. {[n(1), null];}
+condition ::= expression. {s(1);}
+condition ::= fully_specified_type IDENTIFIER EQUAL initializer. {
+        var declarator = new Declarator(t(2).data, e(4), null);
+        var declaration = new VariableDeclaration(untyped n(1), [declarator]);
+        handleVariableDeclaration(declaration);
+        $$ = declaration;
+    }
+iteration_statement ::= WHILE scope_push LEFT_PAREN condition RIGHT_PAREN statement_no_new_scope scope_pop. {new WhileStatement(e(4), untyped n(6));}
+iteration_statement ::= DO statement_with_scope WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON. {new DoWhileStatement(e(5), untyped n(2));}
+iteration_statement ::= FOR scope_push LEFT_PAREN for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope scope_pop. {new ForStatement(untyped n(4), a(5)[0], a(5)[1], untyped n(7));}
+for_init_statement ::= expression_statement. {s(1);}
+for_init_statement ::= declaration_statement. {s(1);}
+conditionopt ::= condition. {s(1);}
+conditionopt ::= . {null;}
+for_rest_statement ::= conditionopt SEMICOLON. {[e(1), null];}
+for_rest_statement ::= conditionopt SEMICOLON expression. {[e(1), e(3)];}
+jump_statement ::= CONTINUE SEMICOLON. {new JumpStatement(JumpMode.CONTINUE);}
+jump_statement ::= BREAK SEMICOLON. {new JumpStatement(JumpMode.BREAK);}
+jump_statement ::= RETURN SEMICOLON. {new ReturnStatement(null);}
+jump_statement ::= RETURN expression SEMICOLON. {new ReturnStatement(untyped n(2));}
+jump_statement ::= DISCARD SEMICOLON. {new JumpStatement(JumpMode.DISCARD);}
+translation_unit ::= external_declaration. {[n(1)];}
+translation_unit ::= translation_unit external_declaration. {
+        a(1).push(untyped n(2));
+        $$ = s(1);
+    }
+external_declaration ::= function_definition. {
+        cast(n(1), Declaration).external = true;
+        $$ = s(1);
+    }
+external_declaration ::= declaration. {
+        cast(n(1), Declaration).external = true;
+        $$ = s(1);
+    }
+external_declaration ::= preprocessor_directive. {
+        cast(n(1), Declaration).external = true;
+        $$ = s(1);
+    }
+function_definition ::= function_prototype scope_push compound_statement_no_new_scope scope_pop. {new FunctionDefinition(untyped n(1), untyped n(3));}
+preprocessor_directive ::= PREPROCESSOR_DIRECTIVE. {new PreprocessorDirective(t(1).data);}
+scope_push ::= . {
+        parseContext.scopePush();
+        $$ = null;
+    }
+scope_pop ::= . {
+        parseContext.scopePop();
+        $$ = null; 
+    }
