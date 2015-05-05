@@ -284,22 +284,26 @@ struct_declarator ::= IDENTIFIER. {new StructDeclarator(t(1).data);}
 struct_declarator ::= IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET. {new StructDeclarator(t(1).data, e(3));}
 initializer ::= assignment_expression. {s(1);}
 declaration_statement ::= declaration. {new DeclarationStatement(untyped n(1));}
-statement ::= scope_push compound_statement_no_new_scope scope_pop. {s(2);}
-statement ::= simple_statement. {s(1);}
+statement_with_scope ::= compound_statement_with_scope. {$$ = s(1);}
+statement_with_scope ::= scope_push simple_statement scope_pop. {s(2);}
+statement_pop_scope ::= compound_statement_pop_scope. {$$ = s(1);}
+statement_pop_scope ::= simple_statement scope_pop. {s(1);}
 statement_no_new_scope ::= compound_statement_no_new_scope. {s(1);}
 statement_no_new_scope ::= simple_statement. {s(1);}
-statement_with_scope ::= scope_push compound_statement_no_new_scope scope_pop. {s(2);}
-statement_with_scope ::= scope_push simple_statement scope_pop. {s(2);}
 simple_statement ::= declaration_statement. {s(1);}
 simple_statement ::= expression_statement. {s(1);}
 simple_statement ::= selection_statement. {s(1);}
 simple_statement ::= iteration_statement. {s(1);}
 simple_statement ::= jump_statement. {s(1);}
 simple_statement ::= preprocessor_directive. {s(1);}
+compound_statement_with_scope ::= LEFT_BRACE RIGHT_BRACE. {new CompoundStatement([]);}
+compound_statement_with_scope ::= LEFT_BRACE scope_push statement_list scope_pop RIGHT_BRACE. {new CompoundStatement(untyped a(3));}
+compound_statement_pop_scope ::= LEFT_BRACE scope_pop RIGHT_BRACE. {new CompoundStatement([]);}
+compound_statement_pop_scope ::= LEFT_BRACE statement_list scope_pop RIGHT_BRACE. {new CompoundStatement(untyped a(2));}
 compound_statement_no_new_scope ::= LEFT_BRACE RIGHT_BRACE. {new CompoundStatement([]);}
 compound_statement_no_new_scope ::= LEFT_BRACE statement_list RIGHT_BRACE. {new CompoundStatement(untyped a(2));}
-statement_list ::= statement. {[n(1)];}
-statement_list ::= statement_list statement. {
+statement_list ::= statement_no_new_scope. {[n(1)];}
+statement_list ::= statement_list statement_no_new_scope. {
         a(1).push(n(2)); 
         $$ = s(1);
     }
@@ -315,9 +319,9 @@ condition ::= fully_specified_type IDENTIFIER EQUAL initializer. {
         handleVariableDeclaration(declaration);
         $$ = declaration;
     }
-iteration_statement ::= WHILE scope_push LEFT_PAREN condition RIGHT_PAREN statement_no_new_scope scope_pop. {new WhileStatement(e(4), untyped n(6));}
+iteration_statement ::= WHILE LEFT_PAREN scope_push condition RIGHT_PAREN statement_pop_scope. {new WhileStatement(e(4), untyped n(6));}
 iteration_statement ::= DO statement_with_scope WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON. {new DoWhileStatement(e(5), untyped n(2));}
-iteration_statement ::= FOR scope_push LEFT_PAREN for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope scope_pop. {new ForStatement(untyped n(4), a(5)[0], a(5)[1], untyped n(7));}
+iteration_statement ::= FOR LEFT_PAREN scope_push for_init_statement for_rest_statement RIGHT_PAREN statement_pop_scope. {new ForStatement(untyped n(4), a(5)[0], a(5)[1], untyped n(7));}
 for_init_statement ::= expression_statement. {s(1);}
 for_init_statement ::= declaration_statement. {s(1);}
 conditionopt ::= condition. {s(1);}
@@ -346,7 +350,7 @@ external_declaration ::= preprocessor_directive. {
         cast(n(1), Declaration).external = true;
         $$ = s(1);
     }
-function_definition ::= function_prototype scope_push compound_statement_no_new_scope scope_pop. {new FunctionDefinition(untyped n(1), untyped n(3));}
+function_definition ::= function_prototype scope_push compound_statement_pop_scope. {new FunctionDefinition(untyped n(1), untyped n(3));}
 preprocessor_directive ::= PREPROCESSOR_DIRECTIVE. {new PreprocessorDirective(t(1).data);}
 scope_push ::= . {
         parseContext.scopePush();

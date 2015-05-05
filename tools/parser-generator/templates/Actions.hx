@@ -2,7 +2,7 @@
 	TreeBuilder is responsible for constructing the abstract syntax tree by creation
 	and concatenation of notes in accordance with the grammar rules of the language
 	
-	Using ruleset GLSL_ES_100_PP_scope v2: GLES 1.00 modified to accept preprocessor tokens as translation_units and statements
+	::grammar_name::
 
 	@author George Corney
 */
@@ -40,6 +40,7 @@ class TreeBuilder{
 		if(t.type.equals(TokenType.IDENTIFIER)){
 			//ensure the previous token isn't a TYPE_NAME (ie to cases like S S = S();)
 			//@! need to check we're not in a declarator list
+			//@! better check last token isn't STRUCT either (although this isn't critical)
 			if(!((lastToken != null) && lastToken.type.isTypeReferenceType())){
 				trace('on line ${t.line} : ${t.column}');
 				switch parseContext.searchScope(t.data) {
@@ -56,11 +57,10 @@ class TreeBuilder{
 	}
 
 	static public function buildRule(ruleno:Int):MinorType{
-		
 		TreeBuilder.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
 
 		switch(ruleno){
-$$printActionCases(rule_actions);
+$$printActionCases(rule_actions,rules,3)
 		}
 
 		Parser.warn('unhandled reduce rule number $ruleno');

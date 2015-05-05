@@ -52,7 +52,9 @@ class Parser{
 		var lastToken = null;
 		for(t in tokens){
 			if(ignoredTokens.indexOf(t.type) != -1) continue;
-			t = TreeBuilder.processToken(t);
+
+			// t = TreeBuilder.processToken(t);
+
 			parseStep(tokenIdMap.get(t.type), t);
 			lastToken = t;
 		}
@@ -64,20 +66,33 @@ class Parser{
 	}
 
 	//for each token, major = tokenId
-	static function parseStep(major:Int, minor:MinorType){
+	static function parseStep(major:Int, minor:MinorType){		
 		var act:Int, 
 			atEOF:Bool = (major == 0),
 			errorHit:Bool = false;
 
 		do{
 			act = findShiftAction(major);
+
 			if(act < nStates){
 				assert( !atEOF );
+
+				//process token only after the look ahead
+				minor = TreeBuilder.processToken(minor);
+				major = tokenIdMap.get(minor.type);
+
 				shift(act, major, minor); //push a leaf/token to the stack
 				errorCount--;
 				major = illegalSymbolNumber;
 			}else if(act < nStates + nRules){
 				reduce(act - nStates);
+
+				//process token only after the look ahead and reduce; reduce can change the outcome of processToken()
+				if(!atEOF){
+					minor = TreeBuilder.processToken(minor);
+					major = tokenIdMap.get(minor.type);
+				}
+
 			}else{
 				//syntax error
 				assert( act == errorAction );
@@ -95,8 +110,9 @@ class Parser{
 					major = illegalSymbolNumber;
 				}
 			}
+
+			
 		}while( major != illegalSymbolNumber && i >= 0);
-		return;
 	}
 
 	static function popStack(){
@@ -173,6 +189,7 @@ class Parser{
 		//new node generated after reducing with this rule
 		var newNode = TreeBuilder.buildRule(ruleno); //trigger custom reduce behavior
 		currentNode = newNode;
+		trace('reduce $newNode');
 
 		goto = ruleInfo[ruleno].lhs;
 		size = ruleInfo[ruleno].nrhs;

@@ -22,5 +22,10 @@ BASE_DIR=$PWD
 	haxe build.hxml	&&
 	neko bin/generator.n &&
 
+	echo "${BRIGHT_WHITE}${BOLD}> Copying output to main glsl parser${RESET}"
+
+	cp ./output/Tables.hx ../../glsl/parse/Tables.hx &&
+	cp ./output/Actions.hx ../../glsl/parse/TreeBuilder.hx &&
+	
 	echo "${GREEN}${BOLD}Complete${RESET}"
 }

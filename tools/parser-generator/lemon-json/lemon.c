@@ -3865,6 +3865,7 @@ void ReportJSON(
 
   /* Add grammar name */
   fprintf(out, "\t\"grammar_name\": \"%s\",\n", without_ext(without_dir(lemp->filename)));
+  fprintf(out, "\t\"grammar_file\": \"%s\",\n", without_dir(lemp->filename));
 
   /* Add token type */
   escaped = escape_double_quotes(lemp->tokentype);

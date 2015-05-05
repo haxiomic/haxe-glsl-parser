@@ -412,17 +412,17 @@ declaration_statement:
     declaration {new DeclarationStatement(untyped n(1));}
 
 //@! new
-statement:
-    scope_push compound_statement_no_new_scope scope_pop {s(2);}
-    simple_statement {s(1);}
+statement_with_scope:
+    compound_statement_with_scope {$$ = s(1);}
+    scope_push simple_statement scope_pop {s(2);}
+
+statement_pop_scope:
+    compound_statement_pop_scope {$$ = s(1);}
+    simple_statement scope_pop {s(1);}
 
 statement_no_new_scope:
-    compound_statement_no_new_scope {s(1);} //@! was compound_statement_with_scope
+    compound_statement_no_new_scope {s(1);} //@! was compound_statement_with_scope ?
     simple_statement {s(1);}
-
-statement_with_scope:
-    scope_push compound_statement_no_new_scope scope_pop {s(2);}
-    scope_push simple_statement scope_pop {s(2);}
 
 simple_statement:
     declaration_statement {s(1);}
@@ -432,13 +432,21 @@ simple_statement:
     jump_statement {s(1);}
     preprocessor_directive {s(1);} //non-spec
 
+compound_statement_with_scope:
+    LEFT_BRACE RIGHT_BRACE {new CompoundStatement([]);}
+    LEFT_BRACE scope_push statement_list scope_pop RIGHT_BRACE {new CompoundStatement(untyped a(3));}
+
+compound_statement_pop_scope:
+    LEFT_BRACE scope_pop RIGHT_BRACE {new CompoundStatement([]);}
+    LEFT_BRACE statement_list scope_pop RIGHT_BRACE {new CompoundStatement(untyped a(2));}
+
 compound_statement_no_new_scope:
     LEFT_BRACE RIGHT_BRACE {new CompoundStatement([]);}
     LEFT_BRACE statement_list RIGHT_BRACE {new CompoundStatement(untyped a(2));}
 
 statement_list:
-    statement {[n(1)];}
-    statement_list statement {
+    statement_no_new_scope {[n(1)];}
+    statement_list statement_no_new_scope {
         a(1).push(n(2)); 
         $$ = s(1);
     }
@@ -452,7 +460,7 @@ selection_statement:
 
 selection_rest_statement:
     statement_with_scope ELSE statement_with_scope {[n(1), n(3)];}
-    statement_with_scope {[n(1), null];};
+    statement_with_scope {[n(1), null];}
 
 condition:
     expression {s(1);}
@@ -464,9 +472,9 @@ condition:
     }
 
 iteration_statement:
-    WHILE scope_push LEFT_PAREN condition RIGHT_PAREN statement_no_new_scope scope_pop {new WhileStatement(e(4), untyped n(6));}
+    WHILE LEFT_PAREN scope_push condition RIGHT_PAREN statement_pop_scope {new WhileStatement(e(4), untyped n(6));}
     DO statement_with_scope WHILE LEFT_PAREN expression RIGHT_PAREN SEMICOLON {new DoWhileStatement(e(5), untyped n(2));}
-    FOR scope_push LEFT_PAREN for_init_statement for_rest_statement RIGHT_PAREN statement_no_new_scope scope_pop {new ForStatement(untyped n(4), a(5)[0], a(5)[1], untyped n(7));}
+    FOR LEFT_PAREN scope_push for_init_statement for_rest_statement RIGHT_PAREN statement_pop_scope {new ForStatement(untyped n(4), a(5)[0], a(5)[1], untyped n(7));}
 
 for_init_statement:
     expression_statement {s(1);}
@@ -509,7 +517,7 @@ external_declaration:
     } //non-spec
 
 function_definition:
-    function_prototype scope_push compound_statement_no_new_scope scope_pop {new FunctionDefinition(untyped n(1), untyped n(3));}
+    function_prototype scope_push compound_statement_pop_scope {new FunctionDefinition(untyped n(1), untyped n(3));}
 
 //non-spec support for preprocessor directives in the AST
 preprocessor_directive:

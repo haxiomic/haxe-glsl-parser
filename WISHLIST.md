@@ -1,5 +1,6 @@
 #Feature Wishlist
 
+- Parser in js worker
 - Validator
 - Minifier with DCE,
 	examples https://code.google.com/p/glsl-unit/wiki/UsingTheCompiler
