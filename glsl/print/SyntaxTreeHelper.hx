@@ -512,11 +512,11 @@ class ForStatementPrinter{
 		var pretty = (indentWith != null);
 		var str = 'for';
 		str += '('
-			+ n.init.print(indentWith)
+			+ (n.init != null ? n.init.print(indentWith) : '')
 			+ (pretty ? ' ' : '')
-			+ n.test.print(indentWith)
+			+ (n.test != null ? n.test.print(indentWith) : '')
 			+ (pretty ? '; ' : ';')
-			+ n.update.print(indentWith)
+			+ (n.update != null ? n.update.print(indentWith) : '')
 			+ ')';
 		str += n.body.print(indentWith);
 		return Utils.indent(str, indentWith, indentLevel);

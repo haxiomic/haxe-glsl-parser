@@ -1,13 +1,5 @@
 #Todo
 -----
-- TYPE_NAME scoping:
-	-> TYPE_NAME is being replaced in the wrong places, for example, int a, S;
-	-> fix function parameter scope issue
-		Create new dummy rule to handle function definition
-		Pass parameters to context
-	-> define parameters in parseContext
-- for(;;) gives "Expression cannot be printed: null"
-- TreeBuilder to ParserActions?
 - warn on redefinitions in parseContext?
 - TreeBuilder should be Parser and Parser should be ParserCore. processToken() shouldn't need to track lastToken
 - Support for complex types in Eval + Improved operator selection in Eval
