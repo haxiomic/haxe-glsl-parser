@@ -7,7 +7,7 @@
 // - inline rule reduce code
 
 %start_symbol root
-%token_type {glsl.token.Tokenizer.TokenType}
+%token_type {glsl.lex.Tokenizer.TokenType}
 
 //%ignore_tokens WHITESPACE LINE_COMMENT BLOCK_COMMENT
 

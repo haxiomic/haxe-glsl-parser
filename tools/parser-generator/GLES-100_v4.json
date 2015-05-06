@@ -1,7 +1,7 @@
 {
 	"grammar_name": "GLES-100_v4",
 	"grammar_file": "GLES-100_v4.lemon",
-	"token_type": "glsl.token.Tokenizer.TokenType",
+	"token_type": "glsl.lex.Tokenizer.TokenType",
 	"tokens": {
 		"IDENTIFIER": 1,
 		"INTCONSTANT": 2,

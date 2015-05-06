@@ -11,7 +11,7 @@
 
 package glsl.parse;
 
-typedef TokenType = glsl.token.Tokenizer.TokenType;
+typedef TokenType = glsl.lex.Tokenizer.TokenType;
 
 class Tables{
 	static public var ignoredTokens:Array<TokenType> = [WHITESPACE, LINE_COMMENT, BLOCK_COMMENT];

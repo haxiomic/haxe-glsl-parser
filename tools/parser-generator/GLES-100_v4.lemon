@@ -1,5 +1,5 @@
 %start_symbol root
-%token_type {glsl.token.Tokenizer.TokenType}
+%token_type {glsl.lex.Tokenizer.TokenType}
 root ::= translation_unit. {new Root(untyped a(1));}
 variable_identifier ::= IDENTIFIER. {new Identifier(t(1).data);}
 primary_expression ::= variable_identifier. {s(1);}

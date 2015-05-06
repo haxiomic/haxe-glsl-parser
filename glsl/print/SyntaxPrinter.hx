@@ -11,8 +11,14 @@ package glsl.print;
 
 import glsl.SyntaxTree;
 
-using glsl.print.SyntaxTreeHelper;
+using glsl.print.SyntaxPrinter;
 using glsl.SyntaxTree.NodeEnumHelper;
+
+class SyntaxPrinter{
+	static public function print(n:Node, indentWith:String, indentLevel:Int = 0){
+		return NodePrinter.print(n, indentWith, indentLevel);
+	}
+}
 
 class NodePrinter{
 	//Node cannot be printed, determine sub type and print

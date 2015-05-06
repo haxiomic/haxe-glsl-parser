@@ -18,10 +18,10 @@ package glsl.preprocess;
 
 import glsl.SyntaxTree;
 
-import glsl.token.Tokenizer;
+import glsl.lex.Tokenizer;
 
-using glsl.token.TokenHelper;
-using glsl.print.TokenHelper;
+using glsl.lex.TokenHelper;
+using glsl.print.TokenPrinter;
 
 class Preprocessor{
 
@@ -289,7 +289,7 @@ class Preprocessor{
 						//handle branches in reverse order to prevent position conflicts
 						var c = branches[branches.length - 1 - bi];
 						//if any macros are referenced in the branch directive, they should be marked as required
-						//@! this uses glsl.token to extract identifiers rather than specialized pp tokenizer
+						//@! this uses glsl.lex to extract identifiers rather than specialized pp tokenizer
 						switch readDirectiveData(c.directiveToken.data) {
 							case {title: 'if', content: content}, {title: 'elif', content: content}:
 								var directiveTokens = Tokenizer.tokenize(content);

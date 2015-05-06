@@ -23,7 +23,7 @@ class ParseContext{
 
 	public var declarationContext:Bool;
 
-	public var defaultPrecision:Map<DataType, PrecisionQualifier>;
+	public var defaultPrecision:Map<DataType, PrecisionQualifier>; //should be a member of the current scope?
 
 	public function new(){
 		scopes = [];

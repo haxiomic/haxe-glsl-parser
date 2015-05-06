@@ -2,12 +2,12 @@ package;
 
 import glsl.preprocess.Preprocessor;
 import glsl.parse.Parser;
-import glsl.token.Tokenizer;
+import glsl.lex.Tokenizer;
 import glsl.SyntaxTree.Node;
 import js.Browser;
 import js.html.DOMElement;
 
-using glsl.print.SyntaxTreeHelper;
+using glsl.print.SyntaxPrinter;
 
 class Main{
 	var jsonContainer:DOMElement;

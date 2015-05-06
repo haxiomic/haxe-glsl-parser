@@ -13,7 +13,7 @@ package glsl.parse;
 
 import glsl.parse.Actions.MinorType;
 
-import glsl.token.Tokenizer;
+import glsl.lex.Tokenizer;
 
 class Parser{
 	

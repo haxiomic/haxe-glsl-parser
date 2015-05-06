@@ -1,11 +1,11 @@
 #Todo
 -----
-- add toEnum() with macro rather than helper
-- warn on redefinitions in parseContext?
-- TreeBuilder should be Parser and Parser should be ParserCore. processToken() shouldn't need to track lastToken
+- Add toEnum() with macro rather than helper
+- Warn on redefinitions in parseContext?
 - Support for complex types in Eval + Improved operator selection in Eval
-- Parser core separation
 - Preprocessor expression parser and eval
+- Parser core separation
+	- TreeBuilder should be Parser and Parser should be ParserCore. processToken() shouldn't need to track lastToken
 - Validator
 - Handle setting the default precision with parseContext
 - isolate core parser for reuse by preprocessor

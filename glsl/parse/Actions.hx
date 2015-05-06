@@ -11,12 +11,12 @@
 
 package glsl.parse;
 
-import glsl.token.Tokenizer.Token;
-import glsl.token.Tokenizer.TokenType;
+import glsl.lex.Tokenizer.Token;
+import glsl.lex.Tokenizer.TokenType;
 import glsl.SyntaxTree;
 
 using glsl.SyntaxTree.NodeEnumHelper;
-using glsl.token.TokenHelper;
+using glsl.lex.TokenHelper;
 
 
 typedef MinorType = Dynamic;
@@ -34,6 +34,7 @@ class Actions{
 	static public function init(){
 		ruleno = -1;
 		parseContext = new ParseContext();
+		lastToken = null;
 	}
 
 	static public function processToken(t:Token){
