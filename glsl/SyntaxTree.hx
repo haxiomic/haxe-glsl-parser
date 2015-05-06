@@ -297,17 +297,13 @@ class Declarator implements Node{
 }
 
 @:publicFields
-class ParameterDeclaration implements Node{
-	var name:String;
+class ParameterDeclaration extends Declarator{
 	var parameterQualifier:ParameterQualifier;
 	var typeSpecifier:TypeSpecifier;
-	var arraySizeExpression:Expression;
-	var nodeName:String;
 	function new(name:String, typeSpecifier:TypeSpecifier, ?parameterQualifier:ParameterQualifier, ?arraySizeExpression:Expression){
-		this.name = name;
+		super(name, null, arraySizeExpression);
 		this.typeSpecifier = typeSpecifier;
 		this.parameterQualifier = parameterQualifier;
-		this.arraySizeExpression = arraySizeExpression;
 	}
 }
 

@@ -362,7 +362,16 @@ external_declaration ::= preprocessor_directive. {
         cast(n(1), Declaration).external = true;
         $$ = s(1);
     }
-function_definition ::= function_prototype scope_push compound_statement_pop_scope. {new FunctionDefinition(untyped n(1), untyped n(3));}
+open_function_definition ::= function_prototype. {
+        parseContext.scopePush();
+        //define variables from prototype
+        var parameters:Array<ParameterDeclaration> = untyped s(1).parameters; 
+        for(p in parameters){
+            handleVariableDeclaration(p, p.typeSpecifier);
+        }
+        $$ = s(1);
+    }
+function_definition ::= open_function_definition compound_statement_pop_scope. {new FunctionDefinition(untyped n(1), untyped n(2));}
 preprocessor_directive ::= PREPROCESSOR_DIRECTIVE. {new PreprocessorDirective(t(1).data);}
 scope_push ::= . {
         parseContext.scopePush();

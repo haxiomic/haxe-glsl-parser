@@ -785,12 +785,25 @@ class Actions{
 				
 				return __ret;
 			case 215: 
-				/* function_definition ::= function_prototype scope_push compound_statement_pop_scope */
-				return new FunctionDefinition(untyped n(1), untyped n(3));
+				/* open_function_definition ::= function_prototype */
+				var __ret:Dynamic;
+				
+				parseContext.scopePush();
+				//define variables from prototype
+				var parameters:Array<ParameterDeclaration> = untyped s(1).parameters; 
+				for(p in parameters){
+				    handleVariableDeclaration(p, p.typeSpecifier);
+				}
+				__ret = s(1);
+				
+				return __ret;
 			case 216: 
+				/* function_definition ::= open_function_definition compound_statement_pop_scope */
+				return new FunctionDefinition(untyped n(1), untyped n(2));
+			case 217: 
 				/* preprocessor_directive ::= PREPROCESSOR_DIRECTIVE */
 				return new PreprocessorDirective(t(1).data);
-			case 217: 
+			case 218: 
 				/* scope_push ::= */
 				var __ret:Dynamic;
 				
@@ -798,7 +811,7 @@ class Actions{
 				__ret = null;
 				
 				return __ret;
-			case 218: 
+			case 219: 
 				/* scope_pop ::= */
 				var __ret:Dynamic;
 				
@@ -806,7 +819,7 @@ class Actions{
 				__ret = null;
 				
 				return __ret;
-			case 219: 
+			case 220: 
 				/* enter_declaration_context ::= */
 				var __ret:Dynamic;
 				
@@ -814,7 +827,7 @@ class Actions{
 				__ret = null;
 				
 				return __ret;
-			case 220: 
+			case 221: 
 				/* exit_declaration_context ::= */
 				var __ret:Dynamic;
 				
