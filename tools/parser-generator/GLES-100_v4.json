@@ -1,6 +1,6 @@
 {
-	"grammar_name": "GLES-100_PP_scope",
-	"grammar_file": "GLES-100_PP_scope.lemon",
+	"grammar_name": "GLES-100_v4",
+	"grammar_file": "GLES-100_v4.lemon",
 	"token_type": "glsl.token.Tokenizer.TokenType",
 	"tokens": {
 		"IDENTIFIER": 1,
@@ -1151,7 +1151,6 @@
 		"95": "s(1);",
 		"96": "new FunctionPrototype(untyped s(1));",
 		"97": "
-        handleVariableDeclaration(untyped s(1));
         $$ = s(1); 
     ",
 		"98": "new PrecisionDeclaration(untyped ev(2), cast(n(3), TypeSpecifier).dataType);",
@@ -1216,35 +1215,48 @@
 		"117": "s(1);",
 		"118": "
         var declarator = new Declarator(t(3).data, null, null);
-        cast(n(1), VariableDeclaration).declarators.push(declarator);
+        var declaration = cast(n(1), VariableDeclaration);
+        declaration.declarators.push(declarator);
+        handleVariableDeclaration(declarator, declaration.typeSpecifier);
         $$ = s(1);
     ",
 		"119": "
         var declarator = new Declarator(t(3).data, null, e(5));
-        cast(n(1), VariableDeclaration).declarators.push(declarator);
+        var declaration = cast(n(1), VariableDeclaration);
+        declaration.declarators.push(declarator);
+        handleVariableDeclaration(declarator, declaration.typeSpecifier);
         $$ = s(1);
     ",
 		"120": "
         var declarator = new Declarator(t(3).data, e(5), null);
-        cast(n(1), VariableDeclaration).declarators.push(declarator);
+        var declaration = cast(n(1), VariableDeclaration);
+        declaration.declarators.push(declarator);
+        handleVariableDeclaration(declarator, declaration.typeSpecifier);
         $$ = s(1);
     ",
-		"121": "$$ = new VariableDeclaration(untyped n(1), []);",
+		"121": "
+        $$ = new VariableDeclaration(untyped n(1), []);
+        handleVariableDeclaration(null, $$.typeSpecifier);
+    ",
 		"122": "
         var declarator = new Declarator(t(2).data, null, null);
         $$ = new VariableDeclaration(untyped n(1), [declarator]);
+        handleVariableDeclaration(declarator, $$.typeSpecifier);
     ",
 		"123": "
         var declarator = new Declarator(t(2).data, null, e(4));
         $$ = new VariableDeclaration(untyped n(1), [declarator]);
+        handleVariableDeclaration(declarator, $$.typeSpecifier);
     ",
 		"124": "
         var declarator = new Declarator(t(2).data, e(4), null);
         $$ = new VariableDeclaration(untyped n(1), [declarator]);
+        handleVariableDeclaration(declarator, $$.typeSpecifier);
     ",
 		"125": "
         var declarator = new Declarator(t(2).data, null, null);
         $$ = new VariableDeclaration(new TypeSpecifier(null, null, null, true), [declarator]);
+        handleVariableDeclaration(declarator, $$.typeSpecifier);
     ",
 		"126": "s(1);",
 		"127": "
@@ -1341,7 +1353,7 @@
 		"195": "
         var declarator = new Declarator(t(2).data, e(4), null);
         var declaration = new VariableDeclaration(untyped n(1), [declarator]);
-        handleVariableDeclaration(declaration);
+        handleVariableDeclaration(declarator, declaration.typeSpecifier);
         $$ = declaration;
     ",
 		"196": "new WhileStatement(e(4), untyped n(6));",
@@ -1383,7 +1395,7 @@
     ",
 		"218": "
         parseContext.scopePop();
-        $$ = null; 
+        $$ = null;
     "
 	},
 	"stack_overflow": "",

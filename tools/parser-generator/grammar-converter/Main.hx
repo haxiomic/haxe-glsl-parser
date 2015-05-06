@@ -2,7 +2,7 @@ import haxe.io.Path;
 
 class Main{
 	static var projectRoot = getProjectRoot();
-	static var grammarFile = Path.join([projectRoot, 'grammars', 'GLES-100_PP_scope.txt']);
+	static var grammarFile = Path.join([projectRoot, 'grammars', 'GLES-100_v4.txt']);
 
 	static function main() {
 		var grammar = sys.io.File.getContent(grammarFile);

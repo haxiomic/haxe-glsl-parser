@@ -1,8 +1,8 @@
 /*
-	TreeBuilder is responsible for constructing the abstract syntax tree by creation
+	Actions is responsible for constructing the abstract syntax tree by creation
 	and concatenation of notes in accordance with the grammar rules of the language
 	
-	GLES-100_PP_scope
+	GLES-100_v4
 
 	@author George Corney
 */
@@ -20,7 +20,7 @@ using glsl.token.TokenHelper;
 typedef MinorType = Dynamic;
 
 @:access(glsl.parse.Parser)
-class TreeBuilder{
+class Actions{
 
 	static var i(get, null):Int;
 	static var stack(get, null):Parser.Stack;
@@ -38,17 +38,12 @@ class TreeBuilder{
 		//check if identifier refers to a user defined type
 		//if so, change the token's type to TYPE_NAME
 		if(t.type.equals(TokenType.IDENTIFIER)){
-			//ensure the previous token isn't a TYPE_NAME (ie to cases like S S = S();)
-			//@! need to check we're not in a declarator list
-			//@! better check last token isn't STRUCT either (although this isn't critical)
-			if(!((lastToken != null) && lastToken.type.isTypeReferenceType())){
-				trace('on line ${t.line} : ${t.column}');
-				switch parseContext.searchScope(t.data) {
-					case ParseContext.Object.USER_TYPE(_):
-						trace('type change for ${t.data}, line ${t.line} : ${t.column}');
-						t.type = TokenType.TYPE_NAME;
-					case null, _:
-				}
+			//@! needs to account for declaration contexts (and prevent type change in this case)
+			switch parseContext.searchScope(t.data) {
+				case ParseContext.Object.USER_TYPE(_):
+					trace('type change for ${t.data}, line ${t.line} : ${t.column}');
+					t.type = TokenType.TYPE_NAME;
+				case null, _:
 			}
 		}
 
@@ -56,8 +51,8 @@ class TreeBuilder{
 		return t;
 	}
 
-	static public function buildRule(ruleno:Int):MinorType{
-		TreeBuilder.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
+	static public function reduce(ruleno:Int):MinorType{
+		Actions.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
 
 		switch(ruleno){
 			case 0: 
@@ -66,7 +61,7 @@ class TreeBuilder{
 			case 1: 
 				/* variable_identifier ::= IDENTIFIER */
 				return new Identifier(t(1).data);
-			case 2, 7, 9, 13, 14, 15, 16, 17, 18, 21, 40, 48, 52, 55, 58, 63, 66, 68, 70, 72, 74, 76, 78, 80, 93, 95, 99, 100, 101, 117, 126, 133, 153, 167, 169, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 194, 199, 200, 201: 
+			case 2, 7, 9, 13, 14, 15, 16, 17, 18, 21, 40, 48, 52, 55, 58, 63, 66, 68, 70, 72, 74, 76, 78, 80, 93, 95, 99, 100, 101, 117, 126, 133, 153, 167, 172, 173, 174, 175, 176, 177, 178, 179, 180, 194, 199, 200, 201: 
 				/* primary_expression ::= variable_identifier */
 				/* postfix_expression ::= primary_expression */
 				/* postfix_expression ::= function_call */
@@ -101,8 +96,6 @@ class TreeBuilder{
 				/* type_specifier ::= type_specifier_no_prec */
 				/* type_specifier_no_prec ::= struct_specifier */
 				/* initializer ::= assignment_expression */
-				/* statement_with_scope ::= compound_statement_with_scope */
-				/* statement_pop_scope ::= compound_statement_pop_scope */
 				/* statement_pop_scope ::= simple_statement scope_pop */
 				/* statement_no_new_scope ::= compound_statement_no_new_scope */
 				/* statement_no_new_scope ::= simple_statement */
@@ -119,23 +112,39 @@ class TreeBuilder{
 				return s(1);
 			case 3: 
 				/* primary_expression ::= INTCONSTANT */
+				var __ret:Dynamic;
+				
 				var l = new Primitive<Int>(Std.parseInt(t(1).data), DataType.INT); 
 				l.raw = t(1).data;
-				return l;
+				__ret = l;
+				
+				return __ret;
 			case 4: 
 				/* primary_expression ::= FLOATCONSTANT */
+				var __ret:Dynamic;
+				
 				var l = new Primitive<Float>(Std.parseFloat(t(1).data), DataType.FLOAT);
 				l.raw = t(1).data;
-				return l;
+				__ret = l;
+				
+				return __ret;
 			case 5: 
 				/* primary_expression ::= BOOLCONSTANT */
+				var __ret:Dynamic;
+				
 				var l = new Primitive<Bool>(t(1).data == 'true', DataType.BOOL);
 				l.raw = t(1).data;
-				return l;
+				__ret = l;
+				
+				return __ret;
 			case 6: 
 				/* primary_expression ::= LEFT_PAREN expression RIGHT_PAREN */
+				var __ret:Dynamic;
+				
 				e(2).enclosed = true;
-				return s(2);
+				__ret = s(2);
+				
+				return __ret;
 			case 8: 
 				/* postfix_expression ::= postfix_expression LEFT_BRACKET integer_expression RIGHT_BRACKET */
 				return new ArrayElementSelectionExpression(e(1), e(3));
@@ -150,12 +159,20 @@ class TreeBuilder{
 				return new  UnaryExpression(UnaryOperator.DEC_OP, e(1), false);
 			case 19: 
 				/* function_call_header_with_parameters ::= function_call_header assignment_expression */
+				var __ret:Dynamic;
+				
 				cast(n(1), ExpressionParameters).parameters.push(untyped n(2));
-				return s(1);
+				__ret = s(1);
+				
+				return __ret;
 			case 20: 
 				/* function_call_header_with_parameters ::= function_call_header_with_parameters COMMA assignment_expression */
+				var __ret:Dynamic;
+				
 				cast(n(1), ExpressionParameters).parameters.push(untyped n(3));
-				return s(1);
+				__ret = s(1);
+				
+				return __ret;
 			case 22: 
 				/* function_identifier ::= constructor_identifier */
 				return new Constructor(untyped ev(1));
@@ -329,32 +346,47 @@ class TreeBuilder{
 				return AssignmentOperator.OR_ASSIGN;
 			case 94: 
 				/* expression ::= expression COMMA assignment_expression */
+				var __ret:Dynamic;
+				
 				if(Std.is(e(1), SequenceExpression)){
 				    cast(e(1), SequenceExpression).expressions.push(e(3));
-				    return s(1);
+				    __ret = s(1);
 				}else{
-				    return new SequenceExpression([e(1), e(3)]);
+				    __ret = new SequenceExpression([e(1), e(3)]);
 				}
+				
+				return __ret;
 			case 96: 
 				/* declaration ::= function_prototype SEMICOLON */
 				return new FunctionPrototype(untyped s(1));
 			case 97: 
 				/* declaration ::= init_declarator_list SEMICOLON */
-				handleVariableDeclaration(untyped s(1));
-				return s(1); 
+				var __ret:Dynamic;
+				
+				__ret = s(1); 
+				
+				return __ret;
 			case 98: 
 				/* declaration ::= PRECISION precision_qualifier type_specifier_no_prec SEMICOLON */
 				return new PrecisionDeclaration(untyped ev(2), cast(n(3), TypeSpecifier).dataType);
 			case 102: 
 				/* function_header_with_parameters ::= function_header parameter_declaration */
+				var __ret:Dynamic;
+				
 				var fh = cast(n(1), FunctionHeader);
 				fh.parameters.push(untyped n(2));
-				return fh;
+				__ret = fh;
+				
+				return __ret;
 			case 103: 
 				/* function_header_with_parameters ::= function_header_with_parameters COMMA parameter_declaration */
+				var __ret:Dynamic;
+				
 				var fh = cast(n(1), FunctionHeader);
 				fh.parameters.push(untyped n(3));
-				return fh; 
+				__ret = fh; 
+				
+				return __ret;
 			case 104: 
 				/* function_header ::= fully_specified_type IDENTIFIER LEFT_PAREN */
 				return new FunctionHeader(t(2).data, untyped n(1));
@@ -367,6 +399,8 @@ class TreeBuilder{
 			case 107, 109: 
 				/* parameter_declaration ::= type_qualifier parameter_qualifier parameter_declarator */
 				/* parameter_declaration ::= type_qualifier parameter_qualifier parameter_type_specifier */
+				var __ret:Dynamic;
+				
 				var pd = cast(n(3), ParameterDeclaration);
 				pd.parameterQualifier = untyped ev(2);
 				
@@ -377,17 +411,27 @@ class TreeBuilder{
 				}else{
 				    pd.typeSpecifier.storage = untyped ev(1);
 				}
-				return pd;
+				__ret = pd;
+				
+				return __ret;
 			case 108: 
 				/* parameter_declaration ::= parameter_qualifier parameter_declarator */
+				var __ret:Dynamic;
+				
 				var pd = cast(n(2), ParameterDeclaration);
 				pd.parameterQualifier = untyped ev(1);
-				return pd;
+				__ret = pd;
+				
+				return __ret;
 			case 110: 
 				/* parameter_declaration ::= parameter_qualifier parameter_type_specifier */
+				var __ret:Dynamic;
+				
 				var pd = cast(n(2), ParameterDeclaration); //parameter_declaration ::= parameter_qualifier parameter_type_specifier
 				pd.parameterQualifier = untyped ev(1);
-				return pd;
+				__ret = pd;
+				
+				return __ret;
 			case 111, 202: 
 				/* parameter_qualifier ::= */
 				/* conditionopt ::= */
@@ -409,40 +453,85 @@ class TreeBuilder{
 				return new ParameterDeclaration(null, untyped n(1), null, e(3));
 			case 118: 
 				/* init_declarator_list ::= init_declarator_list COMMA IDENTIFIER */
+				var __ret:Dynamic;
+				
 				var declarator = new Declarator(t(3).data, null, null);
-				cast(n(1), VariableDeclaration).declarators.push(declarator);
-				return s(1);
+				var declaration = cast(n(1), VariableDeclaration);
+				declaration.declarators.push(declarator);
+				handleVariableDeclaration(declarator, declaration.typeSpecifier);
+				__ret = s(1);
+				
+				return __ret;
 			case 119: 
 				/* init_declarator_list ::= init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET */
+				var __ret:Dynamic;
+				
 				var declarator = new Declarator(t(3).data, null, e(5));
-				cast(n(1), VariableDeclaration).declarators.push(declarator);
-				return s(1);
+				var declaration = cast(n(1), VariableDeclaration);
+				declaration.declarators.push(declarator);
+				handleVariableDeclaration(declarator, declaration.typeSpecifier);
+				__ret = s(1);
+				
+				return __ret;
 			case 120: 
 				/* init_declarator_list ::= init_declarator_list COMMA IDENTIFIER EQUAL initializer */
+				var __ret:Dynamic;
+				
 				var declarator = new Declarator(t(3).data, e(5), null);
-				cast(n(1), VariableDeclaration).declarators.push(declarator);
-				return s(1);
+				var declaration = cast(n(1), VariableDeclaration);
+				declaration.declarators.push(declarator);
+				handleVariableDeclaration(declarator, declaration.typeSpecifier);
+				__ret = s(1);
+				
+				return __ret;
 			case 121: 
 				/* single_declaration ::= fully_specified_type */
-				return new VariableDeclaration(untyped n(1), []);
+				var __ret:Dynamic;
+				
+				__ret = new VariableDeclaration(untyped n(1), []);
+				handleVariableDeclaration(null, __ret.typeSpecifier);
+				
+				return __ret;
 			case 122: 
 				/* single_declaration ::= fully_specified_type IDENTIFIER */
+				var __ret:Dynamic;
+				
 				var declarator = new Declarator(t(2).data, null, null);
-				return new VariableDeclaration(untyped n(1), [declarator]);
+				__ret = new VariableDeclaration(untyped n(1), [declarator]);
+				handleVariableDeclaration(declarator, __ret.typeSpecifier);
+				
+				return __ret;
 			case 123: 
 				/* single_declaration ::= fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET */
+				var __ret:Dynamic;
+				
 				var declarator = new Declarator(t(2).data, null, e(4));
-				return new VariableDeclaration(untyped n(1), [declarator]);
+				__ret = new VariableDeclaration(untyped n(1), [declarator]);
+				handleVariableDeclaration(declarator, __ret.typeSpecifier);
+				
+				return __ret;
 			case 124: 
 				/* single_declaration ::= fully_specified_type IDENTIFIER EQUAL initializer */
+				var __ret:Dynamic;
+				
 				var declarator = new Declarator(t(2).data, e(4), null);
-				return new VariableDeclaration(untyped n(1), [declarator]);
+				__ret = new VariableDeclaration(untyped n(1), [declarator]);
+				handleVariableDeclaration(declarator, __ret.typeSpecifier);
+				
+				return __ret;
 			case 125: 
 				/* single_declaration ::= INVARIANT IDENTIFIER */
+				var __ret:Dynamic;
+				
 				var declarator = new Declarator(t(2).data, null, null);
-				return new VariableDeclaration(new TypeSpecifier(null, null, null, true), [declarator]);
+				__ret = new VariableDeclaration(new TypeSpecifier(null, null, null, true), [declarator]);
+				handleVariableDeclaration(declarator, __ret.typeSpecifier);
+				
+				return __ret;
 			case 127: 
 				/* fully_specified_type ::= type_qualifier type_specifier */
+				var __ret:Dynamic;
+				
 				var ts = cast(n(2), TypeSpecifier);
 				if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
 				    ts.storage = StorageQualifier.VARYING;
@@ -450,7 +539,9 @@ class TreeBuilder{
 				}else{
 				    ts.storage = untyped ev(1);
 				}
-				return s(2);
+				__ret = s(2);
+				
+				return __ret;
 			case 128: 
 				/* type_qualifier ::= CONST */
 				return StorageQualifier.CONST;
@@ -468,9 +559,13 @@ class TreeBuilder{
 				return StorageQualifier.UNIFORM;
 			case 134: 
 				/* type_specifier ::= precision_qualifier type_specifier_no_prec */
+				var __ret:Dynamic;
+				
 				var ts = cast(n(2), TypeSpecifier);
 				ts.precision = untyped ev(1);
-				return ts;
+				__ret = ts;
+				
+				return __ret;
 			case 135: 
 				/* type_specifier_no_prec ::= VOID */
 				return new TypeSpecifier(DataType.VOID);
@@ -539,13 +634,21 @@ class TreeBuilder{
 				return PrecisionQualifier.LOW_PRECISION;
 			case 158: 
 				/* struct_specifier ::= STRUCT IDENTIFIER LEFT_BRACE struct_declaration_list RIGHT_BRACE */
+				var __ret:Dynamic;
+				
 				var ss = new StructSpecifier(t(2).data, untyped a(4));
 				//parse context type definition's are handled at variable declaration
-				return ss;
+				__ret = ss;
+				
+				return __ret;
 			case 159: 
 				/* struct_specifier ::= STRUCT LEFT_BRACE struct_declaration_list RIGHT_BRACE */
+				var __ret:Dynamic;
+				
 				var ss = new StructSpecifier(null, untyped a(3));
-				return ss;
+				__ret = ss;
+				
+				return __ret;
 			case 160, 163, 187, 210: 
 				/* struct_declaration_list ::= struct_declaration */
 				/* struct_declarator_list ::= struct_declarator */
@@ -554,13 +657,17 @@ class TreeBuilder{
 				return [n(1)];
 			case 161: 
 				/* struct_declaration_list ::= struct_declaration_list struct_declaration */
-				a(1).push(n(2)); return s(1);
+				var __ret:Dynamic;
+				a(1).push(n(2)); __ret = s(1);
+				return __ret;
 			case 162: 
 				/* struct_declaration ::= type_specifier struct_declarator_list SEMICOLON */
 				return new StructFieldDeclaration(untyped n(1), untyped a(2));
 			case 164: 
 				/* struct_declarator_list ::= struct_declarator_list COMMA struct_declarator */
-				a(1).push(n(3)); return s(1);
+				var __ret:Dynamic;
+				a(1).push(n(3)); __ret = s(1);
+				return __ret;
 			case 165: 
 				/* struct_declarator ::= IDENTIFIER */
 				return new StructDeclarator(t(1).data);
@@ -570,6 +677,12 @@ class TreeBuilder{
 			case 168: 
 				/* declaration_statement ::= declaration */
 				return new DeclarationStatement(untyped n(1));
+			case 169, 171: 
+				/* statement_with_scope ::= compound_statement_with_scope */
+				/* statement_pop_scope ::= compound_statement_pop_scope */
+				var __ret:Dynamic;
+				__ret = s(1);
+				return __ret;
 			case 170: 
 				/* statement_with_scope ::= scope_push simple_statement scope_pop */
 				return s(2);
@@ -587,8 +700,12 @@ class TreeBuilder{
 				return new CompoundStatement(untyped a(2));
 			case 188: 
 				/* statement_list ::= statement_list statement_no_new_scope */
+				var __ret:Dynamic;
+				
 				a(1).push(n(2)); 
-				return s(1);
+				__ret = s(1);
+				
+				return __ret;
 			case 189: 
 				/* expression_statement ::= SEMICOLON */
 				return new ExpressionStatement(null);
@@ -606,10 +723,14 @@ class TreeBuilder{
 				return [n(1), null];
 			case 195: 
 				/* condition ::= fully_specified_type IDENTIFIER EQUAL initializer */
+				var __ret:Dynamic;
+				
 				var declarator = new Declarator(t(2).data, e(4), null);
 				var declaration = new VariableDeclaration(untyped n(1), [declarator]);
-				handleVariableDeclaration(declaration);
-				return declaration;
+				handleVariableDeclaration(declarator, declaration.typeSpecifier);
+				__ret = declaration;
+				
+				return __ret;
 			case 196: 
 				/* iteration_statement ::= WHILE LEFT_PAREN scope_push condition RIGHT_PAREN statement_pop_scope */
 				return new WhileStatement(e(4), untyped n(6));
@@ -642,14 +763,22 @@ class TreeBuilder{
 				return new JumpStatement(JumpMode.DISCARD);
 			case 211: 
 				/* translation_unit ::= translation_unit external_declaration */
+				var __ret:Dynamic;
+				
 				a(1).push(untyped n(2));
-				return s(1);
+				__ret = s(1);
+				
+				return __ret;
 			case 212, 213, 214: 
 				/* external_declaration ::= function_definition */
 				/* external_declaration ::= declaration */
 				/* external_declaration ::= preprocessor_directive */
+				var __ret:Dynamic;
+				
 				cast(n(1), Declaration).external = true;
-				return s(1);
+				__ret = s(1);
+				
+				return __ret;
 			case 215: 
 				/* function_definition ::= function_prototype scope_push compound_statement_pop_scope */
 				return new FunctionDefinition(untyped n(1), untyped n(3));
@@ -658,12 +787,20 @@ class TreeBuilder{
 				return new PreprocessorDirective(t(1).data);
 			case 217: 
 				/* scope_push ::= */
+				var __ret:Dynamic;
+				
 				parseContext.scopePush();
-				return null;
+				__ret = null;
+				
+				return __ret;
 			case 218: 
 				/* scope_pop ::= */
+				var __ret:Dynamic;
+				
 				parseContext.scopePop();
-				return null; 
+				__ret = null;
+				
+				return __ret;
 		}
 
 		Parser.warn('unhandled reduce rule number $ruleno');
@@ -671,17 +808,17 @@ class TreeBuilder{
 		
 	}
 
-	static function handleVariableDeclaration(declaration:VariableDeclaration){
+	static function handleVariableDeclaration(declarator:Declarator, ts:TypeSpecifier){
 		//declare type user type
-		switch declaration.typeSpecifier.toEnum() {
+		switch ts.toEnum() {
 			case StructSpecifierNode(n):
 				parseContext.declareType(n);
 			case null, _:
 		}
 
-		//variable declarations
-		for(d in declaration.declarators){
-			parseContext.declareVariable(d);
+		//variable declaration
+		if(declarator != null){
+			parseContext.declareVariable(declarator);
 		}
 	}
 

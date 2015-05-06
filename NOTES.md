@@ -21,8 +21,6 @@
 
 - isolate core parser for resuse by preprocessor
 
-- We probably need a preprocessor expression parser that includes the defined operator
-- Preprocessor_directive tokens need to be part of the SyntaxTree to make passing on PP tokens possible
 - Error reporting needs redoing from the top - if token has pos info, this should be integrated into to nodes
 
 - A constant expression includes all basic types and user define types! So ```uniform vec2 x[NewThing(3).len];``` is valid as is something awful like. The result should be a basic type

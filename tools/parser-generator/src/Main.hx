@@ -32,7 +32,7 @@ class Main {
 		var templateFiles = FileSystem.readDirectory(templatesDir);
 		for(f in templateFiles){
 			if(!~/\w/.match(f.charAt(0))) continue; //probably system file
-			generateFile(json, Path.join([templatesDir, f]));
+			generate(json, Path.join([templatesDir, f]));
 		}
 
 	}
@@ -117,16 +117,16 @@ class Main {
 		}
 	};
 	
-	function generateFile(json:Dynamic, path:String){
-		var tablesTemplate = File.getContent(path);
-		var filename = Path.withoutDirectory(path);
+	function generate(json:Dynamic, templatePath:String){
+		var template = File.getContent(templatePath);
+		var filename = Path.withoutDirectory(templatePath);
 
 		//create output directory
 		if(!FileSystem.exists('output')){
 			FileSystem.createDirectory('output');
 		}
 
-		var t = new Template(tablesTemplate);
+		var t = new Template(template);
 
 		var result = t.execute(json, macros);
 
@@ -137,10 +137,10 @@ class Main {
 
 	static function processRuleCode(code:String):String{
 		var result = '';
-		var reg = ~/\$\$\s*=\s*/ig;
+		var reg = ~/\$\$/ig;
 		var matched = reg.match(code);
-		if(matched){
-			result = reg.replace(code, 'return ');
+		if(matched){//code contains $$
+			result += 'var __ret:Dynamic;\n' + reg.replace(code, '__ret') + '\nreturn __ret;';
 		}else{
 			result = 'return $code';
 		}

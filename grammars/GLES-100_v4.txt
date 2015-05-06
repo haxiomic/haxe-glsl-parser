@@ -1,10 +1,10 @@
 // GLSL ES 1.0 Grammar
 // Taken from https://www.khronos.org/files/opengles_shading_language.pdf
-// v3
 
 // Modifications:
 // - accept preprocessor tokens as translation_units and statements
-// - dummy rules for tracking scope
+// - scope tracking with dummy rules
+// - inline rule reduce code
 
 %start_symbol root
 %token_type {glsl.token.Tokenizer.TokenType}
@@ -206,7 +206,6 @@ constant_expression:
 declaration:
     function_prototype SEMICOLON {new FunctionPrototype(untyped s(1));}
     init_declarator_list SEMICOLON {
-        handleVariableDeclaration(untyped s(1));
         $$ = s(1); 
     }
     PRECISION precision_qualifier type_specifier_no_prec SEMICOLON {new PrecisionDeclaration(untyped ev(2), cast(n(3), TypeSpecifier).dataType);}
@@ -290,37 +289,50 @@ init_declarator_list:
     single_declaration {s(1);}
     init_declarator_list COMMA IDENTIFIER {
         var declarator = new Declarator(t(3).data, null, null);
-        cast(n(1), VariableDeclaration).declarators.push(declarator);
+        var declaration = cast(n(1), VariableDeclaration);
+        declaration.declarators.push(declarator);
+        handleVariableDeclaration(declarator, declaration.typeSpecifier);
         $$ = s(1);
     }
     init_declarator_list COMMA IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET {
         var declarator = new Declarator(t(3).data, null, e(5));
-        cast(n(1), VariableDeclaration).declarators.push(declarator);
+        var declaration = cast(n(1), VariableDeclaration);
+        declaration.declarators.push(declarator);
+        handleVariableDeclaration(declarator, declaration.typeSpecifier);
         $$ = s(1);
     }
     init_declarator_list COMMA IDENTIFIER EQUAL initializer {
         var declarator = new Declarator(t(3).data, e(5), null);
-        cast(n(1), VariableDeclaration).declarators.push(declarator);
+        var declaration = cast(n(1), VariableDeclaration);
+        declaration.declarators.push(declarator);
+        handleVariableDeclaration(declarator, declaration.typeSpecifier);
         $$ = s(1);
     }
 
 single_declaration:
-    fully_specified_type {$$ = new VariableDeclaration(untyped n(1), []);}
+    fully_specified_type {
+        $$ = new VariableDeclaration(untyped n(1), []);
+        handleVariableDeclaration(null, $$.typeSpecifier);
+    }
     fully_specified_type IDENTIFIER {
         var declarator = new Declarator(t(2).data, null, null);
         $$ = new VariableDeclaration(untyped n(1), [declarator]);
+        handleVariableDeclaration(declarator, $$.typeSpecifier);
     }
     fully_specified_type IDENTIFIER LEFT_BRACKET constant_expression RIGHT_BRACKET {
         var declarator = new Declarator(t(2).data, null, e(4));
         $$ = new VariableDeclaration(untyped n(1), [declarator]);
+        handleVariableDeclaration(declarator, $$.typeSpecifier);
     }
     fully_specified_type IDENTIFIER EQUAL initializer {
         var declarator = new Declarator(t(2).data, e(4), null);
         $$ = new VariableDeclaration(untyped n(1), [declarator]);
+        handleVariableDeclaration(declarator, $$.typeSpecifier);
     }
     INVARIANT IDENTIFIER {
         var declarator = new Declarator(t(2).data, null, null);
         $$ = new VariableDeclaration(new TypeSpecifier(null, null, null, true), [declarator]);
+        handleVariableDeclaration(declarator, $$.typeSpecifier);
     }// Vertex only.
 // Grammar Note: No 'enum', or 'typedef'.
 
@@ -467,7 +479,7 @@ condition:
     fully_specified_type IDENTIFIER EQUAL initializer {
         var declarator = new Declarator(t(2).data, e(4), null);
         var declaration = new VariableDeclaration(untyped n(1), [declarator]);
-        handleVariableDeclaration(declaration);
+        handleVariableDeclaration(declarator, declaration.typeSpecifier);
         $$ = declaration;
     }
 
@@ -533,5 +545,5 @@ scope_push:
 scope_pop:
     *empty* {
         parseContext.scopePop();
-        $$ = null; 
+        $$ = null;
     }

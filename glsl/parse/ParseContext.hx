@@ -17,10 +17,9 @@ enum Object{
 }
 
 class ParseContext{
-	var scopes:Array<Scope>;
-
-	var depth(get, null):Int;
-	var localScope(get, null):Scope;
+	public var scopes:Array<Scope>;
+	public var scopeDepth(get, null):Int;
+	public var localScope(get, null):Scope;
 
 	public function new(){
 		scopes = [];
@@ -29,7 +28,7 @@ class ParseContext{
 
 	public function scopePush(){
 		scopes.push(new Scope());
-		trace('scopePush ($depth)');
+		trace('scopePush ($scopeDepth)');
 	}
 
 	public function scopePop(){
@@ -39,17 +38,7 @@ class ParseContext{
 		}
 
 		scopes.pop();
-		trace('scopePop ($depth)');
-	}
-
-	public function declareType(specifier:StructSpecifier){
-		trace('($depth) typeDefinition ${specifier.name}');
-		localScope.set(specifier.name, USER_TYPE(specifier));
-	}
-
-	public function declareVariable(declarator:Declarator){
-		trace('($depth) variableDeclaration ${declarator.name}');
-		localScope.set(declarator.name, VARIABLE(declarator));
+		trace('scopePop ($scopeDepth)');
 	}
 
 	public function searchScope(name:String):Object{
@@ -59,13 +48,23 @@ class ParseContext{
 			if((r = scopes[i].get(name)) != null)
 				break;
 		}
-		trace('($depth) search for $name found: $r');
+		trace('($scopeDepth) searched for $name found: $r');
 		return r;
 	}
 
-	inline function get_depth():Int
+	public function declareType(specifier:StructSpecifier){
+		trace('($scopeDepth) typeDefinition ${specifier.name}');
+		localScope.set(specifier.name, USER_TYPE(specifier));
+	}
+
+	public function declareVariable(declarator:Declarator){
+		trace('($scopeDepth) variableDeclaration ${declarator.name}');
+		localScope.set(declarator.name, VARIABLE(declarator));
+	}
+
+	inline function get_scopeDepth():Int
 		return scopes.length - 1;
 
 	inline function get_localScope():Scope
-		return scopes[depth];
+		return scopes[scopeDepth];
 }

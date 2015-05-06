@@ -1,5 +1,5 @@
 /*
-	TreeBuilder is responsible for constructing the abstract syntax tree by creation
+	Actions is responsible for constructing the abstract syntax tree by creation
 	and concatenation of notes in accordance with the grammar rules of the language
 	
 	::grammar_name::
@@ -20,7 +20,7 @@ using glsl.token.TokenHelper;
 typedef MinorType = Dynamic;
 
 @:access(glsl.parse.Parser)
-class TreeBuilder{
+class Actions{
 
 	static var i(get, null):Int;
 	static var stack(get, null):Parser.Stack;
@@ -38,17 +38,12 @@ class TreeBuilder{
 		//check if identifier refers to a user defined type
 		//if so, change the token's type to TYPE_NAME
 		if(t.type.equals(TokenType.IDENTIFIER)){
-			//ensure the previous token isn't a TYPE_NAME (ie to cases like S S = S();)
-			//@! need to check we're not in a declarator list
-			//@! better check last token isn't STRUCT either (although this isn't critical)
-			if(!((lastToken != null) && lastToken.type.isTypeReferenceType())){
-				trace('on line ${t.line} : ${t.column}');
-				switch parseContext.searchScope(t.data) {
-					case ParseContext.Object.USER_TYPE(_):
-						trace('type change for ${t.data}, line ${t.line} : ${t.column}');
-						t.type = TokenType.TYPE_NAME;
-					case null, _:
-				}
+			//@! needs to account for declaration contexts (and prevent type change in this case)
+			switch parseContext.searchScope(t.data) {
+				case ParseContext.Object.USER_TYPE(_):
+					trace('type change for ${t.data}, line ${t.line} : ${t.column}');
+					t.type = TokenType.TYPE_NAME;
+				case null, _:
 			}
 		}
 
@@ -56,8 +51,8 @@ class TreeBuilder{
 		return t;
 	}
 
-	static public function buildRule(ruleno:Int):MinorType{
-		TreeBuilder.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
+	static public function reduce(ruleno:Int):MinorType{
+		Actions.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
 
 		switch(ruleno){
 $$printActionCases(rule_actions,rules,3)
@@ -68,17 +63,17 @@ $$printActionCases(rule_actions,rules,3)
 		
 	}
 
-	static function handleVariableDeclaration(declaration:VariableDeclaration){
+	static function handleVariableDeclaration(declarator:Declarator, ts:TypeSpecifier){
 		//declare type user type
-		switch declaration.typeSpecifier.toEnum() {
+		switch ts.toEnum() {
 			case StructSpecifierNode(n):
 				parseContext.declareType(n);
 			case null, _:
 		}
 
-		//variable declarations
-		for(d in declaration.declarators){
-			parseContext.declareVariable(d);
+		//variable declaration
+		if(declarator != null){
+			parseContext.declareVariable(declarator);
 		}
 	}
 

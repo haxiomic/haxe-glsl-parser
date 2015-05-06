@@ -25,7 +25,16 @@ BASE_DIR=$PWD
 	echo "${BRIGHT_WHITE}${BOLD}> Copying output to main glsl parser${RESET}"
 
 	cp ./output/Tables.hx ../../glsl/parse/Tables.hx &&
-	cp ./output/Actions.hx ../../glsl/parse/TreeBuilder.hx &&
+	cp ./output/Actions.hx ../../glsl/parse/Actions.hx &&
+	cp ./output/Parser.hx ../../glsl/parse/Parser.hx &&
 	
+	echo "${BRIGHT_WHITE}${BOLD}> Rebuilding demo${RESET}"
+	#rebuild demo (temporary)
+	cd ../../tests/demo
+	make
+	cd $BASE_DIR
+
 	echo "${GREEN}${BOLD}Complete${RESET}"
+
+
 }
