@@ -1,5 +1,7 @@
 /*
-	Actions is responsible for constructing the abstract syntax tree by creation
+	Actions
+
+	Responsible for constructing the abstract syntax tree by creation
 	and concatenation of notes in accordance with the grammar rules of the language
 	
 	GLES-100_v4
@@ -373,7 +375,12 @@ class Actions{
 				return __ret;
 			case 98: 
 				/* declaration ::= PRECISION precision_qualifier type_specifier_no_prec SEMICOLON */
-				return new PrecisionDeclaration(untyped ev(2), cast(n(3), TypeSpecifier).dataType);
+				var __ret:Dynamic;
+				
+				__ret = new PrecisionDeclaration(untyped ev(2), cast(n(3), TypeSpecifier).dataType);
+				parseContext.declarePrecision(__ret);
+				
+				return __ret;
 			case 102: 
 				/* function_header_with_parameters ::= function_header parameter_declaration */
 				var __ret:Dynamic;

@@ -1,18 +1,16 @@
 #Todo
 -----
+- add toEnum() with macro rather than helper
 - warn on redefinitions in parseContext?
 - TreeBuilder should be Parser and Parser should be ParserCore. processToken() shouldn't need to track lastToken
 - Support for complex types in Eval + Improved operator selection in Eval
 - Parser core separation
 - Preprocessor expression parser and eval
 - Validator
-
 - Handle setting the default precision with parseContext
-
-- isolate core parser for resuse by preprocessor
-
-- Error reporting needs redoing from the top - if token has pos info, this should be integrated into to nodes
-
+- isolate core parser for reuse by preprocessor
+- Error reporting needs redoing from the top - if token has pos info, should this be integrated into to nodes?
+- Break away parser-generator into a separate project
 - A constant expression includes all basic types and user define types! So ```uniform vec2 x[NewThing(3).len];``` is valid as is something awful like. The result should be a basic type
 
 

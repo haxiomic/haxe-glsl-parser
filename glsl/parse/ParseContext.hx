@@ -21,11 +21,17 @@ class ParseContext{
 	public var scopeDepth(get, null):Int;
 	public var localScope(get, null):Scope;
 
-	public var declarationContext = false;
+	public var declarationContext:Bool;
+
+	public var defaulPrecision:Map<DataType, PrecisionQualifier>;
 
 	public function new(){
 		scopes = [];
 		scopePush(); //create initial scope
+
+		declarationContext = false;
+
+		defaulPrecision = new Map<DataType, PrecisionQualifier>();//@! need correct initial defaults
 	}
 
 	public function scopePush(){
@@ -65,6 +71,10 @@ class ParseContext{
 
 	public function declareVariable(declarator:Declarator){
 		localScope.set(declarator.name, VARIABLE(declarator));
+	}
+
+	public function declarePrecision(declaration:PrecisionDeclaration){
+		defaulPrecision.set(declaration.dataType, declaration.precision);
 	}
 
 	inline function get_scopeDepth():Int

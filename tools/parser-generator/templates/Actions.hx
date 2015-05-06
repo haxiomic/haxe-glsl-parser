@@ -1,5 +1,7 @@
 /*
-	Actions is responsible for constructing the abstract syntax tree by creation
+	Actions
+
+	Responsible for constructing the abstract syntax tree by creation
 	and concatenation of notes in accordance with the grammar rules of the language
 	
 	::grammar_name::

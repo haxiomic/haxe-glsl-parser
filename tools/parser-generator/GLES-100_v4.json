@@ -1148,7 +1148,10 @@
 		"97": "
         $$ = s(1); 
     ",
-		"98": "new PrecisionDeclaration(untyped ev(2), cast(n(3), TypeSpecifier).dataType);",
+		"98": "
+        $$ = new PrecisionDeclaration(untyped ev(2), cast(n(3), TypeSpecifier).dataType);
+        parseContext.declarePrecision($$);
+    ",
 		"99": "s(1);",
 		"100": "s(1);",
 		"101": "s(1);",

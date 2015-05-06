@@ -208,7 +208,10 @@ declaration:
     init_declarator_list SEMICOLON {
         $$ = s(1); 
     }
-    PRECISION precision_qualifier type_specifier_no_prec SEMICOLON {new PrecisionDeclaration(untyped ev(2), cast(n(3), TypeSpecifier).dataType);}
+    PRECISION precision_qualifier type_specifier_no_prec SEMICOLON {
+        $$ = new PrecisionDeclaration(untyped ev(2), cast(n(3), TypeSpecifier).dataType);
+        parseContext.declarePrecision($$);
+    }
 
 function_prototype:
     function_declarator RIGHT_PAREN {s(1);}
