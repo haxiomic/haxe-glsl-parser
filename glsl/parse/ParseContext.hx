@@ -23,7 +23,7 @@ class ParseContext{
 
 	public var declarationContext:Bool;
 
-	public var defaulPrecision:Map<DataType, PrecisionQualifier>;
+	public var defaultPrecision:Map<DataType, PrecisionQualifier>;
 
 	public function new(){
 		scopes = [];
@@ -31,7 +31,7 @@ class ParseContext{
 
 		declarationContext = false;
 
-		defaulPrecision = new Map<DataType, PrecisionQualifier>();//@! need correct initial defaults
+		defaultPrecision = new Map<DataType, PrecisionQualifier>();//@! need correct initial defaults
 	}
 
 	public function scopePush(){
@@ -74,7 +74,7 @@ class ParseContext{
 	}
 
 	public function declarePrecision(declaration:PrecisionDeclaration){
-		defaulPrecision.set(declaration.dataType, declaration.precision);
+		defaultPrecision.set(declaration.dataType, declaration.precision);
 	}
 
 	inline function get_scopeDepth():Int
