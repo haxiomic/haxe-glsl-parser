@@ -38,12 +38,17 @@ class Actions{
 		//check if identifier refers to a user defined type
 		//if so, change the token's type to TYPE_NAME
 		if(t.type.equals(TokenType.IDENTIFIER)){
-			//@! needs to account for declaration contexts (and prevent type change in this case)
-			switch parseContext.searchScope(t.data) {
-				case ParseContext.Object.USER_TYPE(_):
-					trace('type change for ${t.data}, line ${t.line} : ${t.column}');
-					t.type = TokenType.TYPE_NAME;
-				case null, _:
+			if(!parseContext.declarationContext){
+				//ensure it's not directly after a type token
+				var afterType = lastToken != null && lastToken.type.isTypeReferenceType();
+				var afterStruct = lastToken != null && lastToken.type.equals(TokenType.STRUCT);
+				if(!afterType && !afterStruct){
+					switch parseContext.searchScope(t.data) {
+						case ParseContext.Object.USER_TYPE(_):
+							t.type = TokenType.TYPE_NAME;
+						case null, _:
+					}
+				}
 			}
 		}
 
@@ -661,8 +666,8 @@ class Actions{
 				a(1).push(n(2)); __ret = s(1);
 				return __ret;
 			case 162: 
-				/* struct_declaration ::= type_specifier struct_declarator_list SEMICOLON */
-				return new StructFieldDeclaration(untyped n(1), untyped a(2));
+				/* struct_declaration ::= enter_declaration_context type_specifier struct_declarator_list exit_declaration_context SEMICOLON */
+				return new StructFieldDeclaration(untyped n(2), untyped a(3));
 			case 164: 
 				/* struct_declarator_list ::= struct_declarator_list COMMA struct_declarator */
 				var __ret:Dynamic;
@@ -798,6 +803,22 @@ class Actions{
 				var __ret:Dynamic;
 				
 				parseContext.scopePop();
+				__ret = null;
+				
+				return __ret;
+			case 219: 
+				/* enter_declaration_context ::= */
+				var __ret:Dynamic;
+				
+				parseContext.enterDeclarationContext();
+				__ret = null;
+				
+				return __ret;
+			case 220: 
+				/* exit_declaration_context ::= */
+				var __ret:Dynamic;
+				
+				parseContext.exitDeclarationContext();
 				__ret = null;
 				
 				return __ret;

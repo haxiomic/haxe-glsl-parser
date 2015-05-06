@@ -38,12 +38,17 @@ class Actions{
 		//check if identifier refers to a user defined type
 		//if so, change the token's type to TYPE_NAME
 		if(t.type.equals(TokenType.IDENTIFIER)){
-			//@! needs to account for declaration contexts (and prevent type change in this case)
-			switch parseContext.searchScope(t.data) {
-				case ParseContext.Object.USER_TYPE(_):
-					trace('type change for ${t.data}, line ${t.line} : ${t.column}');
-					t.type = TokenType.TYPE_NAME;
-				case null, _:
+			if(!parseContext.declarationContext){
+				//ensure it's not directly after a type token
+				var afterType = lastToken != null && lastToken.type.isTypeReferenceType();
+				var afterStruct = lastToken != null && lastToken.type.equals(TokenType.STRUCT);
+				if(!afterType && !afterStruct){
+					switch parseContext.searchScope(t.data) {
+						case ParseContext.Object.USER_TYPE(_):
+							t.type = TokenType.TYPE_NAME;
+						case null, _:
+					}
+				}
 			}
 		}
 

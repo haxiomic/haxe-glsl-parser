@@ -21,6 +21,8 @@ class ParseContext{
 	public var scopeDepth(get, null):Int;
 	public var localScope(get, null):Scope;
 
+	public var declarationContext = false;
+
 	public function new(){
 		scopes = [];
 		scopePush(); //create initial scope
@@ -28,7 +30,6 @@ class ParseContext{
 
 	public function scopePush(){
 		scopes.push(new Scope());
-		trace('scopePush ($scopeDepth)');
 	}
 
 	public function scopePop(){
@@ -38,7 +39,6 @@ class ParseContext{
 		}
 
 		scopes.pop();
-		trace('scopePop ($scopeDepth)');
 	}
 
 	public function searchScope(name:String):Object{
@@ -48,17 +48,22 @@ class ParseContext{
 			if((r = scopes[i].get(name)) != null)
 				break;
 		}
-		trace('($scopeDepth) searched for $name found: $r');
 		return r;
 	}
 
+	public function enterDeclarationContext(){
+		declarationContext = true;
+	}
+
+	public function exitDeclarationContext(){
+		declarationContext = false;
+	}
+
 	public function declareType(specifier:StructSpecifier){
-		trace('($scopeDepth) typeDefinition ${specifier.name}');
 		localScope.set(specifier.name, USER_TYPE(specifier));
 	}
 
 	public function declareVariable(declarator:Declarator){
-		trace('($scopeDepth) variableDeclaration ${declarator.name}');
 		localScope.set(declarator.name, VARIABLE(declarator));
 	}
 

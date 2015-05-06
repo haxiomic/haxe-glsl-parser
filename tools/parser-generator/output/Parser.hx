@@ -178,7 +178,6 @@ class Parser{
 		//new node generated after reducing with this rule
 		var newNode = Actions.reduce(ruleno); //trigger custom reduce behavior
 		currentMinor = newNode;
-		trace('reduce $newNode');
 
 		goto = ruleInfo[ruleno].lhs;
 		size = ruleInfo[ruleno].nrhs;

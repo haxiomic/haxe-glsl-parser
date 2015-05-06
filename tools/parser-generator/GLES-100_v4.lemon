@@ -289,7 +289,7 @@ struct_specifier ::= STRUCT LEFT_BRACE struct_declaration_list RIGHT_BRACE. {
     }
 struct_declaration_list ::= struct_declaration. {[n(1)];}
 struct_declaration_list ::= struct_declaration_list struct_declaration. {a(1).push(n(2)); $$ = s(1);}
-struct_declaration ::= type_specifier struct_declarator_list SEMICOLON. {new StructFieldDeclaration(untyped n(1), untyped a(2));}
+struct_declaration ::= enter_declaration_context type_specifier struct_declarator_list exit_declaration_context SEMICOLON. {new StructFieldDeclaration(untyped n(2), untyped a(3));}
 struct_declarator_list ::= struct_declarator. {[n(1)];}
 struct_declarator_list ::= struct_declarator_list COMMA struct_declarator. {a(1).push(n(3)); $$ = s(1);}
 struct_declarator ::= IDENTIFIER. {new StructDeclarator(t(1).data);}
@@ -370,5 +370,13 @@ scope_push ::= . {
     }
 scope_pop ::= . {
         parseContext.scopePop();
+        $$ = null;
+    }
+enter_declaration_context ::= . {
+        parseContext.enterDeclarationContext();
+        $$ = null;
+    }
+exit_declaration_context ::= . {
+        parseContext.exitDeclarationContext();
         $$ = null;
     }

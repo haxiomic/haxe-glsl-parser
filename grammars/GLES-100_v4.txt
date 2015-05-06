@@ -284,7 +284,6 @@ parameter_type_specifier:
     type_specifier {new ParameterDeclaration(null, untyped n(1));}
     type_specifier LEFT_BRACKET constant_expression RIGHT_BRACKET {new ParameterDeclaration(null, untyped n(1), null, e(3));}
 
-
 init_declarator_list:
     single_declaration {s(1);}
     init_declarator_list COMMA IDENTIFIER {
@@ -407,7 +406,7 @@ struct_declaration_list:
     struct_declaration_list struct_declaration {a(1).push(n(2)); $$ = s(1);}
 
 struct_declaration:
-    type_specifier struct_declarator_list SEMICOLON {new StructFieldDeclaration(untyped n(1), untyped a(2));}
+     enter_declaration_context type_specifier struct_declarator_list exit_declaration_context SEMICOLON {new StructFieldDeclaration(untyped n(2), untyped a(3));}
 
 struct_declarator_list:
     struct_declarator {[n(1)];}
@@ -545,5 +544,17 @@ scope_push:
 scope_pop:
     *empty* {
         parseContext.scopePop();
+        $$ = null;
+    }
+
+enter_declaration_context:
+    *empty* {
+        parseContext.enterDeclarationContext();
+        $$ = null;
+    }
+
+exit_declaration_context:
+    *empty* {
+        parseContext.exitDeclarationContext();
         $$ = null;
     }

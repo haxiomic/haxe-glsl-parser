@@ -1,13 +1,11 @@
 #Todo
 -----
 - TYPE_NAME scoping:
+	-> TYPE_NAME is being replaced in the wrong places, for example, int a, S;
 	-> fix function parameter scope issue
-		Define types at variable definition
 		Create new dummy rule to handle function definition
 		Pass parameters to context
 	-> define parameters in parseContext
-	-> TYPE_NAME is being replaced in the wrong places, for example, int a, S;
-		-> need to check we're not in a declarator list
 - for(;;) gives "Expression cannot be printed: null"
 - TreeBuilder to ParserActions?
 - warn on redefinitions in parseContext?
