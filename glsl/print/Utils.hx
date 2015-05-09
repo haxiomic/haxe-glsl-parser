@@ -14,21 +14,21 @@ class Utils{
 		return result;
 	}
 
-	static public function glslIntString(i:Int){ //enforce no decimal point
+	static public function intString(i:Int){ //enforce no decimal point
 		var str = Std.string(i);
 		var rx = ~/(\d+)\./g;
 		if(rx.match(str))str = rx.matched(1);
 		return str == '' ? '0' : str;
 	}
 
-	static public function glslFloatString(f:Float){ //enforce decimal point
+	static public function floatString(f:Float){ //enforce decimal point
 		var str = Std.string(f);
 		var rx = ~/\./g;
 		if(!rx.match(str)) str += '.0';
 		return str;
 	}
 
-	static public function glslBoolString(b:Bool){
+	static public function boolString(b:Bool){
 		return Std.string(b);
 	}
 

@@ -1,12 +1,14 @@
 #Todo
 -----
+- Parser core separation
+	- parser should trigger tokenizer to get the next token
+- Streaming parser and validator (parser triggers fetch of next token)
+- Validator
+	- should be designed to validate nodes as a stream, so validation can be done during the parse
 - Add toEnum() with macro rather than helper
 - Warn on redefinitions in parseContext?
 - Support for complex types in Eval + Improved operator selection in Eval
 - Preprocessor expression parser and eval
-- Parser core separation
-	- TreeBuilder should be Parser and Parser should be ParserCore. processToken() shouldn't need to track lastToken
-- Validator
 - Handle setting the default precision with parseContext
 - isolate core parser for reuse by preprocessor
 - Error reporting needs redoing from the top - if token has pos info, should this be integrated into to nodes?

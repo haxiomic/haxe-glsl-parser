@@ -62,9 +62,13 @@ class Actions{
 	static public function reduce(ruleno:Int):MinorType{
 		Actions.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
 
+		var __ret:MinorType;
+		
 		switch(ruleno){
 $$printActionCases(rule_actions,rules,3)
 		}
+
+		return __ret;
 
 		Parser.warn('unhandled reduce rule number $ruleno');
 		return null;

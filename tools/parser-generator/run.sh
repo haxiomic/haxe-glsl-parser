@@ -35,6 +35,4 @@ BASE_DIR=$PWD
 	cd $BASE_DIR
 
 	echo "${GREEN}${BOLD}Complete${RESET}"
-
-
 }

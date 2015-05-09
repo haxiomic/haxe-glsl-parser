@@ -34,7 +34,6 @@ class Main {
 			if(!~/\w/.match(f.charAt(0))) continue; //probably system file
 			generate(json, Path.join([templatesDir, f]));
 		}
-
 	}
 
 	var macros = {
@@ -67,7 +66,7 @@ class Main {
 
 			var processedActions = new Array<{ruleIds:Array<Int>, code:String}>();
 
-
+			//process actions
 			for(k in Reflect.fields(a)){
 				var code = processRuleCode(Reflect.field(a, k));
 				var rid = Std.parseInt(k);
@@ -90,26 +89,24 @@ class Main {
 				});
 			}
 
+			//build cases
 			var i = 0;
 			for(pa in processedActions){
 				if(i > 0) result += '\n';
-				var trimedCode = trimIndentation(trimLines(pa.code));
-				var indentedCode = indent(trimedCode, '\t', 1);
 				result += 'case '+pa.ruleIds.join(', ')+': ';
 				//add comments
-				// if(pa.ruleIds.length > 1)
-					result += '\n';
+				result += '\n';
 				if(commentMap != null){
 					var j = 0;
 					for(rid in pa.ruleIds){
 						var c = Reflect.field(commentMap, Std.string(rid));
 						result += (j > 0? '\n' : '') + indent('/* $c */', '\t', 1);
-						j++; 
+						j++;
 					}
 				}
 				//add code
-				result += '\n'+indentedCode;
-
+				var trimedCode = trimIndentation(trimLines(pa.code));
+				result += '\n'+indent(trimedCode, '\t', 1);
 				i++;
 			}
 
@@ -136,15 +133,9 @@ class Main {
 	}
 
 	static function processRuleCode(code:String):String{
-		var result = '';
 		var reg = ~/\$\$/ig;
-		var matched = reg.match(code);
-		if(matched){//code contains $$
-			result += 'var __ret:Dynamic;\n' + reg.replace(code, '__ret') + '\nreturn __ret;';
-		}else{
-			result = 'return $code';
-		}
-
+		var matched = reg.match(code); //code contains $$
+		var result = '' + (matched ? reg.replace(code, '__ret') : '__ret = $code');
 		return result;
 	}
 
@@ -166,7 +157,7 @@ class Main {
 		var lines = str.split('\n');
 
 		var spaceReg = ~/^([ \t]+)/;
-		//determine indentation
+		//determine indentation by first indentation seen
 		var indentation:String = null;
 		for(l in lines){
 			if(!spaceReg.match(l))
@@ -200,16 +191,12 @@ class Main {
 	static public function trimLines(str:String){
 		var allSpaceReg = ~/^\s*$/;
 		var lines = str.split('\n');
-		//remove preceding
-		var i = 0;
-		while(allSpaceReg.match(lines[i++])){
+		//remove preceding;
+		while(allSpaceReg.match(lines[0]))
 			lines.shift();
-		}
 		//remove trailing
-		i = lines.length - 1;
-		while(allSpaceReg.match(lines[i--])){
+		while(allSpaceReg.match(lines[lines.length - 1]))
 			lines.pop();
-		}
 		return lines.join('\n');
 	}
 

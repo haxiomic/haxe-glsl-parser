@@ -13,7 +13,7 @@ typedef Scope = Map<String, Object>;
 enum Object{
 	USER_TYPE(specifier:StructSpecifier);
 	VARIABLE(declarator:Declarator);
-	// FUNCTION;
+	// FUNCTION; //@! future use
 }
 
 class ParseContext{
