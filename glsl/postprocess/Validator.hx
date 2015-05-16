@@ -6,7 +6,7 @@ package glsl.postprocess;
 
 import glsl.SyntaxTree.Node;
 
-using glsl.SyntaxTree.NodeEnumHelper;
+using glsl.SyntaxTree.NodeTypeHelper;
 
 
 class Validator{
@@ -40,7 +40,7 @@ class Validator{
 	//@! once complete, break away into iterator helper
 	//each node needs a state control object?
 	static function nextNode():Node{
-		switch currentNode.toEnum(){
+		switch currentNode.getNodeType(){
 			case RootNode(n):
 			case TypeSpecifierNode(n):
 			case StructSpecifierNode(n):

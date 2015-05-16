@@ -4,7 +4,7 @@ import glsl.SyntaxTree;
 import glsl.eval.Eval;
 import glsl.eval.ITypeDefinition;
 
-using glsl.SyntaxTree.NodeEnumHelper;
+using glsl.SyntaxTree.NodeTypeHelper;
 
 class Extract{
 
@@ -16,7 +16,7 @@ class Extract{
 		Eval.reset();
 
 		function iterate(node:Node){
-			switch node.toEnum() {
+			switch node.getNodeType() {
 				case RootNode(n):
 					for(d in n.declarations) iterate(d);
 

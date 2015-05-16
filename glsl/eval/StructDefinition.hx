@@ -3,7 +3,7 @@ package glsl.eval;
 import glsl.SyntaxTree;
 import glsl.eval.Eval;
 
-using SyntaxTree.NodeEnumHelper;
+using SyntaxTree.NodeTypeHelper;
 
 @:access(glsl.eval.Eval)
 class StructDefinition implements ITypeDefinition{

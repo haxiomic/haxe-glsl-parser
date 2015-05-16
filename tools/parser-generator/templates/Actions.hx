@@ -15,7 +15,7 @@ import glsl.lex.Tokenizer.Token;
 import glsl.lex.Tokenizer.TokenType;
 import glsl.SyntaxTree;
 
-using glsl.SyntaxTree.NodeEnumHelper;
+using glsl.SyntaxTree.NodeTypeHelper;
 using glsl.lex.TokenHelper;
 
 
@@ -64,7 +64,7 @@ class Actions{
 
 		var __ret:MinorType;
 		
-		switch(ruleno){
+		switch ruleno{
 $$printActionCases(rule_actions,rules,3)
 		}
 
@@ -77,7 +77,7 @@ $$printActionCases(rule_actions,rules,3)
 
 	static function handleVariableDeclaration(declarator:Declarator, ts:TypeSpecifier){
 		//declare type user type
-		switch ts.toEnum() {
+		switch ts.getNodeType(){
 			case StructSpecifierNode(n):
 				parseContext.declareType(n);
 			case null, _:

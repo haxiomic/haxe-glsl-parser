@@ -10,6 +10,7 @@ BUILDHXML=	-js $(BIN)/$(OUTJS)\
 			"\n"-main $(MAIN)\
 			"\n"-cp $(SOURCE)\
 			"\n"-cp ../../\
+			"\n"-dce full\
 			"\n"-D analyzer\
 			"\n"-debug\
 
