@@ -30,7 +30,7 @@ copy-template: output-directory
 
 .PHONY: run
 run: all install-autoreload
-	autoreload-server -f ".js" "./$(BIN)" 8080
+	autoreload-server -f ".js" "./$(BIN)" 8081
 
 .PHONY: install-autoreload
 install-autoreload: npm-required
