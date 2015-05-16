@@ -99,8 +99,8 @@ Main.prototype = {
 			this.warnings = [];
 			var ast = this.parse(input);
 			this.displayAST(ast);
-			var pretty = glsl_printer_NodePrinter.print(ast,"\t");
-			var plain = glsl_printer_NodePrinter.print(ast,null);
+			var pretty = glsl_print_NodePrinter.print(ast,"\t");
+			var plain = glsl_print_NodePrinter.print(ast,null);
 			console.log("-- Pretty --");
 			console.log(pretty);
 			console.log("-- Compact --");
@@ -115,12 +115,12 @@ Main.prototype = {
 		this.inputChanged = false;
 	}
 	,parse: function(input) {
-		var tokens = glsl_tokens_Tokenizer.tokenize(input);
-		this.warnings = this.warnings.concat(glsl_tokens_Tokenizer.warnings);
+		var tokens = glsl_lex_Tokenizer.tokenize(input);
+		this.warnings = this.warnings.concat(glsl_lex_Tokenizer.warnings);
 		tokens = glsl_preprocess_Preprocessor.process(tokens);
 		this.warnings = this.warnings.concat(glsl_preprocess_Preprocessor.warnings);
-		var ast = glsl_parser_Parser.parseTokens(tokens);
-		this.warnings = this.warnings.concat(glsl_parser_Parser.warnings);
+		var ast = glsl_parse_Parser.parseTokens(tokens);
+		this.warnings = this.warnings.concat(glsl_parse_Parser.warnings);
 		return ast;
 	}
 	,displayAST: function(ast) {
@@ -377,13 +377,13 @@ glsl_Primitive.prototype = {
 		var _g = this.dataType;
 		switch(_g[1]) {
 		case 2:
-			this.raw = glsl_printer_Utils.glslIntString(v);
+			this.raw = glsl_print_Utils.intString(v);
 			break;
 		case 1:
-			this.raw = glsl_printer_Utils.glslFloatString(v);
+			this.raw = glsl_print_Utils.floatString(v);
 			break;
 		case 3:
-			this.raw = glsl_printer_Utils.glslBoolString(v);
+			this.raw = glsl_print_Utils.boolString(v);
 			break;
 		default:
 			this.raw = "";
@@ -549,17 +549,16 @@ glsl_Declarator.prototype = {
 	__class__: glsl_Declarator
 };
 var glsl_ParameterDeclaration = function(name,typeSpecifier,parameterQualifier,arraySizeExpression) {
-	this.name = name;
+	glsl_Declarator.call(this,name,null,arraySizeExpression);
 	this.typeSpecifier = typeSpecifier;
 	this.parameterQualifier = parameterQualifier;
-	this.arraySizeExpression = arraySizeExpression;
 	this.nodeName = "ParameterDeclaration";
 };
 glsl_ParameterDeclaration.__name__ = true;
-glsl_ParameterDeclaration.__interfaces__ = [glsl_Node];
-glsl_ParameterDeclaration.prototype = {
+glsl_ParameterDeclaration.__super__ = glsl_Declarator;
+glsl_ParameterDeclaration.prototype = $extend(glsl_Declarator.prototype,{
 	__class__: glsl_ParameterDeclaration
-};
+});
 var glsl_FunctionDefinition = function(header,body) {
 	this.external = true;
 	this.header = header;
@@ -1079,423 +1078,1497 @@ glsl_NodeEnumHelper.toEnum = function(n) {
 		return $r;
 	}(this));
 };
-var glsl_tokens_TokenType = { __ename__ : true, __constructs__ : ["ATTRIBUTE","CONST","BOOL","FLOAT","INT","BREAK","CONTINUE","DO","ELSE","FOR","IF","DISCARD","RETURN","BVEC2","BVEC3","BVEC4","IVEC2","IVEC3","IVEC4","VEC2","VEC3","VEC4","MAT2","MAT3","MAT4","IN","OUT","INOUT","UNIFORM","VARYING","SAMPLER2D","SAMPLERCUBE","STRUCT","VOID","WHILE","INVARIANT","HIGH_PRECISION","MEDIUM_PRECISION","LOW_PRECISION","PRECISION","BOOLCONSTANT","IDENTIFIER","TYPE_NAME","FIELD_SELECTION","LEFT_OP","RIGHT_OP","INC_OP","DEC_OP","LE_OP","GE_OP","EQ_OP","NE_OP","AND_OP","OR_OP","XOR_OP","MUL_ASSIGN","DIV_ASSIGN","ADD_ASSIGN","MOD_ASSIGN","SUB_ASSIGN","LEFT_ASSIGN","RIGHT_ASSIGN","AND_ASSIGN","XOR_ASSIGN","OR_ASSIGN","LEFT_PAREN","RIGHT_PAREN","LEFT_BRACKET","RIGHT_BRACKET","LEFT_BRACE","RIGHT_BRACE","DOT","COMMA","COLON","EQUAL","SEMICOLON","BANG","DASH","TILDE","PLUS","STAR","SLASH","PERCENT","LEFT_ANGLE","RIGHT_ANGLE","VERTICAL_BAR","CARET","AMPERSAND","QUESTION","INTCONSTANT","FLOATCONSTANT","WHITESPACE","BLOCK_COMMENT","LINE_COMMENT","PREPROCESSOR_DIRECTIVE","RESERVED_KEYWORD"] };
-glsl_tokens_TokenType.ATTRIBUTE = ["ATTRIBUTE",0];
-glsl_tokens_TokenType.ATTRIBUTE.toString = $estr;
-glsl_tokens_TokenType.ATTRIBUTE.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.CONST = ["CONST",1];
-glsl_tokens_TokenType.CONST.toString = $estr;
-glsl_tokens_TokenType.CONST.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.BOOL = ["BOOL",2];
-glsl_tokens_TokenType.BOOL.toString = $estr;
-glsl_tokens_TokenType.BOOL.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.FLOAT = ["FLOAT",3];
-glsl_tokens_TokenType.FLOAT.toString = $estr;
-glsl_tokens_TokenType.FLOAT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.INT = ["INT",4];
-glsl_tokens_TokenType.INT.toString = $estr;
-glsl_tokens_TokenType.INT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.BREAK = ["BREAK",5];
-glsl_tokens_TokenType.BREAK.toString = $estr;
-glsl_tokens_TokenType.BREAK.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.CONTINUE = ["CONTINUE",6];
-glsl_tokens_TokenType.CONTINUE.toString = $estr;
-glsl_tokens_TokenType.CONTINUE.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.DO = ["DO",7];
-glsl_tokens_TokenType.DO.toString = $estr;
-glsl_tokens_TokenType.DO.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.ELSE = ["ELSE",8];
-glsl_tokens_TokenType.ELSE.toString = $estr;
-glsl_tokens_TokenType.ELSE.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.FOR = ["FOR",9];
-glsl_tokens_TokenType.FOR.toString = $estr;
-glsl_tokens_TokenType.FOR.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.IF = ["IF",10];
-glsl_tokens_TokenType.IF.toString = $estr;
-glsl_tokens_TokenType.IF.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.DISCARD = ["DISCARD",11];
-glsl_tokens_TokenType.DISCARD.toString = $estr;
-glsl_tokens_TokenType.DISCARD.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.RETURN = ["RETURN",12];
-glsl_tokens_TokenType.RETURN.toString = $estr;
-glsl_tokens_TokenType.RETURN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.BVEC2 = ["BVEC2",13];
-glsl_tokens_TokenType.BVEC2.toString = $estr;
-glsl_tokens_TokenType.BVEC2.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.BVEC3 = ["BVEC3",14];
-glsl_tokens_TokenType.BVEC3.toString = $estr;
-glsl_tokens_TokenType.BVEC3.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.BVEC4 = ["BVEC4",15];
-glsl_tokens_TokenType.BVEC4.toString = $estr;
-glsl_tokens_TokenType.BVEC4.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.IVEC2 = ["IVEC2",16];
-glsl_tokens_TokenType.IVEC2.toString = $estr;
-glsl_tokens_TokenType.IVEC2.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.IVEC3 = ["IVEC3",17];
-glsl_tokens_TokenType.IVEC3.toString = $estr;
-glsl_tokens_TokenType.IVEC3.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.IVEC4 = ["IVEC4",18];
-glsl_tokens_TokenType.IVEC4.toString = $estr;
-glsl_tokens_TokenType.IVEC4.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.VEC2 = ["VEC2",19];
-glsl_tokens_TokenType.VEC2.toString = $estr;
-glsl_tokens_TokenType.VEC2.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.VEC3 = ["VEC3",20];
-glsl_tokens_TokenType.VEC3.toString = $estr;
-glsl_tokens_TokenType.VEC3.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.VEC4 = ["VEC4",21];
-glsl_tokens_TokenType.VEC4.toString = $estr;
-glsl_tokens_TokenType.VEC4.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.MAT2 = ["MAT2",22];
-glsl_tokens_TokenType.MAT2.toString = $estr;
-glsl_tokens_TokenType.MAT2.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.MAT3 = ["MAT3",23];
-glsl_tokens_TokenType.MAT3.toString = $estr;
-glsl_tokens_TokenType.MAT3.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.MAT4 = ["MAT4",24];
-glsl_tokens_TokenType.MAT4.toString = $estr;
-glsl_tokens_TokenType.MAT4.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.IN = ["IN",25];
-glsl_tokens_TokenType.IN.toString = $estr;
-glsl_tokens_TokenType.IN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.OUT = ["OUT",26];
-glsl_tokens_TokenType.OUT.toString = $estr;
-glsl_tokens_TokenType.OUT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.INOUT = ["INOUT",27];
-glsl_tokens_TokenType.INOUT.toString = $estr;
-glsl_tokens_TokenType.INOUT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.UNIFORM = ["UNIFORM",28];
-glsl_tokens_TokenType.UNIFORM.toString = $estr;
-glsl_tokens_TokenType.UNIFORM.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.VARYING = ["VARYING",29];
-glsl_tokens_TokenType.VARYING.toString = $estr;
-glsl_tokens_TokenType.VARYING.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.SAMPLER2D = ["SAMPLER2D",30];
-glsl_tokens_TokenType.SAMPLER2D.toString = $estr;
-glsl_tokens_TokenType.SAMPLER2D.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.SAMPLERCUBE = ["SAMPLERCUBE",31];
-glsl_tokens_TokenType.SAMPLERCUBE.toString = $estr;
-glsl_tokens_TokenType.SAMPLERCUBE.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.STRUCT = ["STRUCT",32];
-glsl_tokens_TokenType.STRUCT.toString = $estr;
-glsl_tokens_TokenType.STRUCT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.VOID = ["VOID",33];
-glsl_tokens_TokenType.VOID.toString = $estr;
-glsl_tokens_TokenType.VOID.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.WHILE = ["WHILE",34];
-glsl_tokens_TokenType.WHILE.toString = $estr;
-glsl_tokens_TokenType.WHILE.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.INVARIANT = ["INVARIANT",35];
-glsl_tokens_TokenType.INVARIANT.toString = $estr;
-glsl_tokens_TokenType.INVARIANT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.HIGH_PRECISION = ["HIGH_PRECISION",36];
-glsl_tokens_TokenType.HIGH_PRECISION.toString = $estr;
-glsl_tokens_TokenType.HIGH_PRECISION.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.MEDIUM_PRECISION = ["MEDIUM_PRECISION",37];
-glsl_tokens_TokenType.MEDIUM_PRECISION.toString = $estr;
-glsl_tokens_TokenType.MEDIUM_PRECISION.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.LOW_PRECISION = ["LOW_PRECISION",38];
-glsl_tokens_TokenType.LOW_PRECISION.toString = $estr;
-glsl_tokens_TokenType.LOW_PRECISION.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.PRECISION = ["PRECISION",39];
-glsl_tokens_TokenType.PRECISION.toString = $estr;
-glsl_tokens_TokenType.PRECISION.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.BOOLCONSTANT = ["BOOLCONSTANT",40];
-glsl_tokens_TokenType.BOOLCONSTANT.toString = $estr;
-glsl_tokens_TokenType.BOOLCONSTANT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.IDENTIFIER = ["IDENTIFIER",41];
-glsl_tokens_TokenType.IDENTIFIER.toString = $estr;
-glsl_tokens_TokenType.IDENTIFIER.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.TYPE_NAME = ["TYPE_NAME",42];
-glsl_tokens_TokenType.TYPE_NAME.toString = $estr;
-glsl_tokens_TokenType.TYPE_NAME.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.FIELD_SELECTION = ["FIELD_SELECTION",43];
-glsl_tokens_TokenType.FIELD_SELECTION.toString = $estr;
-glsl_tokens_TokenType.FIELD_SELECTION.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.LEFT_OP = ["LEFT_OP",44];
-glsl_tokens_TokenType.LEFT_OP.toString = $estr;
-glsl_tokens_TokenType.LEFT_OP.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.RIGHT_OP = ["RIGHT_OP",45];
-glsl_tokens_TokenType.RIGHT_OP.toString = $estr;
-glsl_tokens_TokenType.RIGHT_OP.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.INC_OP = ["INC_OP",46];
-glsl_tokens_TokenType.INC_OP.toString = $estr;
-glsl_tokens_TokenType.INC_OP.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.DEC_OP = ["DEC_OP",47];
-glsl_tokens_TokenType.DEC_OP.toString = $estr;
-glsl_tokens_TokenType.DEC_OP.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.LE_OP = ["LE_OP",48];
-glsl_tokens_TokenType.LE_OP.toString = $estr;
-glsl_tokens_TokenType.LE_OP.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.GE_OP = ["GE_OP",49];
-glsl_tokens_TokenType.GE_OP.toString = $estr;
-glsl_tokens_TokenType.GE_OP.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.EQ_OP = ["EQ_OP",50];
-glsl_tokens_TokenType.EQ_OP.toString = $estr;
-glsl_tokens_TokenType.EQ_OP.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.NE_OP = ["NE_OP",51];
-glsl_tokens_TokenType.NE_OP.toString = $estr;
-glsl_tokens_TokenType.NE_OP.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.AND_OP = ["AND_OP",52];
-glsl_tokens_TokenType.AND_OP.toString = $estr;
-glsl_tokens_TokenType.AND_OP.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.OR_OP = ["OR_OP",53];
-glsl_tokens_TokenType.OR_OP.toString = $estr;
-glsl_tokens_TokenType.OR_OP.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.XOR_OP = ["XOR_OP",54];
-glsl_tokens_TokenType.XOR_OP.toString = $estr;
-glsl_tokens_TokenType.XOR_OP.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.MUL_ASSIGN = ["MUL_ASSIGN",55];
-glsl_tokens_TokenType.MUL_ASSIGN.toString = $estr;
-glsl_tokens_TokenType.MUL_ASSIGN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.DIV_ASSIGN = ["DIV_ASSIGN",56];
-glsl_tokens_TokenType.DIV_ASSIGN.toString = $estr;
-glsl_tokens_TokenType.DIV_ASSIGN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.ADD_ASSIGN = ["ADD_ASSIGN",57];
-glsl_tokens_TokenType.ADD_ASSIGN.toString = $estr;
-glsl_tokens_TokenType.ADD_ASSIGN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.MOD_ASSIGN = ["MOD_ASSIGN",58];
-glsl_tokens_TokenType.MOD_ASSIGN.toString = $estr;
-glsl_tokens_TokenType.MOD_ASSIGN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.SUB_ASSIGN = ["SUB_ASSIGN",59];
-glsl_tokens_TokenType.SUB_ASSIGN.toString = $estr;
-glsl_tokens_TokenType.SUB_ASSIGN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.LEFT_ASSIGN = ["LEFT_ASSIGN",60];
-glsl_tokens_TokenType.LEFT_ASSIGN.toString = $estr;
-glsl_tokens_TokenType.LEFT_ASSIGN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.RIGHT_ASSIGN = ["RIGHT_ASSIGN",61];
-glsl_tokens_TokenType.RIGHT_ASSIGN.toString = $estr;
-glsl_tokens_TokenType.RIGHT_ASSIGN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.AND_ASSIGN = ["AND_ASSIGN",62];
-glsl_tokens_TokenType.AND_ASSIGN.toString = $estr;
-glsl_tokens_TokenType.AND_ASSIGN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.XOR_ASSIGN = ["XOR_ASSIGN",63];
-glsl_tokens_TokenType.XOR_ASSIGN.toString = $estr;
-glsl_tokens_TokenType.XOR_ASSIGN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.OR_ASSIGN = ["OR_ASSIGN",64];
-glsl_tokens_TokenType.OR_ASSIGN.toString = $estr;
-glsl_tokens_TokenType.OR_ASSIGN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.LEFT_PAREN = ["LEFT_PAREN",65];
-glsl_tokens_TokenType.LEFT_PAREN.toString = $estr;
-glsl_tokens_TokenType.LEFT_PAREN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.RIGHT_PAREN = ["RIGHT_PAREN",66];
-glsl_tokens_TokenType.RIGHT_PAREN.toString = $estr;
-glsl_tokens_TokenType.RIGHT_PAREN.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.LEFT_BRACKET = ["LEFT_BRACKET",67];
-glsl_tokens_TokenType.LEFT_BRACKET.toString = $estr;
-glsl_tokens_TokenType.LEFT_BRACKET.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.RIGHT_BRACKET = ["RIGHT_BRACKET",68];
-glsl_tokens_TokenType.RIGHT_BRACKET.toString = $estr;
-glsl_tokens_TokenType.RIGHT_BRACKET.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.LEFT_BRACE = ["LEFT_BRACE",69];
-glsl_tokens_TokenType.LEFT_BRACE.toString = $estr;
-glsl_tokens_TokenType.LEFT_BRACE.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.RIGHT_BRACE = ["RIGHT_BRACE",70];
-glsl_tokens_TokenType.RIGHT_BRACE.toString = $estr;
-glsl_tokens_TokenType.RIGHT_BRACE.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.DOT = ["DOT",71];
-glsl_tokens_TokenType.DOT.toString = $estr;
-glsl_tokens_TokenType.DOT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.COMMA = ["COMMA",72];
-glsl_tokens_TokenType.COMMA.toString = $estr;
-glsl_tokens_TokenType.COMMA.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.COLON = ["COLON",73];
-glsl_tokens_TokenType.COLON.toString = $estr;
-glsl_tokens_TokenType.COLON.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.EQUAL = ["EQUAL",74];
-glsl_tokens_TokenType.EQUAL.toString = $estr;
-glsl_tokens_TokenType.EQUAL.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.SEMICOLON = ["SEMICOLON",75];
-glsl_tokens_TokenType.SEMICOLON.toString = $estr;
-glsl_tokens_TokenType.SEMICOLON.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.BANG = ["BANG",76];
-glsl_tokens_TokenType.BANG.toString = $estr;
-glsl_tokens_TokenType.BANG.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.DASH = ["DASH",77];
-glsl_tokens_TokenType.DASH.toString = $estr;
-glsl_tokens_TokenType.DASH.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.TILDE = ["TILDE",78];
-glsl_tokens_TokenType.TILDE.toString = $estr;
-glsl_tokens_TokenType.TILDE.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.PLUS = ["PLUS",79];
-glsl_tokens_TokenType.PLUS.toString = $estr;
-glsl_tokens_TokenType.PLUS.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.STAR = ["STAR",80];
-glsl_tokens_TokenType.STAR.toString = $estr;
-glsl_tokens_TokenType.STAR.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.SLASH = ["SLASH",81];
-glsl_tokens_TokenType.SLASH.toString = $estr;
-glsl_tokens_TokenType.SLASH.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.PERCENT = ["PERCENT",82];
-glsl_tokens_TokenType.PERCENT.toString = $estr;
-glsl_tokens_TokenType.PERCENT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.LEFT_ANGLE = ["LEFT_ANGLE",83];
-glsl_tokens_TokenType.LEFT_ANGLE.toString = $estr;
-glsl_tokens_TokenType.LEFT_ANGLE.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.RIGHT_ANGLE = ["RIGHT_ANGLE",84];
-glsl_tokens_TokenType.RIGHT_ANGLE.toString = $estr;
-glsl_tokens_TokenType.RIGHT_ANGLE.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.VERTICAL_BAR = ["VERTICAL_BAR",85];
-glsl_tokens_TokenType.VERTICAL_BAR.toString = $estr;
-glsl_tokens_TokenType.VERTICAL_BAR.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.CARET = ["CARET",86];
-glsl_tokens_TokenType.CARET.toString = $estr;
-glsl_tokens_TokenType.CARET.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.AMPERSAND = ["AMPERSAND",87];
-glsl_tokens_TokenType.AMPERSAND.toString = $estr;
-glsl_tokens_TokenType.AMPERSAND.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.QUESTION = ["QUESTION",88];
-glsl_tokens_TokenType.QUESTION.toString = $estr;
-glsl_tokens_TokenType.QUESTION.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.INTCONSTANT = ["INTCONSTANT",89];
-glsl_tokens_TokenType.INTCONSTANT.toString = $estr;
-glsl_tokens_TokenType.INTCONSTANT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.FLOATCONSTANT = ["FLOATCONSTANT",90];
-glsl_tokens_TokenType.FLOATCONSTANT.toString = $estr;
-glsl_tokens_TokenType.FLOATCONSTANT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.WHITESPACE = ["WHITESPACE",91];
-glsl_tokens_TokenType.WHITESPACE.toString = $estr;
-glsl_tokens_TokenType.WHITESPACE.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.BLOCK_COMMENT = ["BLOCK_COMMENT",92];
-glsl_tokens_TokenType.BLOCK_COMMENT.toString = $estr;
-glsl_tokens_TokenType.BLOCK_COMMENT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.LINE_COMMENT = ["LINE_COMMENT",93];
-glsl_tokens_TokenType.LINE_COMMENT.toString = $estr;
-glsl_tokens_TokenType.LINE_COMMENT.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE = ["PREPROCESSOR_DIRECTIVE",94];
-glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE.toString = $estr;
-glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE.__enum__ = glsl_tokens_TokenType;
-glsl_tokens_TokenType.RESERVED_KEYWORD = ["RESERVED_KEYWORD",95];
-glsl_tokens_TokenType.RESERVED_KEYWORD.toString = $estr;
-glsl_tokens_TokenType.RESERVED_KEYWORD.__enum__ = glsl_tokens_TokenType;
-var glsl_parser_ParserTables = function() { };
-glsl_parser_ParserTables.__name__ = true;
-var glsl_parser_Parser = function() { };
-glsl_parser_Parser.__name__ = true;
-glsl_parser_Parser.init = function() {
-	glsl_parser_Parser.i = 0;
-	glsl_parser_Parser.stack = [{ stateno : 0, major : 0, minor : null}];
-	glsl_parser_Parser.errorCount = 0;
-	glsl_parser_Parser.currentNode = null;
-	glsl_parser_Parser.warnings = [];
-	glsl_parser_TreeBuilder.reset();
+var glsl_lex_TokenType = { __ename__ : true, __constructs__ : ["ATTRIBUTE","CONST","BOOL","FLOAT","INT","BREAK","CONTINUE","DO","ELSE","FOR","IF","DISCARD","RETURN","BVEC2","BVEC3","BVEC4","IVEC2","IVEC3","IVEC4","VEC2","VEC3","VEC4","MAT2","MAT3","MAT4","IN","OUT","INOUT","UNIFORM","VARYING","SAMPLER2D","SAMPLERCUBE","STRUCT","VOID","WHILE","INVARIANT","HIGH_PRECISION","MEDIUM_PRECISION","LOW_PRECISION","PRECISION","BOOLCONSTANT","IDENTIFIER","TYPE_NAME","FIELD_SELECTION","LEFT_OP","RIGHT_OP","INC_OP","DEC_OP","LE_OP","GE_OP","EQ_OP","NE_OP","AND_OP","OR_OP","XOR_OP","MUL_ASSIGN","DIV_ASSIGN","ADD_ASSIGN","MOD_ASSIGN","SUB_ASSIGN","LEFT_ASSIGN","RIGHT_ASSIGN","AND_ASSIGN","XOR_ASSIGN","OR_ASSIGN","LEFT_PAREN","RIGHT_PAREN","LEFT_BRACKET","RIGHT_BRACKET","LEFT_BRACE","RIGHT_BRACE","DOT","COMMA","COLON","EQUAL","SEMICOLON","BANG","DASH","TILDE","PLUS","STAR","SLASH","PERCENT","LEFT_ANGLE","RIGHT_ANGLE","VERTICAL_BAR","CARET","AMPERSAND","QUESTION","INTCONSTANT","FLOATCONSTANT","WHITESPACE","BLOCK_COMMENT","LINE_COMMENT","PREPROCESSOR_DIRECTIVE","RESERVED_KEYWORD"] };
+glsl_lex_TokenType.ATTRIBUTE = ["ATTRIBUTE",0];
+glsl_lex_TokenType.ATTRIBUTE.toString = $estr;
+glsl_lex_TokenType.ATTRIBUTE.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.CONST = ["CONST",1];
+glsl_lex_TokenType.CONST.toString = $estr;
+glsl_lex_TokenType.CONST.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.BOOL = ["BOOL",2];
+glsl_lex_TokenType.BOOL.toString = $estr;
+glsl_lex_TokenType.BOOL.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.FLOAT = ["FLOAT",3];
+glsl_lex_TokenType.FLOAT.toString = $estr;
+glsl_lex_TokenType.FLOAT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.INT = ["INT",4];
+glsl_lex_TokenType.INT.toString = $estr;
+glsl_lex_TokenType.INT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.BREAK = ["BREAK",5];
+glsl_lex_TokenType.BREAK.toString = $estr;
+glsl_lex_TokenType.BREAK.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.CONTINUE = ["CONTINUE",6];
+glsl_lex_TokenType.CONTINUE.toString = $estr;
+glsl_lex_TokenType.CONTINUE.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.DO = ["DO",7];
+glsl_lex_TokenType.DO.toString = $estr;
+glsl_lex_TokenType.DO.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.ELSE = ["ELSE",8];
+glsl_lex_TokenType.ELSE.toString = $estr;
+glsl_lex_TokenType.ELSE.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.FOR = ["FOR",9];
+glsl_lex_TokenType.FOR.toString = $estr;
+glsl_lex_TokenType.FOR.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.IF = ["IF",10];
+glsl_lex_TokenType.IF.toString = $estr;
+glsl_lex_TokenType.IF.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.DISCARD = ["DISCARD",11];
+glsl_lex_TokenType.DISCARD.toString = $estr;
+glsl_lex_TokenType.DISCARD.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.RETURN = ["RETURN",12];
+glsl_lex_TokenType.RETURN.toString = $estr;
+glsl_lex_TokenType.RETURN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.BVEC2 = ["BVEC2",13];
+glsl_lex_TokenType.BVEC2.toString = $estr;
+glsl_lex_TokenType.BVEC2.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.BVEC3 = ["BVEC3",14];
+glsl_lex_TokenType.BVEC3.toString = $estr;
+glsl_lex_TokenType.BVEC3.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.BVEC4 = ["BVEC4",15];
+glsl_lex_TokenType.BVEC4.toString = $estr;
+glsl_lex_TokenType.BVEC4.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.IVEC2 = ["IVEC2",16];
+glsl_lex_TokenType.IVEC2.toString = $estr;
+glsl_lex_TokenType.IVEC2.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.IVEC3 = ["IVEC3",17];
+glsl_lex_TokenType.IVEC3.toString = $estr;
+glsl_lex_TokenType.IVEC3.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.IVEC4 = ["IVEC4",18];
+glsl_lex_TokenType.IVEC4.toString = $estr;
+glsl_lex_TokenType.IVEC4.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.VEC2 = ["VEC2",19];
+glsl_lex_TokenType.VEC2.toString = $estr;
+glsl_lex_TokenType.VEC2.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.VEC3 = ["VEC3",20];
+glsl_lex_TokenType.VEC3.toString = $estr;
+glsl_lex_TokenType.VEC3.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.VEC4 = ["VEC4",21];
+glsl_lex_TokenType.VEC4.toString = $estr;
+glsl_lex_TokenType.VEC4.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.MAT2 = ["MAT2",22];
+glsl_lex_TokenType.MAT2.toString = $estr;
+glsl_lex_TokenType.MAT2.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.MAT3 = ["MAT3",23];
+glsl_lex_TokenType.MAT3.toString = $estr;
+glsl_lex_TokenType.MAT3.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.MAT4 = ["MAT4",24];
+glsl_lex_TokenType.MAT4.toString = $estr;
+glsl_lex_TokenType.MAT4.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.IN = ["IN",25];
+glsl_lex_TokenType.IN.toString = $estr;
+glsl_lex_TokenType.IN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.OUT = ["OUT",26];
+glsl_lex_TokenType.OUT.toString = $estr;
+glsl_lex_TokenType.OUT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.INOUT = ["INOUT",27];
+glsl_lex_TokenType.INOUT.toString = $estr;
+glsl_lex_TokenType.INOUT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.UNIFORM = ["UNIFORM",28];
+glsl_lex_TokenType.UNIFORM.toString = $estr;
+glsl_lex_TokenType.UNIFORM.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.VARYING = ["VARYING",29];
+glsl_lex_TokenType.VARYING.toString = $estr;
+glsl_lex_TokenType.VARYING.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.SAMPLER2D = ["SAMPLER2D",30];
+glsl_lex_TokenType.SAMPLER2D.toString = $estr;
+glsl_lex_TokenType.SAMPLER2D.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.SAMPLERCUBE = ["SAMPLERCUBE",31];
+glsl_lex_TokenType.SAMPLERCUBE.toString = $estr;
+glsl_lex_TokenType.SAMPLERCUBE.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.STRUCT = ["STRUCT",32];
+glsl_lex_TokenType.STRUCT.toString = $estr;
+glsl_lex_TokenType.STRUCT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.VOID = ["VOID",33];
+glsl_lex_TokenType.VOID.toString = $estr;
+glsl_lex_TokenType.VOID.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.WHILE = ["WHILE",34];
+glsl_lex_TokenType.WHILE.toString = $estr;
+glsl_lex_TokenType.WHILE.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.INVARIANT = ["INVARIANT",35];
+glsl_lex_TokenType.INVARIANT.toString = $estr;
+glsl_lex_TokenType.INVARIANT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.HIGH_PRECISION = ["HIGH_PRECISION",36];
+glsl_lex_TokenType.HIGH_PRECISION.toString = $estr;
+glsl_lex_TokenType.HIGH_PRECISION.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.MEDIUM_PRECISION = ["MEDIUM_PRECISION",37];
+glsl_lex_TokenType.MEDIUM_PRECISION.toString = $estr;
+glsl_lex_TokenType.MEDIUM_PRECISION.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.LOW_PRECISION = ["LOW_PRECISION",38];
+glsl_lex_TokenType.LOW_PRECISION.toString = $estr;
+glsl_lex_TokenType.LOW_PRECISION.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.PRECISION = ["PRECISION",39];
+glsl_lex_TokenType.PRECISION.toString = $estr;
+glsl_lex_TokenType.PRECISION.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.BOOLCONSTANT = ["BOOLCONSTANT",40];
+glsl_lex_TokenType.BOOLCONSTANT.toString = $estr;
+glsl_lex_TokenType.BOOLCONSTANT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.IDENTIFIER = ["IDENTIFIER",41];
+glsl_lex_TokenType.IDENTIFIER.toString = $estr;
+glsl_lex_TokenType.IDENTIFIER.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.TYPE_NAME = ["TYPE_NAME",42];
+glsl_lex_TokenType.TYPE_NAME.toString = $estr;
+glsl_lex_TokenType.TYPE_NAME.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.FIELD_SELECTION = ["FIELD_SELECTION",43];
+glsl_lex_TokenType.FIELD_SELECTION.toString = $estr;
+glsl_lex_TokenType.FIELD_SELECTION.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.LEFT_OP = ["LEFT_OP",44];
+glsl_lex_TokenType.LEFT_OP.toString = $estr;
+glsl_lex_TokenType.LEFT_OP.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.RIGHT_OP = ["RIGHT_OP",45];
+glsl_lex_TokenType.RIGHT_OP.toString = $estr;
+glsl_lex_TokenType.RIGHT_OP.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.INC_OP = ["INC_OP",46];
+glsl_lex_TokenType.INC_OP.toString = $estr;
+glsl_lex_TokenType.INC_OP.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.DEC_OP = ["DEC_OP",47];
+glsl_lex_TokenType.DEC_OP.toString = $estr;
+glsl_lex_TokenType.DEC_OP.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.LE_OP = ["LE_OP",48];
+glsl_lex_TokenType.LE_OP.toString = $estr;
+glsl_lex_TokenType.LE_OP.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.GE_OP = ["GE_OP",49];
+glsl_lex_TokenType.GE_OP.toString = $estr;
+glsl_lex_TokenType.GE_OP.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.EQ_OP = ["EQ_OP",50];
+glsl_lex_TokenType.EQ_OP.toString = $estr;
+glsl_lex_TokenType.EQ_OP.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.NE_OP = ["NE_OP",51];
+glsl_lex_TokenType.NE_OP.toString = $estr;
+glsl_lex_TokenType.NE_OP.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.AND_OP = ["AND_OP",52];
+glsl_lex_TokenType.AND_OP.toString = $estr;
+glsl_lex_TokenType.AND_OP.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.OR_OP = ["OR_OP",53];
+glsl_lex_TokenType.OR_OP.toString = $estr;
+glsl_lex_TokenType.OR_OP.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.XOR_OP = ["XOR_OP",54];
+glsl_lex_TokenType.XOR_OP.toString = $estr;
+glsl_lex_TokenType.XOR_OP.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.MUL_ASSIGN = ["MUL_ASSIGN",55];
+glsl_lex_TokenType.MUL_ASSIGN.toString = $estr;
+glsl_lex_TokenType.MUL_ASSIGN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.DIV_ASSIGN = ["DIV_ASSIGN",56];
+glsl_lex_TokenType.DIV_ASSIGN.toString = $estr;
+glsl_lex_TokenType.DIV_ASSIGN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.ADD_ASSIGN = ["ADD_ASSIGN",57];
+glsl_lex_TokenType.ADD_ASSIGN.toString = $estr;
+glsl_lex_TokenType.ADD_ASSIGN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.MOD_ASSIGN = ["MOD_ASSIGN",58];
+glsl_lex_TokenType.MOD_ASSIGN.toString = $estr;
+glsl_lex_TokenType.MOD_ASSIGN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.SUB_ASSIGN = ["SUB_ASSIGN",59];
+glsl_lex_TokenType.SUB_ASSIGN.toString = $estr;
+glsl_lex_TokenType.SUB_ASSIGN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.LEFT_ASSIGN = ["LEFT_ASSIGN",60];
+glsl_lex_TokenType.LEFT_ASSIGN.toString = $estr;
+glsl_lex_TokenType.LEFT_ASSIGN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.RIGHT_ASSIGN = ["RIGHT_ASSIGN",61];
+glsl_lex_TokenType.RIGHT_ASSIGN.toString = $estr;
+glsl_lex_TokenType.RIGHT_ASSIGN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.AND_ASSIGN = ["AND_ASSIGN",62];
+glsl_lex_TokenType.AND_ASSIGN.toString = $estr;
+glsl_lex_TokenType.AND_ASSIGN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.XOR_ASSIGN = ["XOR_ASSIGN",63];
+glsl_lex_TokenType.XOR_ASSIGN.toString = $estr;
+glsl_lex_TokenType.XOR_ASSIGN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.OR_ASSIGN = ["OR_ASSIGN",64];
+glsl_lex_TokenType.OR_ASSIGN.toString = $estr;
+glsl_lex_TokenType.OR_ASSIGN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.LEFT_PAREN = ["LEFT_PAREN",65];
+glsl_lex_TokenType.LEFT_PAREN.toString = $estr;
+glsl_lex_TokenType.LEFT_PAREN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.RIGHT_PAREN = ["RIGHT_PAREN",66];
+glsl_lex_TokenType.RIGHT_PAREN.toString = $estr;
+glsl_lex_TokenType.RIGHT_PAREN.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.LEFT_BRACKET = ["LEFT_BRACKET",67];
+glsl_lex_TokenType.LEFT_BRACKET.toString = $estr;
+glsl_lex_TokenType.LEFT_BRACKET.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.RIGHT_BRACKET = ["RIGHT_BRACKET",68];
+glsl_lex_TokenType.RIGHT_BRACKET.toString = $estr;
+glsl_lex_TokenType.RIGHT_BRACKET.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.LEFT_BRACE = ["LEFT_BRACE",69];
+glsl_lex_TokenType.LEFT_BRACE.toString = $estr;
+glsl_lex_TokenType.LEFT_BRACE.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.RIGHT_BRACE = ["RIGHT_BRACE",70];
+glsl_lex_TokenType.RIGHT_BRACE.toString = $estr;
+glsl_lex_TokenType.RIGHT_BRACE.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.DOT = ["DOT",71];
+glsl_lex_TokenType.DOT.toString = $estr;
+glsl_lex_TokenType.DOT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.COMMA = ["COMMA",72];
+glsl_lex_TokenType.COMMA.toString = $estr;
+glsl_lex_TokenType.COMMA.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.COLON = ["COLON",73];
+glsl_lex_TokenType.COLON.toString = $estr;
+glsl_lex_TokenType.COLON.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.EQUAL = ["EQUAL",74];
+glsl_lex_TokenType.EQUAL.toString = $estr;
+glsl_lex_TokenType.EQUAL.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.SEMICOLON = ["SEMICOLON",75];
+glsl_lex_TokenType.SEMICOLON.toString = $estr;
+glsl_lex_TokenType.SEMICOLON.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.BANG = ["BANG",76];
+glsl_lex_TokenType.BANG.toString = $estr;
+glsl_lex_TokenType.BANG.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.DASH = ["DASH",77];
+glsl_lex_TokenType.DASH.toString = $estr;
+glsl_lex_TokenType.DASH.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.TILDE = ["TILDE",78];
+glsl_lex_TokenType.TILDE.toString = $estr;
+glsl_lex_TokenType.TILDE.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.PLUS = ["PLUS",79];
+glsl_lex_TokenType.PLUS.toString = $estr;
+glsl_lex_TokenType.PLUS.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.STAR = ["STAR",80];
+glsl_lex_TokenType.STAR.toString = $estr;
+glsl_lex_TokenType.STAR.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.SLASH = ["SLASH",81];
+glsl_lex_TokenType.SLASH.toString = $estr;
+glsl_lex_TokenType.SLASH.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.PERCENT = ["PERCENT",82];
+glsl_lex_TokenType.PERCENT.toString = $estr;
+glsl_lex_TokenType.PERCENT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.LEFT_ANGLE = ["LEFT_ANGLE",83];
+glsl_lex_TokenType.LEFT_ANGLE.toString = $estr;
+glsl_lex_TokenType.LEFT_ANGLE.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.RIGHT_ANGLE = ["RIGHT_ANGLE",84];
+glsl_lex_TokenType.RIGHT_ANGLE.toString = $estr;
+glsl_lex_TokenType.RIGHT_ANGLE.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.VERTICAL_BAR = ["VERTICAL_BAR",85];
+glsl_lex_TokenType.VERTICAL_BAR.toString = $estr;
+glsl_lex_TokenType.VERTICAL_BAR.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.CARET = ["CARET",86];
+glsl_lex_TokenType.CARET.toString = $estr;
+glsl_lex_TokenType.CARET.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.AMPERSAND = ["AMPERSAND",87];
+glsl_lex_TokenType.AMPERSAND.toString = $estr;
+glsl_lex_TokenType.AMPERSAND.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.QUESTION = ["QUESTION",88];
+glsl_lex_TokenType.QUESTION.toString = $estr;
+glsl_lex_TokenType.QUESTION.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.INTCONSTANT = ["INTCONSTANT",89];
+glsl_lex_TokenType.INTCONSTANT.toString = $estr;
+glsl_lex_TokenType.INTCONSTANT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.FLOATCONSTANT = ["FLOATCONSTANT",90];
+glsl_lex_TokenType.FLOATCONSTANT.toString = $estr;
+glsl_lex_TokenType.FLOATCONSTANT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.WHITESPACE = ["WHITESPACE",91];
+glsl_lex_TokenType.WHITESPACE.toString = $estr;
+glsl_lex_TokenType.WHITESPACE.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.BLOCK_COMMENT = ["BLOCK_COMMENT",92];
+glsl_lex_TokenType.BLOCK_COMMENT.toString = $estr;
+glsl_lex_TokenType.BLOCK_COMMENT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.LINE_COMMENT = ["LINE_COMMENT",93];
+glsl_lex_TokenType.LINE_COMMENT.toString = $estr;
+glsl_lex_TokenType.LINE_COMMENT.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.PREPROCESSOR_DIRECTIVE = ["PREPROCESSOR_DIRECTIVE",94];
+glsl_lex_TokenType.PREPROCESSOR_DIRECTIVE.toString = $estr;
+glsl_lex_TokenType.PREPROCESSOR_DIRECTIVE.__enum__ = glsl_lex_TokenType;
+glsl_lex_TokenType.RESERVED_KEYWORD = ["RESERVED_KEYWORD",95];
+glsl_lex_TokenType.RESERVED_KEYWORD.toString = $estr;
+glsl_lex_TokenType.RESERVED_KEYWORD.__enum__ = glsl_lex_TokenType;
+var glsl_lex_TokenHelper = function() { };
+glsl_lex_TokenHelper.__name__ = true;
+glsl_lex_TokenHelper.nextNonSkipToken = function(tokens,start,n,requiredType) {
+	if(n == null) n = 1;
+	var j = glsl_lex_TokenHelper.nextNonSkipTokenIndex(tokens,start,n,requiredType);
+	return j != -1?tokens[j]:null;
 };
-glsl_parser_Parser.parse = function(input) {
-	glsl_parser_Parser.init();
-	var tokens = glsl_tokens_Tokenizer.tokenize(input);
-	return glsl_parser_Parser.parseTokens(tokens);
+glsl_lex_TokenHelper.nextNonSkipTokenIndex = function(tokens,start,n,requiredType) {
+	if(n == null) n = 1;
+	var direction = n >= 0?1:-1;
+	var j = start;
+	var m = Math.abs(n);
+	var t;
+	while(m > 0) {
+		j += direction;
+		t = tokens[j];
+		if(t == null) return -1;
+		if(requiredType != null && !Type.enumEq(t.type,requiredType)) continue;
+		if(HxOverrides.indexOf(glsl_lex_Tokenizer.skippableTypes,t.type,0) != -1) continue;
+		m--;
+	}
+	return j;
 };
-glsl_parser_Parser.parseTokens = function(tokens) {
-	glsl_parser_Parser.init();
+glsl_lex_TokenHelper.deleteTokens = function(tokens,start,count) {
+	if(count == null) count = 1;
+	return tokens.splice(start,count);
+};
+glsl_lex_TokenHelper.insertTokens = function(tokens,start,newTokens) {
+	var j = newTokens.length;
+	while(--j >= 0) tokens.splice(start,0,newTokens[j]);
+	return tokens;
+};
+glsl_lex_TokenHelper.isIdentifierType = function(type) {
+	return HxOverrides.indexOf(glsl_lex_TokenHelper.identifierTokenTypes,type,0) >= 0;
+};
+glsl_lex_TokenHelper.isTypeReferenceType = function(type) {
+	return HxOverrides.indexOf(glsl_lex_TokenHelper.typeTokenTypes,type,0) >= 0;
+};
+var glsl_lex__$Tokenizer_ScanMode = { __ename__ : true, __constructs__ : ["UNDETERMINED","BLOCK_COMMENT","LINE_COMMENT","PREPROCESSOR_DIRECTIVE","WHITESPACE","OPERATOR","LITERAL","INTEGER_CONSTANT","DECIMAL_CONSTANT","HEX_CONSTANT","OCTAL_CONSTANT","FLOATING_CONSTANT","FRACTIONAL_CONSTANT","EXPONENT_PART"] };
+glsl_lex__$Tokenizer_ScanMode.UNDETERMINED = ["UNDETERMINED",0];
+glsl_lex__$Tokenizer_ScanMode.UNDETERMINED.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.UNDETERMINED.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.BLOCK_COMMENT = ["BLOCK_COMMENT",1];
+glsl_lex__$Tokenizer_ScanMode.BLOCK_COMMENT.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.BLOCK_COMMENT.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.LINE_COMMENT = ["LINE_COMMENT",2];
+glsl_lex__$Tokenizer_ScanMode.LINE_COMMENT.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.LINE_COMMENT.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE = ["PREPROCESSOR_DIRECTIVE",3];
+glsl_lex__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.WHITESPACE = ["WHITESPACE",4];
+glsl_lex__$Tokenizer_ScanMode.WHITESPACE.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.WHITESPACE.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.OPERATOR = ["OPERATOR",5];
+glsl_lex__$Tokenizer_ScanMode.OPERATOR.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.OPERATOR.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.LITERAL = ["LITERAL",6];
+glsl_lex__$Tokenizer_ScanMode.LITERAL.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.LITERAL.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.INTEGER_CONSTANT = ["INTEGER_CONSTANT",7];
+glsl_lex__$Tokenizer_ScanMode.INTEGER_CONSTANT.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.INTEGER_CONSTANT.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.DECIMAL_CONSTANT = ["DECIMAL_CONSTANT",8];
+glsl_lex__$Tokenizer_ScanMode.DECIMAL_CONSTANT.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.DECIMAL_CONSTANT.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.HEX_CONSTANT = ["HEX_CONSTANT",9];
+glsl_lex__$Tokenizer_ScanMode.HEX_CONSTANT.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.HEX_CONSTANT.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.OCTAL_CONSTANT = ["OCTAL_CONSTANT",10];
+glsl_lex__$Tokenizer_ScanMode.OCTAL_CONSTANT.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.OCTAL_CONSTANT.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.FLOATING_CONSTANT = ["FLOATING_CONSTANT",11];
+glsl_lex__$Tokenizer_ScanMode.FLOATING_CONSTANT.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.FLOATING_CONSTANT.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT = ["FRACTIONAL_CONSTANT",12];
+glsl_lex__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+glsl_lex__$Tokenizer_ScanMode.EXPONENT_PART = ["EXPONENT_PART",13];
+glsl_lex__$Tokenizer_ScanMode.EXPONENT_PART.toString = $estr;
+glsl_lex__$Tokenizer_ScanMode.EXPONENT_PART.__enum__ = glsl_lex__$Tokenizer_ScanMode;
+var glsl_lex_Tokenizer = function() { };
+glsl_lex_Tokenizer.__name__ = true;
+glsl_lex_Tokenizer.tokenize = function(source,onWarn,onError) {
+	glsl_lex_Tokenizer.source = source;
+	glsl_lex_Tokenizer.onWarn = onWarn;
+	glsl_lex_Tokenizer.onError = onError;
+	glsl_lex_Tokenizer.tokens = [];
+	glsl_lex_Tokenizer.i = 0;
+	glsl_lex_Tokenizer.line = 1;
+	glsl_lex_Tokenizer.col = 1;
+	glsl_lex_Tokenizer.userDefinedTypes = [];
+	glsl_lex_Tokenizer.warnings = [];
+	glsl_lex_Tokenizer.mode = glsl_lex__$Tokenizer_ScanMode.UNDETERMINED;
+	var lastMode;
+	while(glsl_lex_Tokenizer.i < source.length || glsl_lex_Tokenizer.mode != glsl_lex__$Tokenizer_ScanMode.UNDETERMINED) {
+		lastMode = glsl_lex_Tokenizer.mode;
+		var _g = glsl_lex_Tokenizer.mode;
+		switch(_g[1]) {
+		case 0:
+			glsl_lex_Tokenizer.determineMode();
+			break;
+		case 3:
+			glsl_lex_Tokenizer.preprocessorMode();
+			break;
+		case 1:
+			glsl_lex_Tokenizer.blockCommentMode();
+			break;
+		case 2:
+			glsl_lex_Tokenizer.lineCommentMode();
+			break;
+		case 4:
+			glsl_lex_Tokenizer.whitespaceMode();
+			break;
+		case 5:
+			glsl_lex_Tokenizer.operatorMode();
+			break;
+		case 6:
+			glsl_lex_Tokenizer.literalMode();
+			break;
+		case 11:
+			glsl_lex_Tokenizer.floatingConstantMode();
+			break;
+		case 12:
+			glsl_lex_Tokenizer.fractionalConstantMode();
+			break;
+		case 13:
+			glsl_lex_Tokenizer.exponentPartMode();
+			break;
+		case 9:case 10:case 8:
+			glsl_lex_Tokenizer.integerConstantMode();
+			break;
+		default:
+			glsl_lex_Tokenizer.error("unhandled mode " + Std.string(glsl_lex_Tokenizer.mode));
+		}
+		if(glsl_lex_Tokenizer.mode == lastMode && glsl_lex_Tokenizer.i == glsl_lex_Tokenizer.last_i) {
+			glsl_lex_Tokenizer.error("unclosed mode " + Std.string(glsl_lex_Tokenizer.mode));
+			break;
+		}
+	}
+	return glsl_lex_Tokenizer.tokens;
+};
+glsl_lex_Tokenizer.startLen = function(m) {
+	return glsl_lex_Tokenizer.startConditionsMap.get(m)();
+};
+glsl_lex_Tokenizer.isStart = function(m) {
+	return glsl_lex_Tokenizer.startLen(m) != null;
+};
+glsl_lex_Tokenizer.isEnd = function(m) {
+	return glsl_lex_Tokenizer.endConditionsMap.get(m)();
+};
+glsl_lex_Tokenizer.tryMode = function(m) {
+	var n = glsl_lex_Tokenizer.startConditionsMap.get(m)();
+	if(n != null) {
+		glsl_lex_Tokenizer.mode = m;
+		glsl_lex_Tokenizer.advance(n);
+		return true;
+	}
+	return false;
+};
+glsl_lex_Tokenizer.advance = function(n) {
+	if(n == null) n = 1;
+	glsl_lex_Tokenizer.last_i = glsl_lex_Tokenizer.i;
+	while(n-- > 0 && glsl_lex_Tokenizer.i < glsl_lex_Tokenizer.source.length) {
+		glsl_lex_Tokenizer.buf += glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i);
+		glsl_lex_Tokenizer.i++;
+	}
+	var splitByLines = new EReg("\n","gm").split(glsl_lex_Tokenizer.source.substring(glsl_lex_Tokenizer.last_i,glsl_lex_Tokenizer.i));
+	var nl = splitByLines.length - 1;
+	if(nl > 0) {
+		glsl_lex_Tokenizer.line += nl;
+		glsl_lex_Tokenizer.col = splitByLines[nl].length + 1;
+	} else glsl_lex_Tokenizer.col += glsl_lex_Tokenizer.i - glsl_lex_Tokenizer.last_i;
+};
+glsl_lex_Tokenizer.determineMode = function() {
+	glsl_lex_Tokenizer.buf = "";
+	glsl_lex_Tokenizer.lineStart = glsl_lex_Tokenizer.line;
+	glsl_lex_Tokenizer.colStart = glsl_lex_Tokenizer.col;
+	if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.BLOCK_COMMENT)) return;
+	if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.LINE_COMMENT)) return;
+	if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE)) return;
+	if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.WHITESPACE)) return;
+	if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.LITERAL)) return;
+	if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.FLOATING_CONSTANT)) return;
+	if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.OPERATOR)) return;
+	if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.HEX_CONSTANT)) return;
+	if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.OCTAL_CONSTANT)) return;
+	if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.DECIMAL_CONSTANT)) return;
+	glsl_lex_Tokenizer.warn("unrecognized token " + glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i));
+	glsl_lex_Tokenizer.mode = glsl_lex__$Tokenizer_ScanMode.UNDETERMINED;
+	glsl_lex_Tokenizer.advance();
+	return;
+};
+glsl_lex_Tokenizer.preprocessorMode = function() {
+	if(glsl_lex_Tokenizer.endConditionsMap.get(glsl_lex_Tokenizer.mode)()) {
+		glsl_lex_Tokenizer.buildToken(glsl_lex_TokenType.PREPROCESSOR_DIRECTIVE);
+		glsl_lex_Tokenizer.mode = glsl_lex__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_lex_Tokenizer.advance();
+};
+glsl_lex_Tokenizer.blockCommentMode = function() {
+	if(glsl_lex_Tokenizer.endConditionsMap.get(glsl_lex_Tokenizer.mode)()) {
+		glsl_lex_Tokenizer.buildToken(glsl_lex_TokenType.BLOCK_COMMENT);
+		glsl_lex_Tokenizer.mode = glsl_lex__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_lex_Tokenizer.advance();
+};
+glsl_lex_Tokenizer.lineCommentMode = function() {
+	if(glsl_lex_Tokenizer.endConditionsMap.get(glsl_lex_Tokenizer.mode)()) {
+		glsl_lex_Tokenizer.buildToken(glsl_lex_TokenType.LINE_COMMENT);
+		glsl_lex_Tokenizer.mode = glsl_lex__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_lex_Tokenizer.advance();
+};
+glsl_lex_Tokenizer.whitespaceMode = function() {
+	if(glsl_lex_Tokenizer.endConditionsMap.get(glsl_lex_Tokenizer.mode)()) {
+		glsl_lex_Tokenizer.buildToken(glsl_lex_TokenType.WHITESPACE);
+		glsl_lex_Tokenizer.mode = glsl_lex__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_lex_Tokenizer.advance();
+};
+glsl_lex_Tokenizer.operatorMode = function() {
+	if(glsl_lex_Tokenizer.endConditionsMap.get(glsl_lex_Tokenizer.mode)()) {
+		var tmp;
+		var _this = glsl_lex_Tokenizer.operatorMap;
+		var key = glsl_lex_Tokenizer.buf;
+		if(__map_reserved[key] != null) tmp = _this.getReserved(key); else tmp = _this.h[key];
+		glsl_lex_Tokenizer.buildToken(tmp);
+		glsl_lex_Tokenizer.mode = glsl_lex__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_lex_Tokenizer.advance();
+};
+glsl_lex_Tokenizer.literalMode = function() {
+	if(glsl_lex_Tokenizer.endConditionsMap.get(glsl_lex_Tokenizer.mode)()) {
+		var tt = null;
+		var tmp;
+		var _this = glsl_lex_Tokenizer.keywordMap;
+		var key = glsl_lex_Tokenizer.buf;
+		if(__map_reserved[key] != null) tmp = _this.getReserved(key); else tmp = _this.h[key];
+		tt = tmp;
+		if(tt == null && glsl_lex_Tokenizer.previousTokenType() == glsl_lex_TokenType.DOT) tt = glsl_lex_TokenType.FIELD_SELECTION;
+		if(tt == null) tt = glsl_lex_TokenType.IDENTIFIER;
+		glsl_lex_Tokenizer.buildToken(tt);
+		glsl_lex_Tokenizer.mode = glsl_lex__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_lex_Tokenizer.advance();
+};
+glsl_lex_Tokenizer.floatingConstantMode = function() {
+	var _g = glsl_lex_Tokenizer.floatMode;
+	switch(_g) {
+	case 0:
+		if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT)) {
+			glsl_lex_Tokenizer.floatMode = 1;
+			return;
+		}
+		var j = glsl_lex_Tokenizer.i;
+		while(new EReg("[0-9]","").match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i))) glsl_lex_Tokenizer.advance();
+		if(glsl_lex_Tokenizer.i > j) {
+			glsl_lex_Tokenizer.floatMode = 2;
+			return;
+		}
+		glsl_lex_Tokenizer.error("error parsing float, could not determine floatMode");
+		break;
+	case 1:
+		glsl_lex_Tokenizer.floatMode = 3;
+		if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.EXPONENT_PART)) return;
+		break;
+	case 2:
+		if(glsl_lex_Tokenizer.tryMode(glsl_lex__$Tokenizer_ScanMode.EXPONENT_PART)) {
+			glsl_lex_Tokenizer.floatMode = 3;
+			return;
+		} else glsl_lex_Tokenizer.error("float in floatMode 2 must have exponent part - none found");
+		break;
+	}
+	if(glsl_lex_Tokenizer.endConditionsMap.get(glsl_lex_Tokenizer.mode)()) {
+		glsl_lex_Tokenizer.buildToken(glsl_lex_TokenType.FLOATCONSTANT);
+		glsl_lex_Tokenizer.mode = glsl_lex__$Tokenizer_ScanMode.UNDETERMINED;
+		glsl_lex_Tokenizer.floatMode = 0;
+		return;
+	}
+	glsl_lex_Tokenizer.error("error parsing float");
+};
+glsl_lex_Tokenizer.fractionalConstantMode = function() {
+	if(glsl_lex_Tokenizer.endConditionsMap.get(glsl_lex_Tokenizer.mode)()) {
+		glsl_lex_Tokenizer.mode = glsl_lex__$Tokenizer_ScanMode.FLOATING_CONSTANT;
+		return;
+	}
+	glsl_lex_Tokenizer.advance();
+};
+glsl_lex_Tokenizer.exponentPartMode = function() {
+	if(glsl_lex_Tokenizer.endConditionsMap.get(glsl_lex_Tokenizer.mode)()) {
+		glsl_lex_Tokenizer.mode = glsl_lex__$Tokenizer_ScanMode.FLOATING_CONSTANT;
+		return;
+	}
+	glsl_lex_Tokenizer.advance();
+};
+glsl_lex_Tokenizer.integerConstantMode = function() {
+	if(glsl_lex_Tokenizer.endConditionsMap.get(glsl_lex_Tokenizer.mode)()) {
+		glsl_lex_Tokenizer.buildToken(glsl_lex_TokenType.INTCONSTANT);
+		glsl_lex_Tokenizer.mode = glsl_lex__$Tokenizer_ScanMode.UNDETERMINED;
+		return;
+	}
+	glsl_lex_Tokenizer.advance();
+};
+glsl_lex_Tokenizer.buildToken = function(type) {
+	if(type == null) glsl_lex_Tokenizer.error("cannot have null token type");
+	if(glsl_lex_Tokenizer.buf == "") glsl_lex_Tokenizer.error("cannot have empty token data");
+	var token = { type : type, data : glsl_lex_Tokenizer.buf, line : glsl_lex_Tokenizer.lineStart, column : glsl_lex_Tokenizer.colStart, position : glsl_lex_Tokenizer.i - glsl_lex_Tokenizer.buf.length};
+	if(glsl_lex_Tokenizer.verbose) console.log("building token " + Std.string(type) + " (" + glsl_lex_Tokenizer.buf + ")");
+	glsl_lex_Tokenizer.tokens.push(token);
+	if(type == glsl_lex_TokenType.RESERVED_KEYWORD) glsl_lex_Tokenizer.warn("using reserved keyword " + glsl_lex_Tokenizer.buf);
+};
+glsl_lex_Tokenizer.c = function(j) {
+	return glsl_lex_Tokenizer.source.charAt(j);
+};
+glsl_lex_Tokenizer.previousToken = function(n,ignoreSkippable) {
+	if(ignoreSkippable == null) ignoreSkippable = false;
+	if(n == null) n = 0;
+	if(!ignoreSkippable) return glsl_lex_Tokenizer.tokens[-n + glsl_lex_Tokenizer.tokens.length - 1]; else {
+		var t = null;
+		var i = 0;
+		while(n >= 0 && i < glsl_lex_Tokenizer.tokens.length) {
+			t = glsl_lex_Tokenizer.tokens[-i + glsl_lex_Tokenizer.tokens.length - 1];
+			if(HxOverrides.indexOf(glsl_lex_Tokenizer.skippableTypes,t.type,0) == -1) n--;
+			i++;
+		}
+		return t;
+	}
+};
+glsl_lex_Tokenizer.previousTokenType = function(n,ignoreSkippable) {
+	if(n == null) n = 0;
+	var pt = glsl_lex_Tokenizer.previousToken(n,ignoreSkippable);
+	return pt != null?pt.type:null;
+};
+glsl_lex_Tokenizer.warn = function(msg) {
+	if(glsl_lex_Tokenizer.onWarn != null) glsl_lex_Tokenizer.onWarn(msg); else glsl_lex_Tokenizer.warnings.push("Tokenizer Warning: " + msg + ", line " + glsl_lex_Tokenizer.line + ", column " + glsl_lex_Tokenizer.col);
+};
+glsl_lex_Tokenizer.error = function(msg) {
+	if(glsl_lex_Tokenizer.onError != null) glsl_lex_Tokenizer.onError(msg); else throw new js__$Boot_HaxeError("Tokenizer Error: " + msg + ", line " + glsl_lex_Tokenizer.line + ", column " + glsl_lex_Tokenizer.col);
+};
+var glsl_parse_Actions = function() { };
+glsl_parse_Actions.__name__ = true;
+glsl_parse_Actions.init = function() {
+	glsl_parse_Actions.ruleno = -1;
+	glsl_parse_Actions.parseContext = new glsl_parse_ParseContext();
+	glsl_parse_Actions.lastToken = null;
+};
+glsl_parse_Actions.processToken = function(t) {
+	if(Type.enumEq(t.type,glsl_lex_TokenType.IDENTIFIER)) {
+		if(!glsl_parse_Actions.parseContext.declarationContext) {
+			var afterType = glsl_parse_Actions.lastToken != null && HxOverrides.indexOf(glsl_lex_TokenHelper.typeTokenTypes,glsl_parse_Actions.lastToken.type,0) >= 0;
+			var afterStruct = glsl_parse_Actions.lastToken != null && Type.enumEq(glsl_parse_Actions.lastToken.type,glsl_lex_TokenType.STRUCT);
+			if(!afterType && !afterStruct) {
+				var _g = glsl_parse_Actions.parseContext.searchScope(t.data);
+				if(_g == null) {
+				} else switch(_g[1]) {
+				case 0:
+					t.type = glsl_lex_TokenType.TYPE_NAME;
+					break;
+				default:
+				}
+			}
+		}
+	}
+	glsl_parse_Actions.lastToken = t;
+	return t;
+};
+glsl_parse_Actions.reduce = function(ruleno) {
+	glsl_parse_Actions.ruleno = ruleno;
+	var __ret;
+	switch(ruleno) {
+	case 0:
+		__ret = new glsl_Root(glsl_parse_Actions.s(1));
+		break;
+	case 1:
+		__ret = new glsl_Identifier(glsl_parse_Actions.s(1).data);
+		break;
+	case 2:case 7:case 9:case 13:case 14:case 15:case 16:case 17:case 18:case 21:case 40:case 48:case 52:case 55:case 58:case 63:case 66:case 68:case 70:case 72:case 74:case 76:case 78:case 80:case 93:case 95:case 99:case 100:case 101:case 117:case 126:case 133:case 153:case 167:case 169:case 171:case 172:case 173:case 174:case 175:case 176:case 177:case 178:case 179:case 180:case 194:case 199:case 200:case 201:
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 3:
+		var l = new glsl_Primitive(Std.parseInt(glsl_parse_Actions.s(1).data),glsl_DataType.INT);
+		l.raw = glsl_parse_Actions.s(1).data;
+		__ret = l;
+		break;
+	case 4:
+		var l1 = new glsl_Primitive((function($this) {
+			var $r;
+			var x = glsl_parse_Actions.s(1).data;
+			$r = parseFloat(x);
+			return $r;
+		}(this)),glsl_DataType.FLOAT);
+		l1.raw = glsl_parse_Actions.s(1).data;
+		__ret = l1;
+		break;
+	case 5:
+		var l2 = new glsl_Primitive(glsl_parse_Actions.s(1).data == "true",glsl_DataType.BOOL);
+		l2.raw = glsl_parse_Actions.s(1).data;
+		__ret = l2;
+		break;
+	case 6:
+		glsl_parse_Actions.s(2).enclosed = true;
+		__ret = glsl_parse_Actions.s(2);
+		break;
+	case 8:
+		__ret = new glsl_ArrayElementSelectionExpression(glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 10:
+		__ret = new glsl_FieldSelectionExpression(glsl_parse_Actions.s(1),new glsl_Identifier(glsl_parse_Actions.s(3).data));
+		break;
+	case 11:
+		__ret = new glsl_UnaryExpression(glsl_UnaryOperator.INC_OP,glsl_parse_Actions.s(1),false);
+		break;
+	case 12:
+		__ret = new glsl_UnaryExpression(glsl_UnaryOperator.DEC_OP,glsl_parse_Actions.s(1),false);
+		break;
+	case 19:
+		(js_Boot.__cast(glsl_parse_Actions.s(1) , glsl_ExpressionParameters)).parameters.push(glsl_parse_Actions.s(2));
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 20:
+		(js_Boot.__cast(glsl_parse_Actions.s(1) , glsl_ExpressionParameters)).parameters.push(glsl_parse_Actions.s(3));
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 22:
+		__ret = new glsl_Constructor(glsl_parse_Actions.s(1) != null?glsl_parse_Actions.s(1):null);
+		break;
+	case 23:
+		__ret = new glsl_FunctionCall(glsl_parse_Actions.s(1).data);
+		break;
+	case 24:
+		__ret = glsl_DataType.FLOAT;
+		break;
+	case 25:
+		__ret = glsl_DataType.INT;
+		break;
+	case 26:
+		__ret = glsl_DataType.BOOL;
+		break;
+	case 27:
+		__ret = glsl_DataType.VEC2;
+		break;
+	case 28:
+		__ret = glsl_DataType.VEC3;
+		break;
+	case 29:
+		__ret = glsl_DataType.VEC4;
+		break;
+	case 30:
+		__ret = glsl_DataType.BVEC2;
+		break;
+	case 31:
+		__ret = glsl_DataType.BVEC3;
+		break;
+	case 32:
+		__ret = glsl_DataType.BVEC4;
+		break;
+	case 33:
+		__ret = glsl_DataType.IVEC2;
+		break;
+	case 34:
+		__ret = glsl_DataType.IVEC3;
+		break;
+	case 35:
+		__ret = glsl_DataType.IVEC4;
+		break;
+	case 36:
+		__ret = glsl_DataType.MAT2;
+		break;
+	case 37:
+		__ret = glsl_DataType.MAT3;
+		break;
+	case 38:
+		__ret = glsl_DataType.MAT4;
+		break;
+	case 39:
+		__ret = glsl_DataType.USER_TYPE(glsl_parse_Actions.s(1).data);
+		break;
+	case 41:
+		__ret = new glsl_UnaryExpression(glsl_UnaryOperator.INC_OP,glsl_parse_Actions.s(2),true);
+		break;
+	case 42:
+		__ret = new glsl_UnaryExpression(glsl_UnaryOperator.DEC_OP,glsl_parse_Actions.s(2),true);
+		break;
+	case 43:
+		__ret = new glsl_UnaryExpression(glsl_parse_Actions.s(1) != null?glsl_parse_Actions.s(1):null,glsl_parse_Actions.s(2),true);
+		break;
+	case 44:
+		__ret = glsl_UnaryOperator.PLUS;
+		break;
+	case 45:
+		__ret = glsl_UnaryOperator.DASH;
+		break;
+	case 46:
+		__ret = glsl_UnaryOperator.BANG;
+		break;
+	case 47:
+		__ret = glsl_UnaryOperator.TILDE;
+		break;
+	case 49:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.STAR,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 50:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.SLASH,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 51:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.PERCENT,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 53:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.PLUS,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 54:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.DASH,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 56:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.LEFT_OP,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 57:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.RIGHT_OP,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 59:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.LEFT_ANGLE,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 60:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.RIGHT_ANGLE,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 61:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.LE_OP,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 62:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.GE_OP,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 64:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.EQ_OP,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 65:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.NE_OP,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 67:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.AMPERSAND,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 69:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.CARET,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 71:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.VERTICAL_BAR,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 73:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.AND_OP,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 75:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.XOR_OP,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 77:
+		__ret = new glsl_BinaryExpression(glsl_BinaryOperator.OR_OP,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 79:
+		__ret = new glsl_ConditionalExpression(glsl_parse_Actions.s(1),glsl_parse_Actions.s(3),glsl_parse_Actions.s(5));
+		break;
+	case 81:
+		__ret = new glsl_AssignmentExpression(glsl_parse_Actions.s(2) != null?glsl_parse_Actions.s(2):null,glsl_parse_Actions.s(1),glsl_parse_Actions.s(3));
+		break;
+	case 82:
+		__ret = glsl_AssignmentOperator.EQUAL;
+		break;
+	case 83:
+		__ret = glsl_AssignmentOperator.MUL_ASSIGN;
+		break;
+	case 84:
+		__ret = glsl_AssignmentOperator.DIV_ASSIGN;
+		break;
+	case 85:
+		__ret = glsl_AssignmentOperator.MOD_ASSIGN;
+		break;
+	case 86:
+		__ret = glsl_AssignmentOperator.ADD_ASSIGN;
+		break;
+	case 87:
+		__ret = glsl_AssignmentOperator.SUB_ASSIGN;
+		break;
+	case 88:
+		__ret = glsl_AssignmentOperator.LEFT_ASSIGN;
+		break;
+	case 89:
+		__ret = glsl_AssignmentOperator.RIGHT_ASSIGN;
+		break;
+	case 90:
+		__ret = glsl_AssignmentOperator.AND_ASSIGN;
+		break;
+	case 91:
+		__ret = glsl_AssignmentOperator.XOR_ASSIGN;
+		break;
+	case 92:
+		__ret = glsl_AssignmentOperator.OR_ASSIGN;
+		break;
+	case 94:
+		if((function($this) {
+			var $r;
+			var v = glsl_parse_Actions.s(1);
+			$r = js_Boot.__instanceof(v,glsl_SequenceExpression);
+			return $r;
+		}(this))) {
+			(js_Boot.__cast(glsl_parse_Actions.s(1) , glsl_SequenceExpression)).expressions.push(glsl_parse_Actions.s(3));
+			__ret = glsl_parse_Actions.s(1);
+		} else __ret = new glsl_SequenceExpression([glsl_parse_Actions.s(1),glsl_parse_Actions.s(3)]);
+		break;
+	case 96:
+		__ret = new glsl_FunctionPrototype(glsl_parse_Actions.s(1));
+		break;
+	case 97:
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 98:
+		__ret = new glsl_PrecisionDeclaration(glsl_parse_Actions.s(2) != null?glsl_parse_Actions.s(2):null,(js_Boot.__cast(glsl_parse_Actions.s(3) , glsl_TypeSpecifier)).dataType);
+		glsl_parse_Actions.parseContext.declarePrecision(__ret);
+		break;
+	case 102:
+		var fh = js_Boot.__cast(glsl_parse_Actions.s(1) , glsl_FunctionHeader);
+		fh.parameters.push(glsl_parse_Actions.s(2));
+		__ret = fh;
+		break;
+	case 103:
+		var fh1 = js_Boot.__cast(glsl_parse_Actions.s(1) , glsl_FunctionHeader);
+		fh1.parameters.push(glsl_parse_Actions.s(3));
+		__ret = fh1;
+		break;
+	case 104:
+		__ret = new glsl_FunctionHeader(glsl_parse_Actions.s(2).data,glsl_parse_Actions.s(1));
+		break;
+	case 105:
+		__ret = new glsl_ParameterDeclaration(glsl_parse_Actions.s(2).data,glsl_parse_Actions.s(1));
+		break;
+	case 106:
+		__ret = new glsl_ParameterDeclaration(glsl_parse_Actions.s(2).data,glsl_parse_Actions.s(1),null,glsl_parse_Actions.s(4));
+		break;
+	case 107:case 109:
+		var pd = js_Boot.__cast(glsl_parse_Actions.s(3) , glsl_ParameterDeclaration);
+		pd.parameterQualifier = glsl_parse_Actions.s(2) != null?glsl_parse_Actions.s(2):null;
+		if((function($this) {
+			var $r;
+			var a = glsl_parse_Actions.s(1) != null?glsl_parse_Actions.s(1):null;
+			$r = Type.enumEq(a,glsl_parse_Instructions.SET_INVARIANT_VARYING);
+			return $r;
+		}(this))) {
+			pd.typeSpecifier.storage = glsl_StorageQualifier.VARYING;
+			pd.typeSpecifier.invariant = true;
+		} else pd.typeSpecifier.storage = glsl_parse_Actions.s(1) != null?glsl_parse_Actions.s(1):null;
+		__ret = pd;
+		break;
+	case 108:
+		var pd1 = js_Boot.__cast(glsl_parse_Actions.s(2) , glsl_ParameterDeclaration);
+		pd1.parameterQualifier = glsl_parse_Actions.s(1) != null?glsl_parse_Actions.s(1):null;
+		__ret = pd1;
+		break;
+	case 110:
+		var pd2 = js_Boot.__cast(glsl_parse_Actions.s(2) , glsl_ParameterDeclaration);
+		pd2.parameterQualifier = glsl_parse_Actions.s(1) != null?glsl_parse_Actions.s(1):null;
+		__ret = pd2;
+		break;
+	case 111:case 202:
+		__ret = null;
+		break;
+	case 112:
+		__ret = glsl_ParameterQualifier.IN;
+		break;
+	case 113:
+		__ret = glsl_ParameterQualifier.OUT;
+		break;
+	case 114:
+		__ret = glsl_ParameterQualifier.INOUT;
+		break;
+	case 115:
+		__ret = new glsl_ParameterDeclaration(null,glsl_parse_Actions.s(1));
+		break;
+	case 116:
+		__ret = new glsl_ParameterDeclaration(null,glsl_parse_Actions.s(1),null,glsl_parse_Actions.s(3));
+		break;
+	case 118:
+		var declarator = new glsl_Declarator(glsl_parse_Actions.s(3).data,null,null);
+		var declaration = js_Boot.__cast(glsl_parse_Actions.s(1) , glsl_VariableDeclaration);
+		declaration.declarators.push(declarator);
+		glsl_parse_Actions.handleVariableDeclaration(declarator,declaration.typeSpecifier);
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 119:
+		var declarator1 = new glsl_Declarator(glsl_parse_Actions.s(3).data,null,glsl_parse_Actions.s(5));
+		var declaration1 = js_Boot.__cast(glsl_parse_Actions.s(1) , glsl_VariableDeclaration);
+		declaration1.declarators.push(declarator1);
+		glsl_parse_Actions.handleVariableDeclaration(declarator1,declaration1.typeSpecifier);
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 120:
+		var declarator2 = new glsl_Declarator(glsl_parse_Actions.s(3).data,glsl_parse_Actions.s(5),null);
+		var declaration2 = js_Boot.__cast(glsl_parse_Actions.s(1) , glsl_VariableDeclaration);
+		declaration2.declarators.push(declarator2);
+		glsl_parse_Actions.handleVariableDeclaration(declarator2,declaration2.typeSpecifier);
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 121:
+		__ret = new glsl_VariableDeclaration(glsl_parse_Actions.s(1),[]);
+		glsl_parse_Actions.handleVariableDeclaration(null,__ret.typeSpecifier);
+		break;
+	case 122:
+		var declarator3 = new glsl_Declarator(glsl_parse_Actions.s(2).data,null,null);
+		__ret = new glsl_VariableDeclaration(glsl_parse_Actions.s(1),[declarator3]);
+		glsl_parse_Actions.handleVariableDeclaration(declarator3,__ret.typeSpecifier);
+		break;
+	case 123:
+		var declarator4 = new glsl_Declarator(glsl_parse_Actions.s(2).data,null,glsl_parse_Actions.s(4));
+		__ret = new glsl_VariableDeclaration(glsl_parse_Actions.s(1),[declarator4]);
+		glsl_parse_Actions.handleVariableDeclaration(declarator4,__ret.typeSpecifier);
+		break;
+	case 124:
+		var declarator5 = new glsl_Declarator(glsl_parse_Actions.s(2).data,glsl_parse_Actions.s(4),null);
+		__ret = new glsl_VariableDeclaration(glsl_parse_Actions.s(1),[declarator5]);
+		glsl_parse_Actions.handleVariableDeclaration(declarator5,__ret.typeSpecifier);
+		break;
+	case 125:
+		var declarator6 = new glsl_Declarator(glsl_parse_Actions.s(2).data,null,null);
+		__ret = new glsl_VariableDeclaration(new glsl_TypeSpecifier(null,null,null,true),[declarator6]);
+		glsl_parse_Actions.handleVariableDeclaration(declarator6,__ret.typeSpecifier);
+		break;
+	case 127:
+		var ts = js_Boot.__cast(glsl_parse_Actions.s(2) , glsl_TypeSpecifier);
+		if((function($this) {
+			var $r;
+			var a1 = glsl_parse_Actions.s(1) != null?glsl_parse_Actions.s(1):null;
+			$r = Type.enumEq(a1,glsl_parse_Instructions.SET_INVARIANT_VARYING);
+			return $r;
+		}(this))) {
+			ts.storage = glsl_StorageQualifier.VARYING;
+			ts.invariant = true;
+		} else ts.storage = glsl_parse_Actions.s(1) != null?glsl_parse_Actions.s(1):null;
+		__ret = glsl_parse_Actions.s(2);
+		break;
+	case 128:
+		__ret = glsl_StorageQualifier.CONST;
+		break;
+	case 129:
+		__ret = glsl_StorageQualifier.ATTRIBUTE;
+		break;
+	case 130:
+		__ret = glsl_StorageQualifier.VARYING;
+		break;
+	case 131:
+		__ret = glsl_parse_Instructions.SET_INVARIANT_VARYING;
+		break;
+	case 132:
+		__ret = glsl_StorageQualifier.UNIFORM;
+		break;
+	case 134:
+		var ts1 = js_Boot.__cast(glsl_parse_Actions.s(2) , glsl_TypeSpecifier);
+		ts1.precision = glsl_parse_Actions.s(1) != null?glsl_parse_Actions.s(1):null;
+		__ret = ts1;
+		break;
+	case 135:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.VOID);
+		break;
+	case 136:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.FLOAT);
+		break;
+	case 137:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.INT);
+		break;
+	case 138:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.BOOL);
+		break;
+	case 139:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.VEC2);
+		break;
+	case 140:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.VEC3);
+		break;
+	case 141:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.VEC4);
+		break;
+	case 142:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.BVEC2);
+		break;
+	case 143:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.BVEC3);
+		break;
+	case 144:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.BVEC4);
+		break;
+	case 145:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.IVEC2);
+		break;
+	case 146:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.IVEC3);
+		break;
+	case 147:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.IVEC4);
+		break;
+	case 148:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.MAT2);
+		break;
+	case 149:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.MAT3);
+		break;
+	case 150:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.MAT4);
+		break;
+	case 151:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.SAMPLER2D);
+		break;
+	case 152:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.SAMPLERCUBE);
+		break;
+	case 154:
+		__ret = new glsl_TypeSpecifier(glsl_DataType.USER_TYPE(glsl_parse_Actions.s(1).data));
+		break;
+	case 155:
+		__ret = glsl_PrecisionQualifier.HIGH_PRECISION;
+		break;
+	case 156:
+		__ret = glsl_PrecisionQualifier.MEDIUM_PRECISION;
+		break;
+	case 157:
+		__ret = glsl_PrecisionQualifier.LOW_PRECISION;
+		break;
+	case 158:
+		var ss = new glsl_StructSpecifier(glsl_parse_Actions.s(2).data,glsl_parse_Actions.s(4));
+		__ret = ss;
+		break;
+	case 159:
+		var ss1 = new glsl_StructSpecifier(null,glsl_parse_Actions.s(3));
+		__ret = ss1;
+		break;
+	case 160:case 163:case 187:case 210:
+		__ret = [glsl_parse_Actions.s(1)];
+		break;
+	case 161:
+		glsl_parse_Actions.s(1).push(glsl_parse_Actions.s(2));
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 162:
+		__ret = new glsl_StructFieldDeclaration(glsl_parse_Actions.s(2),glsl_parse_Actions.s(3));
+		break;
+	case 164:
+		glsl_parse_Actions.s(1).push(glsl_parse_Actions.s(3));
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 165:
+		__ret = new glsl_StructDeclarator(glsl_parse_Actions.s(1).data);
+		break;
+	case 166:
+		__ret = new glsl_StructDeclarator(glsl_parse_Actions.s(1).data,glsl_parse_Actions.s(3));
+		break;
+	case 168:
+		__ret = new glsl_DeclarationStatement(glsl_parse_Actions.s(1));
+		break;
+	case 170:
+		__ret = glsl_parse_Actions.s(2);
+		break;
+	case 181:case 183:case 185:
+		__ret = new glsl_CompoundStatement([]);
+		break;
+	case 182:
+		__ret = new glsl_CompoundStatement(glsl_parse_Actions.s(3));
+		break;
+	case 184:case 186:
+		__ret = new glsl_CompoundStatement(glsl_parse_Actions.s(2));
+		break;
+	case 188:
+		glsl_parse_Actions.s(1).push(glsl_parse_Actions.s(2));
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 189:
+		__ret = new glsl_ExpressionStatement(null);
+		break;
+	case 190:
+		__ret = new glsl_ExpressionStatement(glsl_parse_Actions.s(1));
+		break;
+	case 191:
+		__ret = new glsl_IfStatement(glsl_parse_Actions.s(3),glsl_parse_Actions.s(5)[0],glsl_parse_Actions.s(5)[1]);
+		break;
+	case 192:
+		__ret = [glsl_parse_Actions.s(1),glsl_parse_Actions.s(3)];
+		break;
+	case 193:
+		__ret = [glsl_parse_Actions.s(1),null];
+		break;
+	case 195:
+		var declarator7 = new glsl_Declarator(glsl_parse_Actions.s(2).data,glsl_parse_Actions.s(4),null);
+		var declaration3 = new glsl_VariableDeclaration(glsl_parse_Actions.s(1),[declarator7]);
+		glsl_parse_Actions.handleVariableDeclaration(declarator7,declaration3.typeSpecifier);
+		__ret = declaration3;
+		break;
+	case 196:
+		__ret = new glsl_WhileStatement(glsl_parse_Actions.s(4),glsl_parse_Actions.s(6));
+		break;
+	case 197:
+		__ret = new glsl_DoWhileStatement(glsl_parse_Actions.s(5),glsl_parse_Actions.s(2));
+		break;
+	case 198:
+		__ret = new glsl_ForStatement(glsl_parse_Actions.s(4),glsl_parse_Actions.s(5)[0],glsl_parse_Actions.s(5)[1],glsl_parse_Actions.s(7));
+		break;
+	case 203:
+		__ret = [glsl_parse_Actions.s(1),null];
+		break;
+	case 204:
+		__ret = [glsl_parse_Actions.s(1),glsl_parse_Actions.s(3)];
+		break;
+	case 205:
+		__ret = new glsl_JumpStatement(glsl_JumpMode.CONTINUE);
+		break;
+	case 206:
+		__ret = new glsl_JumpStatement(glsl_JumpMode.BREAK);
+		break;
+	case 207:
+		__ret = new glsl_ReturnStatement(null);
+		break;
+	case 208:
+		__ret = new glsl_ReturnStatement(glsl_parse_Actions.s(2));
+		break;
+	case 209:
+		__ret = new glsl_JumpStatement(glsl_JumpMode.DISCARD);
+		break;
+	case 211:
+		glsl_parse_Actions.s(1).push(glsl_parse_Actions.s(2));
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 212:case 213:case 214:
+		(js_Boot.__cast(glsl_parse_Actions.s(1) , glsl_Declaration)).external = true;
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 215:
+		glsl_parse_Actions.parseContext.scopePush();
+		var parameters = glsl_parse_Actions.s(1).parameters;
+		var _g = 0;
+		while(_g < parameters.length) {
+			var p = parameters[_g];
+			++_g;
+			glsl_parse_Actions.handleVariableDeclaration(p,p.typeSpecifier);
+		}
+		__ret = glsl_parse_Actions.s(1);
+		break;
+	case 216:
+		__ret = new glsl_FunctionDefinition(glsl_parse_Actions.s(1),glsl_parse_Actions.s(2));
+		break;
+	case 217:
+		__ret = new glsl_PreprocessorDirective(glsl_parse_Actions.s(1).data);
+		break;
+	case 218:
+		glsl_parse_Actions.parseContext.scopePush();
+		__ret = null;
+		break;
+	case 219:
+		glsl_parse_Actions.parseContext.scopePop();
+		__ret = null;
+		break;
+	case 220:
+		glsl_parse_Actions.parseContext.enterDeclarationContext();
+		__ret = null;
+		break;
+	case 221:
+		glsl_parse_Actions.parseContext.exitDeclarationContext();
+		__ret = null;
+		break;
+	}
+	return __ret;
+	glsl_parse_Parser.warn("unhandled reduce rule number " + ruleno);
+	return null;
+};
+glsl_parse_Actions.handleVariableDeclaration = function(declarator,ts) {
+	{
+		var _g = glsl_NodeEnumHelper.toEnum(ts);
+		if(_g == null) {
+		} else switch(_g[1]) {
+		case 2:
+			glsl_parse_Actions.parseContext.declareType(_g[2]);
+			break;
+		default:
+		}
+	}
+	if(declarator != null) glsl_parse_Actions.parseContext.declareVariable(declarator);
+};
+glsl_parse_Actions.s = function(n) {
+	if(n <= 0) return null;
+	var j = glsl_parse__$Parser_RuleInfoEntry_$Impl_$.get_nrhs(glsl_parse_Parser.ruleInfo[glsl_parse_Actions.ruleno]) - n;
+	return glsl_parse_Parser.stack[glsl_parse_Parser.i - j].minor;
+};
+glsl_parse_Actions.n = function(m) {
+	return glsl_parse_Actions.s(m);
+};
+glsl_parse_Actions.t = function(m) {
+	return glsl_parse_Actions.s(m);
+};
+glsl_parse_Actions.e = function(m) {
+	return glsl_parse_Actions.s(m);
+};
+glsl_parse_Actions.ev = function(m) {
+	return glsl_parse_Actions.s(m) != null?glsl_parse_Actions.s(m):null;
+};
+glsl_parse_Actions.a = function(m) {
+	return glsl_parse_Actions.s(m);
+};
+glsl_parse_Actions.get_i = function() {
+	return glsl_parse_Parser.i;
+};
+glsl_parse_Actions.get_stack = function() {
+	return glsl_parse_Parser.stack;
+};
+var glsl_parse_Instructions = { __ename__ : true, __constructs__ : ["SET_INVARIANT_VARYING"] };
+glsl_parse_Instructions.SET_INVARIANT_VARYING = ["SET_INVARIANT_VARYING",0];
+glsl_parse_Instructions.SET_INVARIANT_VARYING.toString = $estr;
+glsl_parse_Instructions.SET_INVARIANT_VARYING.__enum__ = glsl_parse_Instructions;
+var glsl_parse_Object = { __ename__ : true, __constructs__ : ["USER_TYPE","VARIABLE"] };
+glsl_parse_Object.USER_TYPE = function(specifier) { var $x = ["USER_TYPE",0,specifier]; $x.__enum__ = glsl_parse_Object; $x.toString = $estr; return $x; };
+glsl_parse_Object.VARIABLE = function(declarator) { var $x = ["VARIABLE",1,declarator]; $x.__enum__ = glsl_parse_Object; $x.toString = $estr; return $x; };
+var glsl_parse_ParseContext = function() {
+	this.scopes = [];
+	this.scopePush();
+	this.declarationContext = false;
+	this.defaultPrecision = new haxe_ds_EnumValueMap();
+};
+glsl_parse_ParseContext.__name__ = true;
+glsl_parse_ParseContext.prototype = {
+	scopePush: function() {
+		this.scopes.push(new haxe_ds_StringMap());
+	}
+	,scopePop: function() {
+		if(this.scopes.length <= 1) {
+			console.log("Parse scope error: trying to pop global scope!");
+			return;
+		}
+		this.scopes.pop();
+	}
+	,searchScope: function(name) {
+		var r = null;
+		var i = this.scopes.length;
+		while(--i >= 0) {
+			var tmp;
+			var _this = this.scopes[i];
+			if(__map_reserved[name] != null) tmp = _this.getReserved(name); else tmp = _this.h[name];
+			if((r = tmp) != null) break;
+		}
+		return r;
+	}
+	,enterDeclarationContext: function() {
+		this.declarationContext = true;
+	}
+	,exitDeclarationContext: function() {
+		this.declarationContext = false;
+	}
+	,declareType: function(specifier) {
+		var value = glsl_parse_Object.USER_TYPE(specifier);
+		var _this = this.scopes[this.scopes.length - 1];
+		var key = specifier.name;
+		if(__map_reserved[key] != null) _this.setReserved(key,value); else _this.h[key] = value;
+	}
+	,declareVariable: function(declarator) {
+		var value = glsl_parse_Object.VARIABLE(declarator);
+		var _this = this.scopes[this.scopes.length - 1];
+		var key = declarator.name;
+		if(__map_reserved[key] != null) _this.setReserved(key,value); else _this.h[key] = value;
+	}
+	,declarePrecision: function(declaration) {
+		this.defaultPrecision.set(declaration.dataType,declaration.precision);
+	}
+	,get_scopeDepth: function() {
+		return this.scopes.length - 1;
+	}
+	,get_localScope: function() {
+		return this.scopes[this.scopes.length - 1];
+	}
+	,__class__: glsl_parse_ParseContext
+};
+var glsl_parse_Tables = function() { };
+glsl_parse_Tables.__name__ = true;
+var glsl_parse_Parser = function() { };
+glsl_parse_Parser.__name__ = true;
+glsl_parse_Parser.init = function() {
+	glsl_parse_Parser.i = 0;
+	glsl_parse_Parser.stack = [{ stateno : 0, major : 0, minor : null}];
+	glsl_parse_Parser.errorCount = 0;
+	glsl_parse_Parser.currentMinor = null;
+	glsl_parse_Parser.warnings = [];
+	glsl_parse_Actions.init();
+};
+glsl_parse_Parser.parse = function(input) {
+	var tokens = glsl_lex_Tokenizer.tokenize(input);
+	return glsl_parse_Parser.parseTokens(tokens);
+};
+glsl_parse_Parser.parseTokens = function(tokens) {
+	glsl_parse_Parser.init();
 	var lastToken = null;
 	var _g = 0;
 	while(_g < tokens.length) {
 		var t = tokens[_g];
 		++_g;
-		if(HxOverrides.indexOf(glsl_parser_Parser.ignoredTokens,t.type,0) != -1) continue;
-		glsl_parser_Parser.parseStep(glsl_parser_Parser.tokenIdMap.get(t.type),t);
+		if(HxOverrides.indexOf(glsl_parse_Parser.ignoredTokens,t.type,0) != -1) continue;
+		t = glsl_parse_Actions.processToken(t);
+		glsl_parse_Parser.parseStep(glsl_parse_Parser.tokenIdMap.get(t.type),t);
 		lastToken = t;
 	}
-	glsl_parser_Parser.parseStep(0,lastToken);
-	return glsl_parser_Parser.currentNode;
+	glsl_parse_Parser.parseStep(0,lastToken);
+	return glsl_parse_Parser.currentMinor;
 };
-glsl_parser_Parser.parseStep = function(major,minor) {
+glsl_parse_Parser.parseStep = function(major,minor) {
 	var act;
 	var atEOF = major == 0;
 	while(true) {
-		act = glsl_parser_Parser.findShiftAction(major);
-		if(act < 335) {
-			glsl_parser_Parser.assert(!atEOF,{ fileName : "Parser.hx", lineNumber : 76, className : "glsl.parser.Parser", methodName : "parseStep"});
-			glsl_parser_Parser.shift(act,major,minor);
-			glsl_parser_Parser.errorCount--;
-			major = 167;
-		} else if(act < 548) glsl_parser_Parser.reduce(act - 335); else {
-			glsl_parser_Parser.assert(act == 548,{ fileName : "Parser.hx", lineNumber : 84, className : "glsl.parser.Parser", methodName : "parseStep"});
-			if(glsl_parser_Parser.errorCount <= 0) {
+		act = glsl_parse_Parser.findShiftAction(major);
+		if(act < 353) {
+			glsl_parse_Parser.assert(!atEOF,{ fileName : "Parser.hx", lineNumber : 80, className : "glsl.parse.Parser", methodName : "parseStep"});
+			glsl_parse_Parser.shift(act,major,minor);
+			glsl_parse_Parser.errorCount--;
+			major = 174;
+		} else if(act < 575) glsl_parse_Parser.reduce(act - 353); else {
+			glsl_parse_Parser.assert(act == 575,{ fileName : "Parser.hx", lineNumber : 89, className : "glsl.parse.Parser", methodName : "parseStep"});
+			if(glsl_parse_Parser.errorCount <= 0) {
 				var minor1 = minor;
 				var msg = "syntax error";
 				var data = Reflect.field(minor1,"data");
 				if(data != null) msg += ", '" + data + "'";
-				glsl_parser_Parser.warn(msg,minor1);
+				glsl_parse_Parser.warn(msg,minor1);
 			}
-			glsl_parser_Parser.errorCount = 3;
+			glsl_parse_Parser.errorCount = 3;
 			if(atEOF) {
 				var minor2 = minor;
 				var msg1 = "parse failed";
 				var data1 = Reflect.field(minor2,"data");
 				if(data1 != null) msg1 += ", '" + data1 + "'";
-				glsl_parser_Parser.error(msg1,minor2);
+				glsl_parse_Parser.error(msg1,minor2);
 			}
-			major = 167;
+			major = 174;
 		}
-		if(!(major != 167 && glsl_parser_Parser.i >= 0)) break;
+		if(!(major != 174 && glsl_parse_Parser.i >= 0)) break;
 	}
-	return;
 };
-glsl_parser_Parser.popStack = function() {
-	if(glsl_parser_Parser.i < 0) return 0;
-	var major = glsl_parser_Parser.stack.pop().major;
-	glsl_parser_Parser.i--;
+glsl_parse_Parser.popStack = function() {
+	if(glsl_parse_Parser.i < 0) return 0;
+	var major = glsl_parse_Parser.stack.pop().major;
+	glsl_parse_Parser.i--;
 	return major;
 };
-glsl_parser_Parser.findShiftAction = function(iLookAhead) {
-	var stateno = glsl_parser_Parser.stack[glsl_parser_Parser.i].stateno;
-	var j = glsl_parser_Parser.shiftOffset[stateno];
-	if(stateno > 168 || j == -36) return glsl_parser_Parser.defaultAction[stateno];
-	glsl_parser_Parser.assert(iLookAhead != 167,{ fileName : "Parser.hx", lineNumber : 120, className : "glsl.parser.Parser", methodName : "findShiftAction"});
+glsl_parse_Parser.findShiftAction = function(iLookAhead) {
+	var stateno = glsl_parse_Parser.stack[glsl_parse_Parser.i].stateno;
+	var j = glsl_parse_Parser.shiftOffset[stateno];
+	if(stateno > 182 || j == -57) return glsl_parse_Parser.defaultAction[stateno];
+	glsl_parse_Parser.assert(iLookAhead != 174,{ fileName : "Parser.hx", lineNumber : 126, className : "glsl.parse.Parser", methodName : "findShiftAction"});
 	j += iLookAhead;
-	if(j < 0 || j >= glsl_parser_Parser.actionCount || glsl_parser_Parser.lookahead[j] != iLookAhead) return glsl_parser_Parser.defaultAction[stateno];
-	return glsl_parser_Parser.action[j];
+	if(j < 0 || j >= glsl_parse_Parser.actionCount || glsl_parse_Parser.lookahead[j] != iLookAhead) return glsl_parse_Parser.defaultAction[stateno];
+	return glsl_parse_Parser.action[j];
 };
-glsl_parser_Parser.findReduceAction = function(stateno,iLookAhead) {
+glsl_parse_Parser.findReduceAction = function(stateno,iLookAhead) {
 	var j;
-	glsl_parser_Parser.assert(stateno <= 72,{ fileName : "Parser.hx", lineNumber : 139, className : "glsl.parser.Parser", methodName : "findReduceAction"});
-	j = glsl_parser_Parser.reduceOffset[stateno];
-	glsl_parser_Parser.assert(j != -63,{ fileName : "Parser.hx", lineNumber : 144, className : "glsl.parser.Parser", methodName : "findReduceAction"});
-	glsl_parser_Parser.assert(iLookAhead != 167,{ fileName : "Parser.hx", lineNumber : 145, className : "glsl.parser.Parser", methodName : "findReduceAction"});
+	glsl_parse_Parser.assert(stateno <= 82,{ fileName : "Parser.hx", lineNumber : 145, className : "glsl.parse.Parser", methodName : "findReduceAction"});
+	j = glsl_parse_Parser.reduceOffset[stateno];
+	glsl_parse_Parser.assert(j != -63,{ fileName : "Parser.hx", lineNumber : 150, className : "glsl.parse.Parser", methodName : "findReduceAction"});
+	glsl_parse_Parser.assert(iLookAhead != 174,{ fileName : "Parser.hx", lineNumber : 151, className : "glsl.parse.Parser", methodName : "findReduceAction"});
 	j += iLookAhead;
-	glsl_parser_Parser.assert(j >= 0 && j < glsl_parser_Parser.actionCount,{ fileName : "Parser.hx", lineNumber : 153, className : "glsl.parser.Parser", methodName : "findReduceAction"});
-	glsl_parser_Parser.assert(glsl_parser_Parser.lookahead[j] == iLookAhead,{ fileName : "Parser.hx", lineNumber : 154, className : "glsl.parser.Parser", methodName : "findReduceAction"});
-	return glsl_parser_Parser.action[j];
+	glsl_parse_Parser.assert(j >= 0 && j < glsl_parse_Parser.actionCount,{ fileName : "Parser.hx", lineNumber : 159, className : "glsl.parse.Parser", methodName : "findReduceAction"});
+	glsl_parse_Parser.assert(glsl_parse_Parser.lookahead[j] == iLookAhead,{ fileName : "Parser.hx", lineNumber : 160, className : "glsl.parse.Parser", methodName : "findReduceAction"});
+	return glsl_parse_Parser.action[j];
 };
-glsl_parser_Parser.shift = function(newState,major,minor) {
-	glsl_parser_Parser.i++;
-	glsl_parser_Parser.stack[glsl_parser_Parser.i] = { stateno : newState, major : major, minor : minor};
+glsl_parse_Parser.shift = function(newState,major,minor) {
+	glsl_parse_Parser.i++;
+	glsl_parse_Parser.stack[glsl_parse_Parser.i] = { stateno : newState, major : major, minor : minor};
 };
-glsl_parser_Parser.reduce = function(ruleno) {
+glsl_parse_Parser.reduce = function(ruleno) {
 	var $goto;
 	var act;
 	var size;
-	var newNode = glsl_parser_TreeBuilder.buildRule(ruleno);
-	glsl_parser_Parser.currentNode = newNode;
-	$goto = glsl_parser__$Parser_RuleInfoEntry_$Impl_$.get_lhs(glsl_parser_Parser.ruleInfo[ruleno]);
-	size = glsl_parser__$Parser_RuleInfoEntry_$Impl_$.get_nrhs(glsl_parser_Parser.ruleInfo[ruleno]);
-	glsl_parser_Parser.i -= size;
-	act = glsl_parser_Parser.findReduceAction(glsl_parser_Parser.stack[glsl_parser_Parser.i].stateno,$goto);
-	if(act < 335) glsl_parser_Parser.shift(act,$goto,newNode); else {
-		glsl_parser_Parser.assert(act == 549,{ fileName : "Parser.hx", lineNumber : 187, className : "glsl.parser.Parser", methodName : "reduce"});
-		glsl_parser_Parser.accept();
+	var newNode = glsl_parse_Actions.reduce(ruleno);
+	glsl_parse_Parser.currentMinor = newNode;
+	$goto = glsl_parse__$Parser_RuleInfoEntry_$Impl_$.get_lhs(glsl_parse_Parser.ruleInfo[ruleno]);
+	size = glsl_parse__$Parser_RuleInfoEntry_$Impl_$.get_nrhs(glsl_parse_Parser.ruleInfo[ruleno]);
+	glsl_parse_Parser.i -= size;
+	act = glsl_parse_Parser.findReduceAction(glsl_parse_Parser.stack[glsl_parse_Parser.i].stateno,$goto);
+	if(act < 353) glsl_parse_Parser.shift(act,$goto,newNode); else {
+		glsl_parse_Parser.assert(act == 576,{ fileName : "Parser.hx", lineNumber : 193, className : "glsl.parse.Parser", methodName : "reduce"});
+		glsl_parse_Parser.accept();
 	}
 };
-glsl_parser_Parser.accept = function() {
-	while(glsl_parser_Parser.i >= 0) glsl_parser_Parser.popStack();
+glsl_parse_Parser.accept = function() {
+	while(glsl_parse_Parser.i >= 0) glsl_parse_Parser.popStack();
 };
-glsl_parser_Parser.syntaxError = function(major,minor) {
+glsl_parse_Parser.syntaxError = function(major,minor) {
 	var msg = "syntax error";
 	var data = Reflect.field(minor,"data");
 	if(data != null) msg += ", '" + data + "'";
-	glsl_parser_Parser.warn(msg,minor);
+	glsl_parse_Parser.warn(msg,minor);
 };
-glsl_parser_Parser.parseFailed = function(minor) {
+glsl_parse_Parser.parseFailed = function(minor) {
 	var msg = "parse failed";
 	var data = Reflect.field(minor,"data");
 	if(data != null) msg += ", '" + data + "'";
-	glsl_parser_Parser.error(msg,minor);
+	glsl_parse_Parser.error(msg,minor);
 };
-glsl_parser_Parser.assert = function(cond,pos) {
-	if(!cond) glsl_parser_Parser.warn("assert failed in " + pos.className + "::" + pos.methodName + " line " + pos.lineNumber);
+glsl_parse_Parser.assert = function(cond,pos) {
+	if(!cond) glsl_parse_Parser.warn("assert failed in " + pos.className + "::" + pos.methodName + " line " + pos.lineNumber);
 };
-glsl_parser_Parser.warn = function(msg,info) {
+glsl_parse_Parser.warn = function(msg,info) {
 	var str = "Parser Warning: " + msg;
 	var line = Reflect.field(info,"line");
 	var col = Reflect.field(info,"column");
@@ -1509,9 +2582,9 @@ glsl_parser_Parser.warn = function(msg,info) {
 		tmp1 = Type.enumEq(a1,ValueType.TInt);
 		if(tmp1) str += ", column " + col;
 	}
-	glsl_parser_Parser.warnings.push(str);
+	glsl_parse_Parser.warnings.push(str);
 };
-glsl_parser_Parser.error = function(msg,info) {
+glsl_parse_Parser.error = function(msg,info) {
 	var str = "Parser Error: " + msg;
 	var line = Reflect.field(info,"line");
 	var col = Reflect.field(info,"column");
@@ -1527,553 +2600,20 @@ glsl_parser_Parser.error = function(msg,info) {
 	}
 	throw new js__$Boot_HaxeError(str);
 };
-var glsl_parser__$Parser_RuleInfoEntry_$Impl_$ = {};
-glsl_parser__$Parser_RuleInfoEntry_$Impl_$.__name__ = true;
-glsl_parser__$Parser_RuleInfoEntry_$Impl_$.get_lhs = function(this1) {
+var glsl_parse__$Parser_RuleInfoEntry_$Impl_$ = {};
+glsl_parse__$Parser_RuleInfoEntry_$Impl_$.__name__ = true;
+glsl_parse__$Parser_RuleInfoEntry_$Impl_$.get_lhs = function(this1) {
 	return this1[0];
 };
-glsl_parser__$Parser_RuleInfoEntry_$Impl_$.set_lhs = function(this1,v) {
+glsl_parse__$Parser_RuleInfoEntry_$Impl_$.set_lhs = function(this1,v) {
 	return this1[0] = v;
 };
-glsl_parser__$Parser_RuleInfoEntry_$Impl_$.get_nrhs = function(this1) {
+glsl_parse__$Parser_RuleInfoEntry_$Impl_$.get_nrhs = function(this1) {
 	return this1[1];
 };
-glsl_parser__$Parser_RuleInfoEntry_$Impl_$.set_nrhs = function(this1,v) {
+glsl_parse__$Parser_RuleInfoEntry_$Impl_$.set_nrhs = function(this1,v) {
 	return this1[1] = v;
 };
-var glsl_parser_TreeBuilder = function() { };
-glsl_parser_TreeBuilder.__name__ = true;
-glsl_parser_TreeBuilder.buildRule = function(ruleno) {
-	glsl_parser_TreeBuilder.ruleno = ruleno;
-	switch(ruleno) {
-	case 0:
-		return new glsl_Root(glsl_parser_TreeBuilder.s(1));
-	case 1:
-		return new glsl_Identifier(glsl_parser_TreeBuilder.s(1).data);
-	case 2:
-		return glsl_parser_TreeBuilder.s(1);
-	case 3:
-		var l = new glsl_Primitive(Std.parseInt(glsl_parser_TreeBuilder.s(1).data),glsl_DataType.INT);
-		l.raw = glsl_parser_TreeBuilder.s(1).data;
-		return l;
-	case 4:
-		var tmp;
-		var x = glsl_parser_TreeBuilder.s(1).data;
-		tmp = parseFloat(x);
-		var l1 = new glsl_Primitive(tmp,glsl_DataType.FLOAT);
-		l1.raw = glsl_parser_TreeBuilder.s(1).data;
-		return l1;
-	case 5:
-		var l2 = new glsl_Primitive(glsl_parser_TreeBuilder.s(1).data == "true",glsl_DataType.BOOL);
-		l2.raw = glsl_parser_TreeBuilder.s(1).data;
-		return l2;
-	case 6:
-		(js_Boot.__cast(glsl_parser_TreeBuilder.s(2) , glsl_Expression)).enclosed = true;
-		return glsl_parser_TreeBuilder.s(2);
-	case 7:
-		return glsl_parser_TreeBuilder.s(1);
-	case 8:
-		return new glsl_ArrayElementSelectionExpression(js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression),js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression));
-	case 9:
-		return glsl_parser_TreeBuilder.s(1);
-	case 10:
-		return new glsl_FieldSelectionExpression(js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression),new glsl_Identifier(glsl_parser_TreeBuilder.s(3).data));
-	case 11:
-		return new glsl_UnaryExpression(glsl_UnaryOperator.INC_OP,js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression),false);
-	case 12:
-		return new glsl_UnaryExpression(glsl_UnaryOperator.DEC_OP,js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression),false);
-	case 13:
-		return glsl_parser_TreeBuilder.s(1);
-	case 14:
-		return glsl_parser_TreeBuilder.s(1);
-	case 15:
-		return glsl_parser_TreeBuilder.s(1);
-	case 16:
-		return glsl_parser_TreeBuilder.s(1);
-	case 17:
-		return glsl_parser_TreeBuilder.s(1);
-	case 18:
-		return glsl_parser_TreeBuilder.s(1);
-	case 19:
-		(js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_ExpressionParameters)).parameters.push(glsl_parser_TreeBuilder.s(2));
-		return glsl_parser_TreeBuilder.s(1);
-	case 20:
-		(js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_ExpressionParameters)).parameters.push(glsl_parser_TreeBuilder.s(3));
-		return glsl_parser_TreeBuilder.s(1);
-	case 21:
-		return glsl_parser_TreeBuilder.s(1);
-	case 22:
-		return new glsl_Constructor(glsl_parser_TreeBuilder.s(1) != null?glsl_parser_TreeBuilder.s(1):null);
-	case 23:
-		return new glsl_FunctionCall(glsl_parser_TreeBuilder.s(1).data);
-	case 24:
-		return glsl_DataType.FLOAT;
-	case 25:
-		return glsl_DataType.INT;
-	case 26:
-		return glsl_DataType.BOOL;
-	case 27:
-		return glsl_DataType.VEC2;
-	case 28:
-		return glsl_DataType.VEC3;
-	case 29:
-		return glsl_DataType.VEC4;
-	case 30:
-		return glsl_DataType.BVEC2;
-	case 31:
-		return glsl_DataType.BVEC3;
-	case 32:
-		return glsl_DataType.BVEC4;
-	case 33:
-		return glsl_DataType.IVEC2;
-	case 34:
-		return glsl_DataType.IVEC3;
-	case 35:
-		return glsl_DataType.IVEC4;
-	case 36:
-		return glsl_DataType.MAT2;
-	case 37:
-		return glsl_DataType.MAT3;
-	case 38:
-		return glsl_DataType.MAT4;
-	case 39:
-		return glsl_DataType.USER_TYPE(glsl_parser_TreeBuilder.s(1).data);
-	case 40:
-		return glsl_parser_TreeBuilder.s(1);
-	case 41:
-		return new glsl_UnaryExpression(glsl_UnaryOperator.INC_OP,js_Boot.__cast(glsl_parser_TreeBuilder.s(2) , glsl_Expression),true);
-	case 42:
-		return new glsl_UnaryExpression(glsl_UnaryOperator.DEC_OP,js_Boot.__cast(glsl_parser_TreeBuilder.s(2) , glsl_Expression),true);
-	case 43:
-		return new glsl_UnaryExpression(glsl_parser_TreeBuilder.s(1) != null?glsl_parser_TreeBuilder.s(1):null,js_Boot.__cast(glsl_parser_TreeBuilder.s(2) , glsl_Expression),true);
-	case 44:
-		return glsl_UnaryOperator.PLUS;
-	case 45:
-		return glsl_UnaryOperator.DASH;
-	case 46:
-		return glsl_UnaryOperator.BANG;
-	case 47:
-		return glsl_UnaryOperator.TILDE;
-	case 48:
-		return glsl_parser_TreeBuilder.s(1);
-	case 49:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.STAR,js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression),js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression));
-	case 50:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.SLASH,js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression),js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression));
-	case 51:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.PERCENT,js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression),js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression));
-	case 52:
-		return glsl_parser_TreeBuilder.s(1);
-	case 53:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.PLUS,js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression),js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression));
-	case 54:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.DASH,js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression),js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression));
-	case 55:
-		return glsl_parser_TreeBuilder.s(1);
-	case 56:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.LEFT_OP,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 57:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.RIGHT_OP,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 58:
-		return glsl_parser_TreeBuilder.s(1);
-	case 59:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.LEFT_ANGLE,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 60:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.RIGHT_ANGLE,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 61:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.LE_OP,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 62:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.GE_OP,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 63:
-		return glsl_parser_TreeBuilder.s(1);
-	case 64:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.EQ_OP,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 65:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.NE_OP,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 66:
-		return glsl_parser_TreeBuilder.s(1);
-	case 67:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.AMPERSAND,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 68:
-		return glsl_parser_TreeBuilder.s(1);
-	case 69:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.CARET,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 70:
-		return glsl_parser_TreeBuilder.s(1);
-	case 71:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.VERTICAL_BAR,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 72:
-		return glsl_parser_TreeBuilder.s(1);
-	case 73:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.AND_OP,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 74:
-		return glsl_parser_TreeBuilder.s(1);
-	case 75:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.XOR_OP,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 76:
-		return glsl_parser_TreeBuilder.s(1);
-	case 77:
-		return new glsl_BinaryExpression(glsl_BinaryOperator.OR_OP,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 78:
-		return glsl_parser_TreeBuilder.s(1);
-	case 79:
-		return new glsl_ConditionalExpression(glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3),glsl_parser_TreeBuilder.s(5));
-	case 80:
-		return glsl_parser_TreeBuilder.s(1);
-	case 81:
-		return new glsl_AssignmentExpression(glsl_parser_TreeBuilder.s(2) != null?glsl_parser_TreeBuilder.s(2):null,glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3));
-	case 82:
-		return glsl_AssignmentOperator.EQUAL;
-	case 83:
-		return glsl_AssignmentOperator.MUL_ASSIGN;
-	case 84:
-		return glsl_AssignmentOperator.DIV_ASSIGN;
-	case 85:
-		return glsl_AssignmentOperator.MOD_ASSIGN;
-	case 86:
-		return glsl_AssignmentOperator.ADD_ASSIGN;
-	case 87:
-		return glsl_AssignmentOperator.SUB_ASSIGN;
-	case 88:
-		return glsl_AssignmentOperator.LEFT_ASSIGN;
-	case 89:
-		return glsl_AssignmentOperator.RIGHT_ASSIGN;
-	case 90:
-		return glsl_AssignmentOperator.AND_ASSIGN;
-	case 91:
-		return glsl_AssignmentOperator.XOR_ASSIGN;
-	case 92:
-		return glsl_AssignmentOperator.OR_ASSIGN;
-	case 93:
-		return glsl_parser_TreeBuilder.s(1);
-	case 94:
-		var tmp1;
-		var v = js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression);
-		tmp1 = js_Boot.__instanceof(v,glsl_SequenceExpression);
-		if(tmp1) {
-			(js_Boot.__cast(js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression) , glsl_SequenceExpression)).expressions.push(js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression));
-			return glsl_parser_TreeBuilder.s(1);
-		} else return new glsl_SequenceExpression([js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression),js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression)]);
-		break;
-	case 95:
-		return glsl_parser_TreeBuilder.s(1);
-	case 96:
-		return new glsl_FunctionPrototype(glsl_parser_TreeBuilder.s(1));
-	case 97:
-		return glsl_parser_TreeBuilder.s(1);
-	case 98:
-		return new glsl_PrecisionDeclaration(glsl_parser_TreeBuilder.s(2) != null?glsl_parser_TreeBuilder.s(2):null,(js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_TypeSpecifier)).dataType);
-	case 99:
-		return glsl_parser_TreeBuilder.s(1);
-	case 100:
-		return glsl_parser_TreeBuilder.s(1);
-	case 101:
-		return glsl_parser_TreeBuilder.s(1);
-	case 102:
-		var fh = js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_FunctionHeader);
-		fh.parameters.push(glsl_parser_TreeBuilder.s(2));
-		return fh;
-	case 103:
-		var fh1 = js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_FunctionHeader);
-		fh1.parameters.push(glsl_parser_TreeBuilder.s(3));
-		return fh1;
-	case 104:
-		return new glsl_FunctionHeader(glsl_parser_TreeBuilder.s(2).data,glsl_parser_TreeBuilder.s(1));
-	case 105:
-		return new glsl_ParameterDeclaration(glsl_parser_TreeBuilder.s(2).data,glsl_parser_TreeBuilder.s(1));
-	case 106:
-		return new glsl_ParameterDeclaration(glsl_parser_TreeBuilder.s(2).data,glsl_parser_TreeBuilder.s(1),null,js_Boot.__cast(glsl_parser_TreeBuilder.s(4) , glsl_Expression));
-	case 107:
-		var pd = js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_ParameterDeclaration);
-		pd.parameterQualifier = glsl_parser_TreeBuilder.s(2) != null?glsl_parser_TreeBuilder.s(2):null;
-		var tmp2;
-		var a = glsl_parser_TreeBuilder.s(1) != null?glsl_parser_TreeBuilder.s(1):null;
-		tmp2 = Type.enumEq(a,glsl_parser_Instructions.SET_INVARIANT_VARYING);
-		if(tmp2) {
-			pd.typeSpecifier.storage = glsl_StorageQualifier.VARYING;
-			pd.typeSpecifier.invariant = true;
-		} else pd.typeSpecifier.storage = glsl_parser_TreeBuilder.s(1) != null?glsl_parser_TreeBuilder.s(1):null;
-		return pd;
-	case 108:
-		var pd1 = js_Boot.__cast(glsl_parser_TreeBuilder.s(2) , glsl_ParameterDeclaration);
-		pd1.parameterQualifier = glsl_parser_TreeBuilder.s(1) != null?glsl_parser_TreeBuilder.s(1):null;
-		return pd1;
-	case 109:
-		var pd2 = js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_ParameterDeclaration);
-		pd2.parameterQualifier = glsl_parser_TreeBuilder.s(2) != null?glsl_parser_TreeBuilder.s(2):null;
-		var tmp3;
-		var a1 = glsl_parser_TreeBuilder.s(1) != null?glsl_parser_TreeBuilder.s(1):null;
-		tmp3 = Type.enumEq(a1,glsl_parser_Instructions.SET_INVARIANT_VARYING);
-		if(tmp3) {
-			pd2.typeSpecifier.storage = glsl_StorageQualifier.VARYING;
-			pd2.typeSpecifier.invariant = true;
-		} else pd2.typeSpecifier.storage = glsl_parser_TreeBuilder.s(1) != null?glsl_parser_TreeBuilder.s(1):null;
-		return pd2;
-	case 110:
-		var pd3 = js_Boot.__cast(glsl_parser_TreeBuilder.s(2) , glsl_ParameterDeclaration);
-		pd3.parameterQualifier = glsl_parser_TreeBuilder.s(1) != null?glsl_parser_TreeBuilder.s(1):null;
-		return pd3;
-	case 111:
-		return null;
-	case 112:
-		return glsl_ParameterQualifier.IN;
-	case 113:
-		return glsl_ParameterQualifier.OUT;
-	case 114:
-		return glsl_ParameterQualifier.INOUT;
-	case 115:
-		return new glsl_ParameterDeclaration(null,glsl_parser_TreeBuilder.s(1));
-	case 116:
-		return new glsl_ParameterDeclaration(null,glsl_parser_TreeBuilder.s(1),null,js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression));
-	case 117:
-		return glsl_parser_TreeBuilder.s(1);
-	case 118:
-		(js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_VariableDeclaration)).declarators.push(new glsl_Declarator(glsl_parser_TreeBuilder.s(3).data,null,null));
-		return glsl_parser_TreeBuilder.s(1);
-	case 119:
-		(js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_VariableDeclaration)).declarators.push(new glsl_Declarator(glsl_parser_TreeBuilder.s(3).data,null,js_Boot.__cast(glsl_parser_TreeBuilder.s(5) , glsl_Expression)));
-		return glsl_parser_TreeBuilder.s(1);
-	case 120:
-		(js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_VariableDeclaration)).declarators.push(new glsl_Declarator(glsl_parser_TreeBuilder.s(3).data,js_Boot.__cast(glsl_parser_TreeBuilder.s(5) , glsl_Expression),null));
-		return glsl_parser_TreeBuilder.s(1);
-	case 121:
-		return new glsl_VariableDeclaration(glsl_parser_TreeBuilder.s(1),[]);
-	case 122:
-		return new glsl_VariableDeclaration(glsl_parser_TreeBuilder.s(1),[new glsl_Declarator(glsl_parser_TreeBuilder.s(2).data,null,null)]);
-	case 123:
-		return new glsl_VariableDeclaration(glsl_parser_TreeBuilder.s(1),[new glsl_Declarator(glsl_parser_TreeBuilder.s(2).data,null,js_Boot.__cast(glsl_parser_TreeBuilder.s(4) , glsl_Expression))]);
-	case 124:
-		return new glsl_VariableDeclaration(glsl_parser_TreeBuilder.s(1),[new glsl_Declarator(glsl_parser_TreeBuilder.s(2).data,js_Boot.__cast(glsl_parser_TreeBuilder.s(4) , glsl_Expression),null)]);
-	case 125:
-		return new glsl_VariableDeclaration(new glsl_TypeSpecifier(null,null,null,true),[new glsl_Declarator(glsl_parser_TreeBuilder.s(2).data,null,null)]);
-	case 126:
-		return glsl_parser_TreeBuilder.s(1);
-	case 127:
-		var ts = js_Boot.__cast(glsl_parser_TreeBuilder.s(2) , glsl_TypeSpecifier);
-		var tmp4;
-		var a2 = glsl_parser_TreeBuilder.s(1) != null?glsl_parser_TreeBuilder.s(1):null;
-		tmp4 = Type.enumEq(a2,glsl_parser_Instructions.SET_INVARIANT_VARYING);
-		if(tmp4) {
-			ts.storage = glsl_StorageQualifier.VARYING;
-			ts.invariant = true;
-		} else ts.storage = glsl_parser_TreeBuilder.s(1) != null?glsl_parser_TreeBuilder.s(1):null;
-		return glsl_parser_TreeBuilder.s(2);
-	case 128:
-		return glsl_StorageQualifier.CONST;
-	case 129:
-		return glsl_StorageQualifier.ATTRIBUTE;
-	case 130:
-		return glsl_StorageQualifier.VARYING;
-	case 131:
-		return glsl_parser_Instructions.SET_INVARIANT_VARYING;
-	case 132:
-		return glsl_StorageQualifier.UNIFORM;
-	case 133:
-		return glsl_parser_TreeBuilder.s(1);
-	case 134:
-		var ts1 = js_Boot.__cast(glsl_parser_TreeBuilder.s(2) , glsl_TypeSpecifier);
-		ts1.precision = glsl_parser_TreeBuilder.s(1) != null?glsl_parser_TreeBuilder.s(1):null;
-		return ts1;
-	case 135:
-		return new glsl_TypeSpecifier(glsl_DataType.VOID);
-	case 136:
-		return new glsl_TypeSpecifier(glsl_DataType.FLOAT);
-	case 137:
-		return new glsl_TypeSpecifier(glsl_DataType.INT);
-	case 138:
-		return new glsl_TypeSpecifier(glsl_DataType.BOOL);
-	case 139:
-		return new glsl_TypeSpecifier(glsl_DataType.VEC2);
-	case 140:
-		return new glsl_TypeSpecifier(glsl_DataType.VEC3);
-	case 141:
-		return new glsl_TypeSpecifier(glsl_DataType.VEC4);
-	case 142:
-		return new glsl_TypeSpecifier(glsl_DataType.BVEC2);
-	case 143:
-		return new glsl_TypeSpecifier(glsl_DataType.BVEC3);
-	case 144:
-		return new glsl_TypeSpecifier(glsl_DataType.BVEC4);
-	case 145:
-		return new glsl_TypeSpecifier(glsl_DataType.IVEC2);
-	case 146:
-		return new glsl_TypeSpecifier(glsl_DataType.IVEC3);
-	case 147:
-		return new glsl_TypeSpecifier(glsl_DataType.IVEC4);
-	case 148:
-		return new glsl_TypeSpecifier(glsl_DataType.MAT2);
-	case 149:
-		return new glsl_TypeSpecifier(glsl_DataType.MAT3);
-	case 150:
-		return new glsl_TypeSpecifier(glsl_DataType.MAT4);
-	case 151:
-		return new glsl_TypeSpecifier(glsl_DataType.SAMPLER2D);
-	case 152:
-		return new glsl_TypeSpecifier(glsl_DataType.SAMPLERCUBE);
-	case 153:
-		return glsl_parser_TreeBuilder.s(1);
-	case 154:
-		return new glsl_TypeSpecifier(glsl_DataType.USER_TYPE(glsl_parser_TreeBuilder.s(1).data));
-	case 155:
-		return glsl_PrecisionQualifier.HIGH_PRECISION;
-	case 156:
-		return glsl_PrecisionQualifier.MEDIUM_PRECISION;
-	case 157:
-		return glsl_PrecisionQualifier.LOW_PRECISION;
-	case 158:
-		return new glsl_StructSpecifier(glsl_parser_TreeBuilder.s(2).data,glsl_parser_TreeBuilder.s(4));
-	case 159:
-		return new glsl_StructSpecifier(null,glsl_parser_TreeBuilder.s(3));
-	case 160:
-		return [glsl_parser_TreeBuilder.s(1)];
-	case 161:
-		glsl_parser_TreeBuilder.s(1).push(glsl_parser_TreeBuilder.s(2));
-		return glsl_parser_TreeBuilder.s(1);
-	case 162:
-		return new glsl_StructFieldDeclaration(glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(2));
-	case 163:
-		return [glsl_parser_TreeBuilder.s(1)];
-	case 164:
-		glsl_parser_TreeBuilder.s(1).push(glsl_parser_TreeBuilder.s(3));
-		return glsl_parser_TreeBuilder.s(1);
-	case 165:
-		return new glsl_StructDeclarator(glsl_parser_TreeBuilder.s(1).data);
-	case 166:
-		return new glsl_StructDeclarator(glsl_parser_TreeBuilder.s(1).data,js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression));
-	case 167:
-		return glsl_parser_TreeBuilder.s(1);
-	case 168:
-		return new glsl_DeclarationStatement(glsl_parser_TreeBuilder.s(1));
-	case 169:
-		return glsl_parser_TreeBuilder.s(1);
-	case 170:
-		return glsl_parser_TreeBuilder.s(1);
-	case 171:
-		return glsl_parser_TreeBuilder.s(1);
-	case 172:
-		return glsl_parser_TreeBuilder.s(1);
-	case 173:
-		return glsl_parser_TreeBuilder.s(1);
-	case 174:
-		return glsl_parser_TreeBuilder.s(1);
-	case 175:
-		return glsl_parser_TreeBuilder.s(1);
-	case 176:
-		return glsl_parser_TreeBuilder.s(1);
-	case 177:
-		return new glsl_CompoundStatement([]);
-	case 178:
-		return new glsl_CompoundStatement(glsl_parser_TreeBuilder.s(2));
-	case 179:
-		return glsl_parser_TreeBuilder.s(1);
-	case 180:
-		return glsl_parser_TreeBuilder.s(1);
-	case 181:
-		return new glsl_CompoundStatement([]);
-	case 182:
-		return new glsl_CompoundStatement(glsl_parser_TreeBuilder.s(2));
-	case 183:
-		return [glsl_parser_TreeBuilder.s(1)];
-	case 184:
-		glsl_parser_TreeBuilder.s(1).push(glsl_parser_TreeBuilder.s(2));
-		return glsl_parser_TreeBuilder.s(1);
-	case 185:
-		return new glsl_ExpressionStatement(null);
-	case 186:
-		return new glsl_ExpressionStatement(js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression));
-	case 187:
-		return new glsl_IfStatement(js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression),glsl_parser_TreeBuilder.s(5)[0],glsl_parser_TreeBuilder.s(5)[1]);
-	case 188:
-		return [glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(3)];
-	case 189:
-		return [glsl_parser_TreeBuilder.s(1),null];
-	case 190:
-		return glsl_parser_TreeBuilder.s(1);
-	case 191:
-		return new glsl_VariableDeclaration(glsl_parser_TreeBuilder.s(1),[new glsl_Declarator(glsl_parser_TreeBuilder.s(2).data,js_Boot.__cast(glsl_parser_TreeBuilder.s(4) , glsl_Expression),null)]);
-	case 192:
-		return new glsl_WhileStatement(js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression),glsl_parser_TreeBuilder.s(5));
-	case 193:
-		return new glsl_DoWhileStatement(js_Boot.__cast(glsl_parser_TreeBuilder.s(5) , glsl_Expression),glsl_parser_TreeBuilder.s(2));
-	case 194:
-		return new glsl_ForStatement(glsl_parser_TreeBuilder.s(3),glsl_parser_TreeBuilder.s(4)[0],glsl_parser_TreeBuilder.s(4)[1],glsl_parser_TreeBuilder.s(6));
-	case 195:
-		return glsl_parser_TreeBuilder.s(1);
-	case 196:
-		return glsl_parser_TreeBuilder.s(1);
-	case 197:
-		return glsl_parser_TreeBuilder.s(1);
-	case 198:
-		return null;
-	case 199:
-		return [js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression),null];
-	case 200:
-		return [js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Expression),js_Boot.__cast(glsl_parser_TreeBuilder.s(3) , glsl_Expression)];
-	case 201:
-		return new glsl_JumpStatement(glsl_JumpMode.CONTINUE);
-	case 202:
-		return new glsl_JumpStatement(glsl_JumpMode.BREAK);
-	case 203:
-		return new glsl_ReturnStatement(null);
-	case 204:
-		return new glsl_ReturnStatement(glsl_parser_TreeBuilder.s(2));
-	case 205:
-		return new glsl_JumpStatement(glsl_JumpMode.DISCARD);
-	case 206:
-		return [glsl_parser_TreeBuilder.s(1)];
-	case 207:
-		glsl_parser_TreeBuilder.s(1).push(glsl_parser_TreeBuilder.s(2));
-		return glsl_parser_TreeBuilder.s(1);
-	case 208:
-		(js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Declaration)).external = true;
-		return glsl_parser_TreeBuilder.s(1);
-	case 209:
-		(js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Declaration)).external = true;
-		return glsl_parser_TreeBuilder.s(1);
-	case 210:
-		(js_Boot.__cast(glsl_parser_TreeBuilder.s(1) , glsl_Declaration)).external = true;
-		return glsl_parser_TreeBuilder.s(1);
-	case 211:
-		return new glsl_FunctionDefinition(glsl_parser_TreeBuilder.s(1),glsl_parser_TreeBuilder.s(2));
-	case 212:
-		return new glsl_PreprocessorDirective(glsl_parser_TreeBuilder.s(1).data);
-	}
-	glsl_parser_Parser.warn("unhandled reduce rule number " + ruleno);
-	return null;
-};
-glsl_parser_TreeBuilder.reset = function() {
-	glsl_parser_TreeBuilder.ruleno = -1;
-};
-glsl_parser_TreeBuilder.s = function(n) {
-	if(n <= 0) return null;
-	var j = glsl_parser__$Parser_RuleInfoEntry_$Impl_$.get_nrhs(glsl_parser_Parser.ruleInfo[glsl_parser_TreeBuilder.ruleno]) - n;
-	return glsl_parser_Parser.stack[glsl_parser_Parser.i - j].minor;
-};
-glsl_parser_TreeBuilder.n = function(m) {
-	return glsl_parser_TreeBuilder.s(m);
-};
-glsl_parser_TreeBuilder.t = function(m) {
-	return glsl_parser_TreeBuilder.s(m);
-};
-glsl_parser_TreeBuilder.e = function(m) {
-	return js_Boot.__cast(glsl_parser_TreeBuilder.s(m) , glsl_Expression);
-};
-glsl_parser_TreeBuilder.ev = function(m) {
-	return glsl_parser_TreeBuilder.s(m) != null?glsl_parser_TreeBuilder.s(m):null;
-};
-glsl_parser_TreeBuilder.a = function(m) {
-	return glsl_parser_TreeBuilder.s(m);
-};
-glsl_parser_TreeBuilder.get_i = function() {
-	return glsl_parser_Parser.i;
-};
-glsl_parser_TreeBuilder.get_stack = function() {
-	return glsl_parser_Parser.stack;
-};
-var glsl_parser_Instructions = { __ename__ : true, __constructs__ : ["SET_INVARIANT_VARYING"] };
-glsl_parser_Instructions.SET_INVARIANT_VARYING = ["SET_INVARIANT_VARYING",0];
-glsl_parser_Instructions.SET_INVARIANT_VARYING.toString = $estr;
-glsl_parser_Instructions.SET_INVARIANT_VARYING.__enum__ = glsl_parser_Instructions;
 var glsl_preprocess_Preprocessor = function(userDefinedMacros,builtinMacros) {
 	this.preserveMacroDefinitions = false;
 	var _g1 = this;
@@ -2153,7 +2693,7 @@ glsl_preprocess_Preprocessor.prototype = {
 				break;
 			default:
 				{
-					var _g11 = HxOverrides.indexOf(glsl_tokens_TokenHelper.identifierTokens,_g1,0) >= 0;
+					var _g11 = HxOverrides.indexOf(glsl_lex_TokenHelper.identifierTokenTypes,_g1,0) >= 0;
 					switch(_g11) {
 					case true:
 						try {
@@ -2196,12 +2736,12 @@ glsl_preprocess_Preprocessor.prototype = {
 		var _g = directive.title;
 		switch(_g) {
 		case "":
-			glsl_tokens_TokenHelper.deleteTokens(this.tokens,this.i);
+			glsl_lex_TokenHelper.deleteTokens(this.tokens,this.i);
 			break;
 		case "define":
 			var definition = this.evaluateMacroDefinition(directive.content);
 			this.defineMacro(definition.id,definition.ppMacro);
-			if(!this.preserveMacroDefinitions) glsl_tokens_TokenHelper.deleteTokens(this.tokens,this.i);
+			if(!this.preserveMacroDefinitions) glsl_lex_TokenHelper.deleteTokens(this.tokens,this.i);
 			break;
 		case "undef":
 			var tmp;
@@ -2209,7 +2749,7 @@ glsl_preprocess_Preprocessor.prototype = {
 			tmp = glsl_preprocess_Preprocessor.macroNameReg.matched(1);
 			var macroName = tmp;
 			this.undefineMacro(macroName);
-			if(!this.preserveMacroDefinitions) glsl_tokens_TokenHelper.deleteTokens(this.tokens,this.i);
+			if(!this.preserveMacroDefinitions) glsl_lex_TokenHelper.deleteTokens(this.tokens,this.i);
 			break;
 		case "if":case "ifdef":case "ifndef":
 			this.processIfSwitch();
@@ -2228,7 +2768,7 @@ glsl_preprocess_Preprocessor.prototype = {
 			throw new js__$Boot_HaxeError("directive #extension is not yet supported");
 			break;
 		case "version":
-			if(glsl_tokens_TokenHelper.nextNonSkipToken(this.tokens,this.i,-1) == null) {
+			if(glsl_lex_TokenHelper.nextNonSkipToken(this.tokens,this.i,-1) == null) {
 				var versionNumRegex = new EReg("^(\\d+)$","");
 				var matched = versionNumRegex.match(directive.content);
 				if(matched) {
@@ -2305,7 +2845,7 @@ glsl_preprocess_Preprocessor.prototype = {
 				}
 				lastTitle = directive.title;
 				while(level > 0) {
-					j = glsl_tokens_TokenHelper.nextNonSkipTokenIndex(this.tokens,j,1,glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE);
+					j = glsl_lex_TokenHelper.nextNonSkipTokenIndex(this.tokens,j,1,glsl_lex_TokenType.PREPROCESSOR_DIRECTIVE);
 					t = this.tokens[j];
 					if(t == null) throw new js__$Boot_HaxeError("expecting #endif but reached end of file");
 					{
@@ -2382,12 +2922,12 @@ glsl_preprocess_Preprocessor.prototype = {
 							} else switch(_g31.title) {
 							case "if":
 								var content4 = _g31.content;
-								var directiveTokens = glsl_tokens_Tokenizer.tokenize(content4);
+								var directiveTokens = glsl_lex_Tokenizer.tokenize(content4);
 								var _g4 = 0;
 								while(_g4 < directiveTokens.length) {
 									var dt = directiveTokens[_g4];
 									++_g4;
-									if(HxOverrides.indexOf(glsl_tokens_TokenHelper.identifierTokens,dt.type,0) >= 0 && dt.data != "defined") {
+									if(HxOverrides.indexOf(glsl_lex_TokenHelper.identifierTokenTypes,dt.type,0) >= 0 && dt.data != "defined") {
 										var ppMacro = this.getMacro(dt.data);
 										if(ppMacro != null) {
 											var key = dt.data;
@@ -2398,12 +2938,12 @@ glsl_preprocess_Preprocessor.prototype = {
 								break;
 							case "elif":
 								var content5 = _g31.content;
-								var directiveTokens1 = glsl_tokens_Tokenizer.tokenize(content5);
+								var directiveTokens1 = glsl_lex_Tokenizer.tokenize(content5);
 								var _g41 = 0;
 								while(_g41 < directiveTokens1.length) {
 									var dt1 = directiveTokens1[_g41];
 									++_g41;
-									if(HxOverrides.indexOf(glsl_tokens_TokenHelper.identifierTokens,dt1.type,0) >= 0 && dt1.data != "defined") {
+									if(HxOverrides.indexOf(glsl_lex_TokenHelper.identifierTokenTypes,dt1.type,0) >= 0 && dt1.data != "defined") {
 										var ppMacro1 = this.getMacro(dt1.data);
 										if(ppMacro1 != null) {
 											var key1 = dt1.data;
@@ -2449,8 +2989,8 @@ glsl_preprocess_Preprocessor.prototype = {
 							var lenBefore = branchTokens.length;
 							var newTokens1 = pp._process(branchTokens,this.forceResolve);
 							tokensDelta += newTokens1.length - lenBefore;
-							glsl_tokens_TokenHelper.deleteTokens(this.tokens,c.start,c.end - c.start);
-							glsl_tokens_TokenHelper.insertTokens(this.tokens,c.start,newTokens1);
+							glsl_lex_TokenHelper.deleteTokens(this.tokens,c.start,c.end - c.start);
+							glsl_lex_TokenHelper.insertTokens(this.tokens,c.start,newTokens1);
 						} catch( e2 ) {
 							if (e2 instanceof js__$Boot_HaxeError) e2 = e2.val;
 						}
@@ -2477,9 +3017,9 @@ glsl_preprocess_Preprocessor.prototype = {
 						}
 						var defineStr = tmp4;
 						var glsl1 = undefineStr + "\n" + defineStr + "\n";
-						prependTokens = prependTokens.concat(glsl_tokens_Tokenizer.tokenize(glsl1));
+						prependTokens = prependTokens.concat(glsl_lex_Tokenizer.tokenize(glsl1));
 					}
-					glsl_tokens_TokenHelper.insertTokens(this.tokens,start,prependTokens);
+					glsl_lex_TokenHelper.insertTokens(this.tokens,start,prependTokens);
 					start += prependTokens.length;
 					tokensDelta += prependTokens.length;
 					j += tokensDelta;
@@ -2488,13 +3028,13 @@ glsl_preprocess_Preprocessor.prototype = {
 					throw new js__$Boot_HaxeError(this.replaceErrorInfo(e1,b.directiveToken));
 				}
 			}
-			glsl_tokens_TokenHelper.deleteTokens(this.tokens,start,end - start + 1);
-			glsl_tokens_TokenHelper.insertTokens(this.tokens,start,newTokens);
+			glsl_lex_TokenHelper.deleteTokens(this.tokens,start,end - start + 1);
+			glsl_lex_TokenHelper.insertTokens(this.tokens,start,newTokens);
 			this.i = start - 1;
 		} catch( e3 ) {
 			if (e3 instanceof js__$Boot_HaxeError) e3 = e3.val;
 			while(level > 0) {
-				j = glsl_tokens_TokenHelper.nextNonSkipTokenIndex(this.tokens,j,1,glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE);
+				j = glsl_lex_TokenHelper.nextNonSkipTokenIndex(this.tokens,j,1,glsl_lex_TokenType.PREPROCESSOR_DIRECTIVE);
 				t = this.tokens[j];
 				if(t == null) throw new js__$Boot_HaxeError(glsl_preprocess_PPError.Warn("expecting #endif but reached end of file",this.tokens[start]));
 				var _g5 = this.readDirectiveData(t.data).title;
@@ -2662,7 +3202,7 @@ glsl_preprocess_Preprocessor.prototype = {
 		var _g = 0;
 		while(_g < len) {
 			var j = _g++;
-			if(HxOverrides.indexOf(glsl_tokens_TokenHelper.identifierTokens,tokens[j].type,0) >= 0) {
+			if(HxOverrides.indexOf(glsl_lex_TokenHelper.identifierTokenTypes,tokens[j].type,0) >= 0) {
 				this.expandIdentifier(tokens,j,overrideMap,ignore);
 				len = tokens.length;
 			}
@@ -2683,7 +3223,7 @@ glsl_preprocess_Preprocessor.prototype = {
 			case 0:
 				var content = ppMacro1[2];
 				var tmp1;
-				var newTokens1 = glsl_tokens_Tokenizer.tokenize(content,function(warning) {
+				var newTokens1 = glsl_lex_Tokenizer.tokenize(content,function(warning) {
 					throw new js__$Boot_HaxeError("" + warning);
 				},function(error) {
 					throw new js__$Boot_HaxeError("" + error);
@@ -2699,8 +3239,8 @@ glsl_preprocess_Preprocessor.prototype = {
 				var newTokens = tmp1;
 				if(ignore == null) ignore = [id]; else ignore.push(id);
 				_g.expandIdentifiers(newTokens,overrideMap,ignore);
-				glsl_tokens_TokenHelper.deleteTokens(tokens,i,1);
-				glsl_tokens_TokenHelper.insertTokens(tokens,i,newTokens);
+				glsl_lex_TokenHelper.deleteTokens(tokens,i,1);
+				glsl_lex_TokenHelper.insertTokens(tokens,i,newTokens);
 				return newTokens;
 			case 1:
 				var parameters = ppMacro1[3];
@@ -2719,7 +3259,7 @@ glsl_preprocess_Preprocessor.prototype = {
 						}
 					}
 					var tmp2;
-					var newTokens3 = glsl_tokens_Tokenizer.tokenize(content1,function(warning1) {
+					var newTokens3 = glsl_lex_Tokenizer.tokenize(content1,function(warning1) {
 						throw new js__$Boot_HaxeError("" + warning1);
 					},function(error1) {
 						throw new js__$Boot_HaxeError("" + error1);
@@ -2742,7 +3282,7 @@ glsl_preprocess_Preprocessor.prototype = {
 						var key = parameters[i1];
 						if(__map_reserved[key] != null) tmp3 = parameterMap.existsReserved(key); else tmp3 = parameterMap.h.hasOwnProperty(key);
 						if(!tmp3) {
-							var value = glsl_preprocess_PPMacro.UserMacroObject(glsl_printer_TokenArrayPrinter.print(functionCall.args[i1]));
+							var value = glsl_preprocess_PPMacro.UserMacroObject(glsl_print_TokenArrayPrinter.print(functionCall.args[i1]));
 							var key1 = parameters[i1];
 							if(__map_reserved[key1] != null) parameterMap.setReserved(key1,value); else parameterMap.h[key1] = value;
 						}
@@ -2750,8 +3290,8 @@ glsl_preprocess_Preprocessor.prototype = {
 					_g.expandIdentifiers(newTokens2,parameterMap);
 					if(ignore == null) ignore = [id]; else ignore.push(id);
 					_g.expandIdentifiers(newTokens2,overrideMap,ignore);
-					glsl_tokens_TokenHelper.deleteTokens(tokens,i,functionCall.len);
-					glsl_tokens_TokenHelper.insertTokens(tokens,i,newTokens2);
+					glsl_lex_TokenHelper.deleteTokens(tokens,i,functionCall.len);
+					glsl_lex_TokenHelper.insertTokens(tokens,i,newTokens2);
 					return newTokens2;
 				} catch( e ) {
 					if (e instanceof js__$Boot_HaxeError) e = e.val;
@@ -2761,7 +3301,7 @@ glsl_preprocess_Preprocessor.prototype = {
 				var func = ppMacro1[2];
 				var tmp4;
 				var content2 = func();
-				var newTokens5 = glsl_tokens_Tokenizer.tokenize(content2,function(warning2) {
+				var newTokens5 = glsl_lex_Tokenizer.tokenize(content2,function(warning2) {
 					throw new js__$Boot_HaxeError("" + warning2);
 				},function(error2) {
 					throw new js__$Boot_HaxeError("" + error2);
@@ -2775,8 +3315,8 @@ glsl_preprocess_Preprocessor.prototype = {
 				}
 				tmp4 = newTokens5;
 				var newTokens4 = tmp4;
-				glsl_tokens_TokenHelper.deleteTokens(tokens,i,1);
-				glsl_tokens_TokenHelper.insertTokens(tokens,i,newTokens4);
+				glsl_lex_TokenHelper.deleteTokens(tokens,i,1);
+				glsl_lex_TokenHelper.insertTokens(tokens,i,newTokens4);
 				return newTokens4;
 			case 3:
 				var requiredParameterCount = ppMacro1[3];
@@ -2796,7 +3336,7 @@ glsl_preprocess_Preprocessor.prototype = {
 					}
 					var tmp5;
 					var content3 = func1(functionCall1.args);
-					var newTokens7 = glsl_tokens_Tokenizer.tokenize(content3,function(warning3) {
+					var newTokens7 = glsl_lex_Tokenizer.tokenize(content3,function(warning3) {
 						throw new js__$Boot_HaxeError("" + warning3);
 					},function(error3) {
 						throw new js__$Boot_HaxeError("" + error3);
@@ -2810,8 +3350,8 @@ glsl_preprocess_Preprocessor.prototype = {
 					}
 					tmp5 = newTokens7;
 					var newTokens6 = tmp5;
-					glsl_tokens_TokenHelper.deleteTokens(tokens,i,functionCall1.len);
-					glsl_tokens_TokenHelper.insertTokens(tokens,i,newTokens6);
+					glsl_lex_TokenHelper.deleteTokens(tokens,i,functionCall1.len);
+					glsl_lex_TokenHelper.insertTokens(tokens,i,newTokens6);
 					return newTokens6;
 				} catch( e1 ) {
 					if (e1 instanceof js__$Boot_HaxeError) e1 = e1.val;
@@ -2830,18 +3370,18 @@ glsl_preprocess_Preprocessor.prototype = {
 	}
 	,readFunctionCall: function(tokens,start) {
 		var ident = tokens[start];
-		if(ident == null || !(HxOverrides.indexOf(glsl_tokens_TokenHelper.identifierTokens,ident.type,0) >= 0)) throw new js__$Boot_HaxeError("invalid function call");
+		if(ident == null || !(HxOverrides.indexOf(glsl_lex_TokenHelper.identifierTokenTypes,ident.type,0) >= 0)) throw new js__$Boot_HaxeError("invalid function call");
 		var args = [];
-		var j = glsl_tokens_TokenHelper.nextNonSkipTokenIndex(tokens,start);
+		var j = glsl_lex_TokenHelper.nextNonSkipTokenIndex(tokens,start);
 		if(j == -1) throw new js__$Boot_HaxeError("invalid function call");
 		var t = tokens[j];
-		if(Type.enumEq(t.type,glsl_tokens_TokenType.LEFT_PAREN)) {
+		if(Type.enumEq(t.type,glsl_lex_TokenType.LEFT_PAREN)) {
 			var argBuffer = [];
 			var level = 1;
 			do {
 				t = tokens[++j];
 				if(t == null) throw new js__$Boot_HaxeError("expecting ')'");
-				if(HxOverrides.indexOf(glsl_tokens_Tokenizer.skippableTypes,t.type,0) != -1) continue;
+				if(HxOverrides.indexOf(glsl_lex_Tokenizer.skippableTypes,t.type,0) != -1) continue;
 				var _g = t.type;
 				if(_g == null) throw new js__$Boot_HaxeError("" + Std.string(t) + " has no token type"); else switch(_g[1]) {
 				case 65:
@@ -2939,129 +3479,135 @@ var glsl_preprocess_PPError = { __ename__ : true, __constructs__ : ["Note","Warn
 glsl_preprocess_PPError.Note = function(msg,info) { var $x = ["Note",0,msg,info]; $x.__enum__ = glsl_preprocess_PPError; $x.toString = $estr; return $x; };
 glsl_preprocess_PPError.Warn = function(msg,info) { var $x = ["Warn",1,msg,info]; $x.__enum__ = glsl_preprocess_PPError; $x.toString = $estr; return $x; };
 glsl_preprocess_PPError.Error = function(msg,info) { var $x = ["Error",2,msg,info]; $x.__enum__ = glsl_preprocess_PPError; $x.toString = $estr; return $x; };
-var glsl_printer_NodePrinter = function() { };
-glsl_printer_NodePrinter.__name__ = true;
-glsl_printer_NodePrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_SyntaxPrinter = function() { };
+glsl_print_SyntaxPrinter.__name__ = true;
+glsl_print_SyntaxPrinter.print = function(n,indentWith,indentLevel) {
+	if(indentLevel == null) indentLevel = 0;
+	return glsl_print_NodePrinter.print(n,indentWith,indentLevel);
+};
+var glsl_print_NodePrinter = function() { };
+glsl_print_NodePrinter.__name__ = true;
+glsl_print_NodePrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var tmp;
 	var _g = glsl_NodeEnumHelper.toEnum(n);
 	if(_g == null) throw new js__$Boot_HaxeError("Node cannot be printed: " + Std.string(n)); else switch(_g[1]) {
 	case 0:
-		tmp = glsl_printer_RootPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_RootPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 1:
-		tmp = glsl_printer_TypeSpecifierPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_TypeSpecifierPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 2:
-		tmp = glsl_printer_StructSpecifierPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_StructSpecifierPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 3:
-		tmp = glsl_printer_StructFieldDeclarationPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_StructFieldDeclarationPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 4:
-		tmp = glsl_printer_StructDeclaratorPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_StructDeclaratorPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 5:
-		tmp = glsl_printer_ExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 6:
-		tmp = glsl_printer_IdentifierPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_IdentifierPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 7:
-		tmp = glsl_printer_PrimitivePrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_PrimitivePrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 8:
-		tmp = glsl_printer_BinaryExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_BinaryExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 9:
-		tmp = glsl_printer_UnaryExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_UnaryExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 10:
-		tmp = glsl_printer_SequenceExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_SequenceExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 11:
-		tmp = glsl_printer_ConditionalExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ConditionalExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 12:
-		tmp = glsl_printer_AssignmentExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_AssignmentExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 13:
-		tmp = glsl_printer_FieldSelectionExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_FieldSelectionExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 14:
-		tmp = glsl_printer_ArrayElementSelectionExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ArrayElementSelectionExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 15:
-		tmp = glsl_printer_FunctionCallPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_FunctionCallPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 16:
-		tmp = glsl_printer_ConstructorPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ConstructorPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 17:
-		tmp = glsl_printer_DeclarationPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_DeclarationPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 18:
-		tmp = glsl_printer_PrecisionDeclarationPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_PrecisionDeclarationPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 19:
-		tmp = glsl_printer_VariableDeclarationPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_VariableDeclarationPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 20:
-		tmp = glsl_printer_DeclaratorPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_DeclaratorPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 21:
-		tmp = glsl_printer_ParameterDeclarationPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ParameterDeclarationPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 22:
-		tmp = glsl_printer_FunctionDefinitionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_FunctionDefinitionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 23:
-		tmp = glsl_printer_FunctionPrototypePrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_FunctionPrototypePrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 24:
-		tmp = glsl_printer_FunctionHeaderPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_FunctionHeaderPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 25:
-		tmp = glsl_printer_StatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_StatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 26:
-		tmp = glsl_printer_CompoundStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_CompoundStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 27:
-		tmp = glsl_printer_DeclarationStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_DeclarationStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 28:
-		tmp = glsl_printer_ExpressionStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ExpressionStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 29:
-		tmp = glsl_printer_IterationStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_IterationStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 30:
-		tmp = glsl_printer_WhileStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_WhileStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 31:
-		tmp = glsl_printer_DoWhileStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_DoWhileStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 32:
-		tmp = glsl_printer_ForStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ForStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 33:
-		tmp = glsl_printer_IfStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_IfStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 34:
-		tmp = glsl_printer_JumpStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_JumpStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 35:
-		tmp = glsl_printer_ReturnStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ReturnStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	default:
 		throw new js__$Boot_HaxeError("Node cannot be printed: " + Std.string(n));
 	}
 	return tmp;
 };
-var glsl_printer_RootPrinter = function() { };
-glsl_printer_RootPrinter.__name__ = true;
-glsl_printer_RootPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_RootPrinter = function() { };
+glsl_print_RootPrinter.__name__ = true;
+glsl_print_RootPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
 	var str = "";
@@ -3070,7 +3616,7 @@ glsl_printer_RootPrinter.print = function(n,indentWith,indentLevel) {
 	while(_g1 < _g) {
 		var i = _g1++;
 		var d = n.declarations[i];
-		var unit = glsl_printer_DeclarationPrinter.print(d,indentWith,0);
+		var unit = glsl_print_DeclarationPrinter.print(d,indentWith,0);
 		var currentNodeEnum = glsl_NodeEnumHelper.toEnum(d);
 		var nextNodeEnum = glsl_NodeEnumHelper.toEnum(n.declarations[i + 1]);
 		if(pretty) {
@@ -3109,373 +3655,373 @@ glsl_printer_RootPrinter.print = function(n,indentWith,indentLevel) {
 		}
 		str += unit;
 	}
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_TypeSpecifierPrinter = function() { };
-glsl_printer_TypeSpecifierPrinter.__name__ = true;
-glsl_printer_TypeSpecifierPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_TypeSpecifierPrinter = function() { };
+glsl_print_TypeSpecifierPrinter.__name__ = true;
+glsl_print_TypeSpecifierPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	{
 		var _g = glsl_NodeEnumHelper.toEnum(n);
 		switch(_g[1]) {
 		case 2:
-			return glsl_printer_StructSpecifierPrinter.print(_g[2],indentWith,indentLevel);
+			return glsl_print_StructSpecifierPrinter.print(_g[2],indentWith,indentLevel);
 		default:
 		}
 	}
 	var str = "";
 	var qualifiers = [];
 	if(n.invariant) qualifiers.push("invariant");
-	if(n.storage != null) qualifiers.push(glsl_printer_StorageQualifierPrinter.print(n.storage));
-	if(n.precision != null) qualifiers.push(glsl_printer_PrecisionQualifierPrinter.print(n.precision));
-	if(n.dataType != null) qualifiers.push(glsl_printer_DataTypePrinter.print(n.dataType));
+	if(n.storage != null) qualifiers.push(glsl_print_StorageQualifierPrinter.print(n.storage));
+	if(n.precision != null) qualifiers.push(glsl_print_PrecisionQualifierPrinter.print(n.precision));
+	if(n.dataType != null) qualifiers.push(glsl_print_DataTypePrinter.print(n.dataType));
 	str += qualifiers.join(" ");
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_StructSpecifierPrinter = function() { };
-glsl_printer_StructSpecifierPrinter.__name__ = true;
-glsl_printer_StructSpecifierPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_StructSpecifierPrinter = function() { };
+glsl_print_StructSpecifierPrinter.__name__ = true;
+glsl_print_StructSpecifierPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
 	var str = "";
 	var qualifiers = [];
 	if(n.invariant) qualifiers.push("invariant");
-	if(n.storage != null) qualifiers.push(glsl_printer_StorageQualifierPrinter.print(n.storage));
-	if(n.precision != null) qualifiers.push(glsl_printer_PrecisionQualifierPrinter.print(n.precision));
+	if(n.storage != null) qualifiers.push(glsl_print_StorageQualifierPrinter.print(n.storage));
+	if(n.precision != null) qualifiers.push(glsl_print_PrecisionQualifierPrinter.print(n.precision));
 	str += qualifiers.join(" ") + (qualifiers.length > 0?" ":"");
 	var name = n.name != null?n.name:"";
 	str += "struct " + name + "{" + (pretty?"\n":"");
 	str += n.fieldDeclarations.map(function(fd) {
-		return glsl_printer_StructFieldDeclarationPrinter.print(fd,indentWith,1);
+		return glsl_print_StructFieldDeclarationPrinter.print(fd,indentWith,1);
 	}).join(pretty?"\n":"");
 	str += (pretty?"\n":"") + "}";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_StructFieldDeclarationPrinter = function() { };
-glsl_printer_StructFieldDeclarationPrinter.__name__ = true;
-glsl_printer_StructFieldDeclarationPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_StructFieldDeclarationPrinter = function() { };
+glsl_print_StructFieldDeclarationPrinter.__name__ = true;
+glsl_print_StructFieldDeclarationPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
-	var str = glsl_printer_TypeSpecifierPrinter.print(n.typeSpecifier,indentWith,0) + " ";
+	var str = glsl_print_TypeSpecifierPrinter.print(n.typeSpecifier,indentWith,0) + " ";
 	str += n.declarators.map(function(dr) {
-		return glsl_printer_StructDeclaratorPrinter.print(dr,indentWith);
+		return glsl_print_StructDeclaratorPrinter.print(dr,indentWith);
 	}).join(pretty?", ":",");
 	str += ";";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_StructDeclaratorPrinter = function() { };
-glsl_printer_StructDeclaratorPrinter.__name__ = true;
-glsl_printer_StructDeclaratorPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_StructDeclaratorPrinter = function() { };
+glsl_print_StructDeclaratorPrinter.__name__ = true;
+glsl_print_StructDeclaratorPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
-	var str = n.name + (n.arraySizeExpression != null?"[" + glsl_printer_ExpressionPrinter.print(n.arraySizeExpression,indentWith,0) + "]":"");
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	var str = n.name + (n.arraySizeExpression != null?"[" + glsl_print_ExpressionPrinter.print(n.arraySizeExpression,indentWith,0) + "]":"");
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_ExpressionPrinter = function() { };
-glsl_printer_ExpressionPrinter.__name__ = true;
-glsl_printer_ExpressionPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_ExpressionPrinter = function() { };
+glsl_print_ExpressionPrinter.__name__ = true;
+glsl_print_ExpressionPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var tmp;
 	var _g = glsl_NodeEnumHelper.toEnum(n);
 	if(_g == null) throw new js__$Boot_HaxeError("Expression cannot be printed: " + Std.string(n)); else switch(_g[1]) {
 	case 6:
-		tmp = glsl_printer_IdentifierPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_IdentifierPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 7:
-		tmp = glsl_printer_PrimitivePrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_PrimitivePrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 8:
-		tmp = glsl_printer_BinaryExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_BinaryExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 9:
-		tmp = glsl_printer_UnaryExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_UnaryExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 10:
-		tmp = glsl_printer_SequenceExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_SequenceExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 11:
-		tmp = glsl_printer_ConditionalExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ConditionalExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 12:
-		tmp = glsl_printer_AssignmentExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_AssignmentExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 13:
-		tmp = glsl_printer_FieldSelectionExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_FieldSelectionExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 14:
-		tmp = glsl_printer_ArrayElementSelectionExpressionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ArrayElementSelectionExpressionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 15:
-		tmp = glsl_printer_FunctionCallPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_FunctionCallPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 16:
-		tmp = glsl_printer_ConstructorPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ConstructorPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	default:
 		throw new js__$Boot_HaxeError("Expression cannot be printed: " + Std.string(n));
 	}
 	return tmp;
 };
-var glsl_printer_IdentifierPrinter = function() { };
-glsl_printer_IdentifierPrinter.__name__ = true;
-glsl_printer_IdentifierPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_IdentifierPrinter = function() { };
+glsl_print_IdentifierPrinter.__name__ = true;
+glsl_print_IdentifierPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var str = n.name;
 	if(n.enclosed) str = "(" + str + ")";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_PrimitivePrinter = function() { };
-glsl_printer_PrimitivePrinter.__name__ = true;
-glsl_printer_PrimitivePrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_PrimitivePrinter = function() { };
+glsl_print_PrimitivePrinter.__name__ = true;
+glsl_print_PrimitivePrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var str = n.raw;
 	if(n.enclosed) str = "(" + str + ")";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_BinaryExpressionPrinter = function() { };
-glsl_printer_BinaryExpressionPrinter.__name__ = true;
-glsl_printer_BinaryExpressionPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_BinaryExpressionPrinter = function() { };
+glsl_print_BinaryExpressionPrinter.__name__ = true;
+glsl_print_BinaryExpressionPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
 	var str = "";
-	str += glsl_printer_ExpressionPrinter.print(n.left,indentWith);
-	str += pretty?" " + glsl_printer_BinaryOperatorPrinter.print(n.op) + " ":glsl_printer_BinaryOperatorPrinter.print(n.op);
-	str += glsl_printer_ExpressionPrinter.print(n.right,indentWith);
+	str += glsl_print_ExpressionPrinter.print(n.left,indentWith);
+	str += pretty?" " + glsl_print_BinaryOperatorPrinter.print(n.op) + " ":glsl_print_BinaryOperatorPrinter.print(n.op);
+	str += glsl_print_ExpressionPrinter.print(n.right,indentWith);
 	if(n.enclosed) str = "(" + str + ")";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_UnaryExpressionPrinter = function() { };
-glsl_printer_UnaryExpressionPrinter.__name__ = true;
-glsl_printer_UnaryExpressionPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_UnaryExpressionPrinter = function() { };
+glsl_print_UnaryExpressionPrinter.__name__ = true;
+glsl_print_UnaryExpressionPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var str = "";
-	if(n.isPrefix) str += glsl_printer_UnaryOperatorPrinter.print(n.op) + glsl_printer_ExpressionPrinter.print(n.arg,indentWith); else str += glsl_printer_ExpressionPrinter.print(n.arg,indentWith) + glsl_printer_UnaryOperatorPrinter.print(n.op);
+	if(n.isPrefix) str += glsl_print_UnaryOperatorPrinter.print(n.op) + glsl_print_ExpressionPrinter.print(n.arg,indentWith); else str += glsl_print_ExpressionPrinter.print(n.arg,indentWith) + glsl_print_UnaryOperatorPrinter.print(n.op);
 	if(n.enclosed) str = "(" + str + ")";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_SequenceExpressionPrinter = function() { };
-glsl_printer_SequenceExpressionPrinter.__name__ = true;
-glsl_printer_SequenceExpressionPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_SequenceExpressionPrinter = function() { };
+glsl_print_SequenceExpressionPrinter.__name__ = true;
+glsl_print_SequenceExpressionPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
 	var str = n.expressions.map(function(e) {
-		return glsl_printer_ExpressionPrinter.print(e,indentWith);
+		return glsl_print_ExpressionPrinter.print(e,indentWith);
 	}).join(pretty?", ":",");
 	str = "(" + str + ")";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_ConditionalExpressionPrinter = function() { };
-glsl_printer_ConditionalExpressionPrinter.__name__ = true;
-glsl_printer_ConditionalExpressionPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_ConditionalExpressionPrinter = function() { };
+glsl_print_ConditionalExpressionPrinter.__name__ = true;
+glsl_print_ConditionalExpressionPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
-	var str = glsl_printer_ExpressionPrinter.print(n.test,indentWith) + (pretty?" ? ":"?") + glsl_printer_ExpressionPrinter.print(n.consequent,indentWith) + (pretty?" : ":":") + glsl_printer_ExpressionPrinter.print(n.alternate,indentWith);
+	var str = glsl_print_ExpressionPrinter.print(n.test,indentWith) + (pretty?" ? ":"?") + glsl_print_ExpressionPrinter.print(n.consequent,indentWith) + (pretty?" : ":":") + glsl_print_ExpressionPrinter.print(n.alternate,indentWith);
 	if(n.enclosed) str = "(" + str + ")";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_AssignmentExpressionPrinter = function() { };
-glsl_printer_AssignmentExpressionPrinter.__name__ = true;
-glsl_printer_AssignmentExpressionPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_AssignmentExpressionPrinter = function() { };
+glsl_print_AssignmentExpressionPrinter.__name__ = true;
+glsl_print_AssignmentExpressionPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
 	var str = "";
-	str += glsl_printer_ExpressionPrinter.print(n.left,indentWith);
-	str += pretty?" " + glsl_printer_AssignmentOperatorPrinter.print(n.op) + " ":glsl_printer_AssignmentOperatorPrinter.print(n.op);
-	str += glsl_printer_ExpressionPrinter.print(n.right,indentWith);
+	str += glsl_print_ExpressionPrinter.print(n.left,indentWith);
+	str += pretty?" " + glsl_print_AssignmentOperatorPrinter.print(n.op) + " ":glsl_print_AssignmentOperatorPrinter.print(n.op);
+	str += glsl_print_ExpressionPrinter.print(n.right,indentWith);
 	if(n.enclosed) str = "(" + str + ")";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_FieldSelectionExpressionPrinter = function() { };
-glsl_printer_FieldSelectionExpressionPrinter.__name__ = true;
-glsl_printer_FieldSelectionExpressionPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_FieldSelectionExpressionPrinter = function() { };
+glsl_print_FieldSelectionExpressionPrinter.__name__ = true;
+glsl_print_FieldSelectionExpressionPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
-	var str = glsl_printer_ExpressionPrinter.print(n.left,indentWith) + "." + glsl_printer_IdentifierPrinter.print(n.field,indentWith);
+	var str = glsl_print_ExpressionPrinter.print(n.left,indentWith) + "." + glsl_print_IdentifierPrinter.print(n.field,indentWith);
 	if(n.enclosed) str = "(" + str + ")";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_ArrayElementSelectionExpressionPrinter = function() { };
-glsl_printer_ArrayElementSelectionExpressionPrinter.__name__ = true;
-glsl_printer_ArrayElementSelectionExpressionPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_ArrayElementSelectionExpressionPrinter = function() { };
+glsl_print_ArrayElementSelectionExpressionPrinter.__name__ = true;
+glsl_print_ArrayElementSelectionExpressionPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
-	var str = glsl_printer_ExpressionPrinter.print(n.left,indentWith) + "[" + glsl_printer_ExpressionPrinter.print(n.arrayIndexExpression,indentWith) + "]";
+	var str = glsl_print_ExpressionPrinter.print(n.left,indentWith) + "[" + glsl_print_ExpressionPrinter.print(n.arrayIndexExpression,indentWith) + "]";
 	if(n.enclosed) str = "(" + str + ")";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_FunctionCallPrinter = function() { };
-glsl_printer_FunctionCallPrinter.__name__ = true;
-glsl_printer_FunctionCallPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_FunctionCallPrinter = function() { };
+glsl_print_FunctionCallPrinter.__name__ = true;
+glsl_print_FunctionCallPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	{
 		var _g = glsl_NodeEnumHelper.toEnum(n);
 		switch(_g[1]) {
 		case 16:
-			return glsl_printer_ConstructorPrinter.print(_g[2],indentWith,indentLevel);
+			return glsl_print_ConstructorPrinter.print(_g[2],indentWith,indentLevel);
 		default:
 		}
 	}
 	var pretty = indentWith != null;
 	var str = n.name + "(";
 	str += n.parameters.map(function(e) {
-		return glsl_printer_ExpressionPrinter.print(e,indentWith);
+		return glsl_print_ExpressionPrinter.print(e,indentWith);
 	}).join(pretty?", ":",");
 	str += ")";
 	if(n.enclosed) str = "(" + str + ")";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_ConstructorPrinter = function() { };
-glsl_printer_ConstructorPrinter.__name__ = true;
-glsl_printer_ConstructorPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_ConstructorPrinter = function() { };
+glsl_print_ConstructorPrinter.__name__ = true;
+glsl_print_ConstructorPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
-	var str = glsl_printer_DataTypePrinter.print(n.dataType) + "(";
+	var str = glsl_print_DataTypePrinter.print(n.dataType) + "(";
 	str += n.parameters.map(function(e) {
-		return glsl_printer_ExpressionPrinter.print(e,indentWith);
+		return glsl_print_ExpressionPrinter.print(e,indentWith);
 	}).join(pretty?", ":",");
 	str += ")";
 	if(n.enclosed) str = "(" + str + ")";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_DeclarationPrinter = function() { };
-glsl_printer_DeclarationPrinter.__name__ = true;
-glsl_printer_DeclarationPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_DeclarationPrinter = function() { };
+glsl_print_DeclarationPrinter.__name__ = true;
+glsl_print_DeclarationPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var tmp;
 	var _g = glsl_NodeEnumHelper.toEnum(n);
 	if(_g == null) throw new js__$Boot_HaxeError("Declaration cannot be printed: " + Std.string(n)); else switch(_g[1]) {
 	case 18:
-		tmp = glsl_printer_PrecisionDeclarationPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_PrecisionDeclarationPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 19:
-		tmp = glsl_printer_VariableDeclarationPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_VariableDeclarationPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 23:
-		tmp = glsl_printer_FunctionPrototypePrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_FunctionPrototypePrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 22:
-		tmp = glsl_printer_FunctionDefinitionPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_FunctionDefinitionPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 36:
-		tmp = glsl_printer_PreprocessorDirectivePrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_PreprocessorDirectivePrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	default:
 		throw new js__$Boot_HaxeError("Declaration cannot be printed: " + Std.string(n));
 	}
 	return tmp;
 };
-var glsl_printer_PrecisionDeclarationPrinter = function() { };
-glsl_printer_PrecisionDeclarationPrinter.__name__ = true;
-glsl_printer_PrecisionDeclarationPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_PrecisionDeclarationPrinter = function() { };
+glsl_print_PrecisionDeclarationPrinter.__name__ = true;
+glsl_print_PrecisionDeclarationPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
-	var str = "precision " + glsl_printer_PrecisionQualifierPrinter.print(n.precision) + " " + glsl_printer_DataTypePrinter.print(n.dataType) + ";";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	var str = "precision " + glsl_print_PrecisionQualifierPrinter.print(n.precision) + " " + glsl_print_DataTypePrinter.print(n.dataType) + ";";
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_VariableDeclarationPrinter = function() { };
-glsl_printer_VariableDeclarationPrinter.__name__ = true;
-glsl_printer_VariableDeclarationPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_VariableDeclarationPrinter = function() { };
+glsl_print_VariableDeclarationPrinter.__name__ = true;
+glsl_print_VariableDeclarationPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
-	var str = glsl_printer_TypeSpecifierPrinter.print(n.typeSpecifier,indentWith,0) + (n.declarators.length > 0?" ":"");
+	var str = glsl_print_TypeSpecifierPrinter.print(n.typeSpecifier,indentWith,0) + (n.declarators.length > 0?" ":"");
 	str += n.declarators.map(function(dr) {
-		return glsl_printer_DeclaratorPrinter.print(dr,indentWith);
+		return glsl_print_DeclaratorPrinter.print(dr,indentWith);
 	}).join(pretty?", ":",");
 	str += ";";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_DeclaratorPrinter = function() { };
-glsl_printer_DeclaratorPrinter.__name__ = true;
-glsl_printer_DeclaratorPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_DeclaratorPrinter = function() { };
+glsl_print_DeclaratorPrinter.__name__ = true;
+glsl_print_DeclaratorPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
 	var str = "";
-	str += (n.name != null?n.name:"") + (n.arraySizeExpression != null?"[" + glsl_printer_ExpressionPrinter.print(n.arraySizeExpression,indentWith,0) + "]":"") + (n.initializer != null?(pretty?" = ":"=") + glsl_printer_ExpressionPrinter.print(n.initializer,indentWith,0):"");
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	str += (n.name != null?n.name:"") + (n.arraySizeExpression != null?"[" + glsl_print_ExpressionPrinter.print(n.arraySizeExpression,indentWith,0) + "]":"") + (n.initializer != null?(pretty?" = ":"=") + glsl_print_ExpressionPrinter.print(n.initializer,indentWith,0):"");
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_ParameterDeclarationPrinter = function() { };
-glsl_printer_ParameterDeclarationPrinter.__name__ = true;
-glsl_printer_ParameterDeclarationPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_ParameterDeclarationPrinter = function() { };
+glsl_print_ParameterDeclarationPrinter.__name__ = true;
+glsl_print_ParameterDeclarationPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var parts = [];
-	if(n.parameterQualifier != null) parts.push(glsl_printer_ParameterQualifierPrinter.print(n.parameterQualifier));
-	if(n.typeSpecifier != null) parts.push(glsl_printer_TypeSpecifierPrinter.print(n.typeSpecifier,indentWith));
+	if(n.parameterQualifier != null) parts.push(glsl_print_ParameterQualifierPrinter.print(n.parameterQualifier));
+	if(n.typeSpecifier != null) parts.push(glsl_print_TypeSpecifierPrinter.print(n.typeSpecifier,indentWith));
 	if(n.name != null) parts.push(n.name);
-	if(n.arraySizeExpression != null) parts.push("[" + glsl_printer_ExpressionPrinter.print(n.arraySizeExpression,indentWith) + "]");
+	if(n.arraySizeExpression != null) parts.push("[" + glsl_print_ExpressionPrinter.print(n.arraySizeExpression,indentWith) + "]");
 	var str = parts.join(" ");
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_FunctionDefinitionPrinter = function() { };
-glsl_printer_FunctionDefinitionPrinter.__name__ = true;
-glsl_printer_FunctionDefinitionPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_FunctionDefinitionPrinter = function() { };
+glsl_print_FunctionDefinitionPrinter.__name__ = true;
+glsl_print_FunctionDefinitionPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
-	var str = glsl_printer_FunctionHeaderPrinter.print(n.header,indentWith);
-	str += glsl_printer_CompoundStatementPrinter.print(n.body,indentWith);
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	var str = glsl_print_FunctionHeaderPrinter.print(n.header,indentWith);
+	str += glsl_print_CompoundStatementPrinter.print(n.body,indentWith);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_FunctionPrototypePrinter = function() { };
-glsl_printer_FunctionPrototypePrinter.__name__ = true;
-glsl_printer_FunctionPrototypePrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_FunctionPrototypePrinter = function() { };
+glsl_print_FunctionPrototypePrinter.__name__ = true;
+glsl_print_FunctionPrototypePrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
-	var str = glsl_printer_FunctionHeaderPrinter.print(n.header,indentWith) + ";";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	var str = glsl_print_FunctionHeaderPrinter.print(n.header,indentWith) + ";";
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_FunctionHeaderPrinter = function() { };
-glsl_printer_FunctionHeaderPrinter.__name__ = true;
-glsl_printer_FunctionHeaderPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_FunctionHeaderPrinter = function() { };
+glsl_print_FunctionHeaderPrinter.__name__ = true;
+glsl_print_FunctionHeaderPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
-	var str = glsl_printer_TypeSpecifierPrinter.print(n.returnType,indentWith) + " " + n.name + "(";
+	var str = glsl_print_TypeSpecifierPrinter.print(n.returnType,indentWith) + " " + n.name + "(";
 	str += n.parameters.map(function(p) {
-		return glsl_printer_ParameterDeclarationPrinter.print(p,indentWith);
+		return glsl_print_ParameterDeclarationPrinter.print(p,indentWith);
 	}).join(pretty?", ":",");
 	str += ")";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_StatementPrinter = function() { };
-glsl_printer_StatementPrinter.__name__ = true;
-glsl_printer_StatementPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_StatementPrinter = function() { };
+glsl_print_StatementPrinter.__name__ = true;
+glsl_print_StatementPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var tmp;
 	var _g = glsl_NodeEnumHelper.toEnum(n);
 	if(_g == null) throw new js__$Boot_HaxeError("Statement cannot be printed: " + Std.string(n)); else switch(_g[1]) {
 	case 26:
-		tmp = glsl_printer_CompoundStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_CompoundStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 27:
-		tmp = glsl_printer_DeclarationStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_DeclarationStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 28:
-		tmp = glsl_printer_ExpressionStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ExpressionStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 29:
-		tmp = glsl_printer_IterationStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_IterationStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 30:
-		tmp = glsl_printer_WhileStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_WhileStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 31:
-		tmp = glsl_printer_DoWhileStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_DoWhileStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 32:
-		tmp = glsl_printer_ForStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ForStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 33:
-		tmp = glsl_printer_IfStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_IfStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 34:
-		tmp = glsl_printer_JumpStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_JumpStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 35:
-		tmp = glsl_printer_ReturnStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ReturnStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 36:
-		tmp = glsl_printer_PreprocessorDirectivePrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_PreprocessorDirectivePrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	default:
 		throw new js__$Boot_HaxeError("Statement cannot be printed: " + Std.string(n));
 	}
 	return tmp;
 };
-var glsl_printer_CompoundStatementPrinter = function() { };
-glsl_printer_CompoundStatementPrinter.__name__ = true;
-glsl_printer_CompoundStatementPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_CompoundStatementPrinter = function() { };
+glsl_print_CompoundStatementPrinter.__name__ = true;
+glsl_print_CompoundStatementPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
 	var str = "";
@@ -3485,7 +4031,7 @@ glsl_printer_CompoundStatementPrinter.print = function(n,indentWith,indentLevel)
 	while(_g1 < _g) {
 		var i = _g1++;
 		var smt = n.statementList[i];
-		var smtStr = glsl_printer_StatementPrinter.print(smt,indentWith,1);
+		var smtStr = glsl_print_StatementPrinter.print(smt,indentWith,1);
 		var currentNodeEnum = glsl_NodeEnumHelper.toEnum(smt);
 		var nextNodeEnum = glsl_NodeEnumHelper.toEnum(n.statementList[i + 1]);
 		if(pretty) {
@@ -3521,26 +4067,26 @@ glsl_printer_CompoundStatementPrinter.print = function(n,indentWith,indentLevel)
 		str += smtStr;
 	}
 	str += (pretty?"\n":"") + "}";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_DeclarationStatementPrinter = function() { };
-glsl_printer_DeclarationStatementPrinter.__name__ = true;
-glsl_printer_DeclarationStatementPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_DeclarationStatementPrinter = function() { };
+glsl_print_DeclarationStatementPrinter.__name__ = true;
+glsl_print_DeclarationStatementPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
-	var str = glsl_printer_DeclarationPrinter.print(n.declaration,indentWith);
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	var str = glsl_print_DeclarationPrinter.print(n.declaration,indentWith);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_ExpressionStatementPrinter = function() { };
-glsl_printer_ExpressionStatementPrinter.__name__ = true;
-glsl_printer_ExpressionStatementPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_ExpressionStatementPrinter = function() { };
+glsl_print_ExpressionStatementPrinter.__name__ = true;
+glsl_print_ExpressionStatementPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
-	var str = n.expression != null?glsl_printer_ExpressionPrinter.print(n.expression,indentWith):"";
+	var str = n.expression != null?glsl_print_ExpressionPrinter.print(n.expression,indentWith):"";
 	str += ";";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_IfStatementPrinter = function() { };
-glsl_printer_IfStatementPrinter.__name__ = true;
-glsl_printer_IfStatementPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_IfStatementPrinter = function() { };
+glsl_print_IfStatementPrinter.__name__ = true;
+glsl_print_IfStatementPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
 	var tmp;
@@ -3553,9 +4099,9 @@ glsl_printer_IfStatementPrinter.print = function(n,indentWith,indentLevel) {
 		tmp = false;
 	}
 	var compoundConsequent = tmp;
-	var str = "if(" + glsl_printer_ExpressionPrinter.print(n.test,indentWith) + ")";
+	var str = "if(" + glsl_print_ExpressionPrinter.print(n.test,indentWith) + ")";
 	str += pretty && !compoundConsequent?" ":"";
-	str += glsl_printer_StatementPrinter.print(n.consequent,indentWith);
+	str += glsl_print_StatementPrinter.print(n.consequent,indentWith);
 	if(n.alternate != null) {
 		str += pretty && !compoundConsequent?"\n":"";
 		var tmp1;
@@ -3570,68 +4116,68 @@ glsl_printer_IfStatementPrinter.print = function(n,indentWith,indentLevel) {
 		var compoundAlternate = tmp1;
 		str += "else";
 		str += !compoundAlternate?" ":"";
-		str += glsl_printer_StatementPrinter.print(n.alternate,indentWith);
+		str += glsl_print_StatementPrinter.print(n.alternate,indentWith);
 	}
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_JumpStatementPrinter = function() { };
-glsl_printer_JumpStatementPrinter.__name__ = true;
-glsl_printer_JumpStatementPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_JumpStatementPrinter = function() { };
+glsl_print_JumpStatementPrinter.__name__ = true;
+glsl_print_JumpStatementPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	{
 		var _g = glsl_NodeEnumHelper.toEnum(n);
 		switch(_g[1]) {
 		case 35:
-			glsl_printer_ReturnStatementPrinter.print(_g[2],indentWith,indentLevel);
+			glsl_print_ReturnStatementPrinter.print(_g[2],indentWith,indentLevel);
 			break;
 		default:
 		}
 	}
-	var str = glsl_printer_JumpModePrinter.print(n.mode);
+	var str = glsl_print_JumpModePrinter.print(n.mode);
 	str += ";";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_ReturnStatementPrinter = function() { };
-glsl_printer_ReturnStatementPrinter.__name__ = true;
-glsl_printer_ReturnStatementPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_ReturnStatementPrinter = function() { };
+glsl_print_ReturnStatementPrinter.__name__ = true;
+glsl_print_ReturnStatementPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
-	var str = glsl_printer_JumpModePrinter.print(n.mode);
-	if(n.returnExpression != null) str += " " + glsl_printer_ExpressionPrinter.print(n.returnExpression,indentWith);
+	var str = glsl_print_JumpModePrinter.print(n.mode);
+	if(n.returnExpression != null) str += " " + glsl_print_ExpressionPrinter.print(n.returnExpression,indentWith);
 	str += ";";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_IterationStatementPrinter = function() { };
-glsl_printer_IterationStatementPrinter.__name__ = true;
-glsl_printer_IterationStatementPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_IterationStatementPrinter = function() { };
+glsl_print_IterationStatementPrinter.__name__ = true;
+glsl_print_IterationStatementPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var tmp;
 	var _g = glsl_NodeEnumHelper.toEnum(n);
 	if(_g == null) throw new js__$Boot_HaxeError("IterationStatement cannot be printed: " + Std.string(n)); else switch(_g[1]) {
 	case 30:
-		tmp = glsl_printer_WhileStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_WhileStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 31:
-		tmp = glsl_printer_DoWhileStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_DoWhileStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	case 32:
-		tmp = glsl_printer_ForStatementPrinter.print(_g[2],indentWith,indentLevel);
+		tmp = glsl_print_ForStatementPrinter.print(_g[2],indentWith,indentLevel);
 		break;
 	default:
 		throw new js__$Boot_HaxeError("IterationStatement cannot be printed: " + Std.string(n));
 	}
 	return tmp;
 };
-var glsl_printer_WhileStatementPrinter = function() { };
-glsl_printer_WhileStatementPrinter.__name__ = true;
-glsl_printer_WhileStatementPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_WhileStatementPrinter = function() { };
+glsl_print_WhileStatementPrinter.__name__ = true;
+glsl_print_WhileStatementPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
-	var str = "while(" + glsl_printer_ExpressionPrinter.print(n.test,indentWith) + ")";
-	str += glsl_printer_StatementPrinter.print(n.body,indentWith);
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	var str = "while(" + glsl_print_ExpressionPrinter.print(n.test,indentWith) + ")";
+	str += glsl_print_StatementPrinter.print(n.body,indentWith);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_DoWhileStatementPrinter = function() { };
-glsl_printer_DoWhileStatementPrinter.__name__ = true;
-glsl_printer_DoWhileStatementPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_DoWhileStatementPrinter = function() { };
+glsl_print_DoWhileStatementPrinter.__name__ = true;
+glsl_print_DoWhileStatementPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
 	var tmp;
@@ -3646,32 +4192,32 @@ glsl_printer_DoWhileStatementPrinter.print = function(n,indentWith,indentLevel) 
 	var compoundBody = tmp;
 	var str = "do";
 	str += !compoundBody?" ":"";
-	str += glsl_printer_StatementPrinter.print(n.body,indentWith);
+	str += glsl_print_StatementPrinter.print(n.body,indentWith);
 	str += !compoundBody && pretty?"\n":"";
-	str += "while(" + glsl_printer_ExpressionPrinter.print(n.test,indentWith) + ")";
+	str += "while(" + glsl_print_ExpressionPrinter.print(n.test,indentWith) + ")";
 	str += ";";
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_ForStatementPrinter = function() { };
-glsl_printer_ForStatementPrinter.__name__ = true;
-glsl_printer_ForStatementPrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_ForStatementPrinter = function() { };
+glsl_print_ForStatementPrinter.__name__ = true;
+glsl_print_ForStatementPrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var pretty = indentWith != null;
 	var str = "for";
-	str += "(" + glsl_printer_StatementPrinter.print(n.init,indentWith) + (pretty?" ":"") + glsl_printer_ExpressionPrinter.print(n.test,indentWith) + (pretty?"; ":";") + glsl_printer_ExpressionPrinter.print(n.update,indentWith) + ")";
-	str += glsl_printer_StatementPrinter.print(n.body,indentWith);
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	str += "(" + (n.init != null?glsl_print_StatementPrinter.print(n.init,indentWith):"") + (pretty?" ":"") + (n.test != null?glsl_print_ExpressionPrinter.print(n.test,indentWith):"") + (pretty?"; ":";") + (n.update != null?glsl_print_ExpressionPrinter.print(n.update,indentWith):"") + ")";
+	str += glsl_print_StatementPrinter.print(n.body,indentWith);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_PreprocessorDirectivePrinter = function() { };
-glsl_printer_PreprocessorDirectivePrinter.__name__ = true;
-glsl_printer_PreprocessorDirectivePrinter.print = function(n,indentWith,indentLevel) {
+var glsl_print_PreprocessorDirectivePrinter = function() { };
+glsl_print_PreprocessorDirectivePrinter.__name__ = true;
+glsl_print_PreprocessorDirectivePrinter.print = function(n,indentWith,indentLevel) {
 	if(indentLevel == null) indentLevel = 0;
 	var str = n.content;
-	return glsl_printer_Utils.indent(str,indentWith,indentLevel);
+	return glsl_print_Utils.indent(str,indentWith,indentLevel);
 };
-var glsl_printer_BinaryOperatorPrinter = function() { };
-glsl_printer_BinaryOperatorPrinter.__name__ = true;
-glsl_printer_BinaryOperatorPrinter.print = function(e) {
+var glsl_print_BinaryOperatorPrinter = function() { };
+glsl_print_BinaryOperatorPrinter.__name__ = true;
+glsl_print_BinaryOperatorPrinter.print = function(e) {
 	var tmp;
 	if(e == null) tmp = ""; else switch(e[1]) {
 	case 5:
@@ -3734,9 +4280,9 @@ glsl_printer_BinaryOperatorPrinter.print = function(e) {
 	}
 	return tmp;
 };
-var glsl_printer_UnaryOperatorPrinter = function() { };
-glsl_printer_UnaryOperatorPrinter.__name__ = true;
-glsl_printer_UnaryOperatorPrinter.print = function(e) {
+var glsl_print_UnaryOperatorPrinter = function() { };
+glsl_print_UnaryOperatorPrinter.__name__ = true;
+glsl_print_UnaryOperatorPrinter.print = function(e) {
 	var tmp;
 	if(e == null) tmp = ""; else switch(e[1]) {
 	case 0:
@@ -3760,9 +4306,9 @@ glsl_printer_UnaryOperatorPrinter.print = function(e) {
 	}
 	return tmp;
 };
-var glsl_printer_AssignmentOperatorPrinter = function() { };
-glsl_printer_AssignmentOperatorPrinter.__name__ = true;
-glsl_printer_AssignmentOperatorPrinter.print = function(e) {
+var glsl_print_AssignmentOperatorPrinter = function() { };
+glsl_print_AssignmentOperatorPrinter.__name__ = true;
+glsl_print_AssignmentOperatorPrinter.print = function(e) {
 	var tmp;
 	if(e == null) tmp = ""; else switch(e[1]) {
 	case 1:
@@ -3801,9 +4347,9 @@ glsl_printer_AssignmentOperatorPrinter.print = function(e) {
 	}
 	return tmp;
 };
-var glsl_printer_PrecisionQualifierPrinter = function() { };
-glsl_printer_PrecisionQualifierPrinter.__name__ = true;
-glsl_printer_PrecisionQualifierPrinter.print = function(e) {
+var glsl_print_PrecisionQualifierPrinter = function() { };
+glsl_print_PrecisionQualifierPrinter.__name__ = true;
+glsl_print_PrecisionQualifierPrinter.print = function(e) {
 	var tmp;
 	if(e == null) tmp = ""; else switch(e[1]) {
 	case 0:
@@ -3818,9 +4364,9 @@ glsl_printer_PrecisionQualifierPrinter.print = function(e) {
 	}
 	return tmp;
 };
-var glsl_printer_JumpModePrinter = function() { };
-glsl_printer_JumpModePrinter.__name__ = true;
-glsl_printer_JumpModePrinter.print = function(e) {
+var glsl_print_JumpModePrinter = function() { };
+glsl_print_JumpModePrinter.__name__ = true;
+glsl_print_JumpModePrinter.print = function(e) {
 	var tmp;
 	if(e == null) tmp = ""; else switch(e[1]) {
 	case 1:
@@ -3838,9 +4384,9 @@ glsl_printer_JumpModePrinter.print = function(e) {
 	}
 	return tmp;
 };
-var glsl_printer_DataTypePrinter = function() { };
-glsl_printer_DataTypePrinter.__name__ = true;
-glsl_printer_DataTypePrinter.print = function(e) {
+var glsl_print_DataTypePrinter = function() { };
+glsl_print_DataTypePrinter.__name__ = true;
+glsl_print_DataTypePrinter.print = function(e) {
 	var tmp;
 	if(e == null) tmp = ""; else switch(e[1]) {
 	case 0:
@@ -3903,9 +4449,9 @@ glsl_printer_DataTypePrinter.print = function(e) {
 	}
 	return tmp;
 };
-var glsl_printer_ParameterQualifierPrinter = function() { };
-glsl_printer_ParameterQualifierPrinter.__name__ = true;
-glsl_printer_ParameterQualifierPrinter.print = function(e) {
+var glsl_print_ParameterQualifierPrinter = function() { };
+glsl_print_ParameterQualifierPrinter.__name__ = true;
+glsl_print_ParameterQualifierPrinter.print = function(e) {
 	var tmp;
 	if(e == null) tmp = ""; else switch(e[1]) {
 	case 0:
@@ -3920,9 +4466,9 @@ glsl_printer_ParameterQualifierPrinter.print = function(e) {
 	}
 	return tmp;
 };
-var glsl_printer_StorageQualifierPrinter = function() { };
-glsl_printer_StorageQualifierPrinter.__name__ = true;
-glsl_printer_StorageQualifierPrinter.print = function(e) {
+var glsl_print_StorageQualifierPrinter = function() { };
+glsl_print_StorageQualifierPrinter.__name__ = true;
+glsl_print_StorageQualifierPrinter.print = function(e) {
 	var tmp;
 	if(e == null) tmp = ""; else switch(e[1]) {
 	case 1:
@@ -3940,26 +4486,26 @@ glsl_printer_StorageQualifierPrinter.print = function(e) {
 	}
 	return tmp;
 };
-var glsl_printer_TokenArrayPrinter = function() { };
-glsl_printer_TokenArrayPrinter.__name__ = true;
-glsl_printer_TokenArrayPrinter.print = function(tokens) {
+var glsl_print_TokenPrinter = function() { };
+glsl_print_TokenPrinter.__name__ = true;
+glsl_print_TokenPrinter.print = function(token) {
+	return token.data;
+};
+var glsl_print_TokenArrayPrinter = function() { };
+glsl_print_TokenArrayPrinter.__name__ = true;
+glsl_print_TokenArrayPrinter.print = function(tokens) {
 	var str = "";
 	var _g = 0;
 	while(_g < tokens.length) {
 		var t = tokens[_g];
 		++_g;
-		str += glsl_printer_TokenPrinter.print(t);
+		str += glsl_print_TokenPrinter.print(t);
 	}
 	return str;
 };
-var glsl_printer_TokenPrinter = function() { };
-glsl_printer_TokenPrinter.__name__ = true;
-glsl_printer_TokenPrinter.print = function(token) {
-	return token.data;
-};
-var glsl_printer_Utils = function() { };
-glsl_printer_Utils.__name__ = true;
-glsl_printer_Utils.indent = function(str,chars,level) {
+var glsl_print_Utils = function() { };
+glsl_print_Utils.__name__ = true;
+glsl_print_Utils.indent = function(str,chars,level) {
 	if(level == null) level = 1;
 	if(chars == null || level == 0) return str;
 	var result = "";
@@ -3982,389 +4528,20 @@ glsl_printer_Utils.indent = function(str,chars,level) {
 	}
 	return result;
 };
-glsl_printer_Utils.glslIntString = function(i) {
+glsl_print_Utils.intString = function(i) {
 	var str = i == null?"null":"" + i;
 	var rx = new EReg("(\\d+)\\.","g");
 	if(rx.match(str)) str = rx.matched(1);
 	return str == ""?"0":str;
 };
-glsl_printer_Utils.glslFloatString = function(f) {
+glsl_print_Utils.floatString = function(f) {
 	var str = f == null?"null":"" + f;
 	var rx = new EReg("\\.","g");
 	if(!rx.match(str)) str += ".0";
 	return str;
 };
-glsl_printer_Utils.glslBoolString = function(b) {
+glsl_print_Utils.boolString = function(b) {
 	return b == null?"null":"" + b;
-};
-var glsl_tokens_TokenHelper = function() { };
-glsl_tokens_TokenHelper.__name__ = true;
-glsl_tokens_TokenHelper.nextNonSkipToken = function(tokens,start,n,requiredType) {
-	if(n == null) n = 1;
-	var j = glsl_tokens_TokenHelper.nextNonSkipTokenIndex(tokens,start,n,requiredType);
-	return j != -1?tokens[j]:null;
-};
-glsl_tokens_TokenHelper.nextNonSkipTokenIndex = function(tokens,start,n,requiredType) {
-	if(n == null) n = 1;
-	var direction = n >= 0?1:-1;
-	var j = start;
-	var m = Math.abs(n);
-	var t;
-	while(m > 0) {
-		j += direction;
-		t = tokens[j];
-		if(t == null) return -1;
-		if(requiredType != null && !Type.enumEq(t.type,requiredType)) continue;
-		if(HxOverrides.indexOf(glsl_tokens_Tokenizer.skippableTypes,t.type,0) != -1) continue;
-		m--;
-	}
-	return j;
-};
-glsl_tokens_TokenHelper.deleteTokens = function(tokens,start,count) {
-	if(count == null) count = 1;
-	return tokens.splice(start,count);
-};
-glsl_tokens_TokenHelper.insertTokens = function(tokens,start,newTokens) {
-	var j = newTokens.length;
-	while(--j >= 0) tokens.splice(start,0,newTokens[j]);
-	return tokens;
-};
-glsl_tokens_TokenHelper.isIdentifierType = function(type) {
-	return HxOverrides.indexOf(glsl_tokens_TokenHelper.identifierTokens,type,0) >= 0;
-};
-var glsl_tokens__$Tokenizer_ScanMode = { __ename__ : true, __constructs__ : ["UNDETERMINED","BLOCK_COMMENT","LINE_COMMENT","PREPROCESSOR_DIRECTIVE","WHITESPACE","OPERATOR","LITERAL","INTEGER_CONSTANT","DECIMAL_CONSTANT","HEX_CONSTANT","OCTAL_CONSTANT","FLOATING_CONSTANT","FRACTIONAL_CONSTANT","EXPONENT_PART"] };
-glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED = ["UNDETERMINED",0];
-glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.BLOCK_COMMENT = ["BLOCK_COMMENT",1];
-glsl_tokens__$Tokenizer_ScanMode.BLOCK_COMMENT.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.BLOCK_COMMENT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.LINE_COMMENT = ["LINE_COMMENT",2];
-glsl_tokens__$Tokenizer_ScanMode.LINE_COMMENT.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.LINE_COMMENT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE = ["PREPROCESSOR_DIRECTIVE",3];
-glsl_tokens__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.WHITESPACE = ["WHITESPACE",4];
-glsl_tokens__$Tokenizer_ScanMode.WHITESPACE.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.WHITESPACE.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.OPERATOR = ["OPERATOR",5];
-glsl_tokens__$Tokenizer_ScanMode.OPERATOR.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.OPERATOR.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.LITERAL = ["LITERAL",6];
-glsl_tokens__$Tokenizer_ScanMode.LITERAL.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.LITERAL.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.INTEGER_CONSTANT = ["INTEGER_CONSTANT",7];
-glsl_tokens__$Tokenizer_ScanMode.INTEGER_CONSTANT.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.INTEGER_CONSTANT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.DECIMAL_CONSTANT = ["DECIMAL_CONSTANT",8];
-glsl_tokens__$Tokenizer_ScanMode.DECIMAL_CONSTANT.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.DECIMAL_CONSTANT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.HEX_CONSTANT = ["HEX_CONSTANT",9];
-glsl_tokens__$Tokenizer_ScanMode.HEX_CONSTANT.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.HEX_CONSTANT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.OCTAL_CONSTANT = ["OCTAL_CONSTANT",10];
-glsl_tokens__$Tokenizer_ScanMode.OCTAL_CONSTANT.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.OCTAL_CONSTANT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT = ["FLOATING_CONSTANT",11];
-glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT = ["FRACTIONAL_CONSTANT",12];
-glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART = ["EXPONENT_PART",13];
-glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART.toString = $estr;
-glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART.__enum__ = glsl_tokens__$Tokenizer_ScanMode;
-var glsl_tokens_Tokenizer = function() { };
-glsl_tokens_Tokenizer.__name__ = true;
-glsl_tokens_Tokenizer.tokenize = function(source,onWarn,onError) {
-	glsl_tokens_Tokenizer.source = source;
-	glsl_tokens_Tokenizer.onWarn = onWarn;
-	glsl_tokens_Tokenizer.onError = onError;
-	glsl_tokens_Tokenizer.tokens = [];
-	glsl_tokens_Tokenizer.i = 0;
-	glsl_tokens_Tokenizer.line = 1;
-	glsl_tokens_Tokenizer.col = 1;
-	glsl_tokens_Tokenizer.userDefinedTypes = [];
-	glsl_tokens_Tokenizer.warnings = [];
-	glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
-	var lastMode;
-	while(glsl_tokens_Tokenizer.i < source.length || glsl_tokens_Tokenizer.mode != glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED) {
-		lastMode = glsl_tokens_Tokenizer.mode;
-		var _g = glsl_tokens_Tokenizer.mode;
-		switch(_g[1]) {
-		case 0:
-			glsl_tokens_Tokenizer.determineMode();
-			break;
-		case 3:
-			glsl_tokens_Tokenizer.preprocessorMode();
-			break;
-		case 1:
-			glsl_tokens_Tokenizer.blockCommentMode();
-			break;
-		case 2:
-			glsl_tokens_Tokenizer.lineCommentMode();
-			break;
-		case 4:
-			glsl_tokens_Tokenizer.whitespaceMode();
-			break;
-		case 5:
-			glsl_tokens_Tokenizer.operatorMode();
-			break;
-		case 6:
-			glsl_tokens_Tokenizer.literalMode();
-			break;
-		case 11:
-			glsl_tokens_Tokenizer.floatingConstantMode();
-			break;
-		case 12:
-			glsl_tokens_Tokenizer.fractionalConstantMode();
-			break;
-		case 13:
-			glsl_tokens_Tokenizer.exponentPartMode();
-			break;
-		case 9:case 10:case 8:
-			glsl_tokens_Tokenizer.integerConstantMode();
-			break;
-		default:
-			glsl_tokens_Tokenizer.error("unhandled mode " + Std.string(glsl_tokens_Tokenizer.mode));
-		}
-		if(glsl_tokens_Tokenizer.mode == lastMode && glsl_tokens_Tokenizer.i == glsl_tokens_Tokenizer.last_i) {
-			glsl_tokens_Tokenizer.error("unclosed mode " + Std.string(glsl_tokens_Tokenizer.mode));
-			break;
-		}
-	}
-	var _g1 = 0;
-	var _g2 = glsl_tokens_Tokenizer.tokens.length;
-	while(_g1 < _g2) {
-		var j = _g1++;
-		var t = glsl_tokens_Tokenizer.tokens[j];
-		if(t.type != glsl_tokens_TokenType.IDENTIFIER) continue;
-		var previousTokenType = null;
-		var k = j - 1;
-		while(k >= 0 && previousTokenType == null) {
-			var tt = glsl_tokens_Tokenizer.tokens[k--].type;
-			if(HxOverrides.indexOf(glsl_tokens_Tokenizer.skippableTypes,tt,0) == -1) previousTokenType = tt;
-		}
-		if(previousTokenType == glsl_tokens_TokenType.STRUCT) {
-			glsl_tokens_Tokenizer.userDefinedTypes.push(t.data);
-			continue;
-		}
-		if(HxOverrides.indexOf(glsl_tokens_Tokenizer.userDefinedTypes,t.data,0) != -1) {
-			var nextTokenType = null;
-			var k1 = j + 1;
-			while(k1 < glsl_tokens_Tokenizer.tokens.length && nextTokenType == null) {
-				var tt1 = glsl_tokens_Tokenizer.tokens[k1++].type;
-				if(HxOverrides.indexOf(glsl_tokens_Tokenizer.skippableTypes,tt1,0) == -1) nextTokenType = tt1;
-			}
-			if(nextTokenType == glsl_tokens_TokenType.IDENTIFIER || nextTokenType == glsl_tokens_TokenType.LEFT_PAREN || nextTokenType == glsl_tokens_TokenType.LEFT_BRACKET) t.type = glsl_tokens_TokenType.TYPE_NAME;
-		}
-	}
-	return glsl_tokens_Tokenizer.tokens;
-};
-glsl_tokens_Tokenizer.startLen = function(m) {
-	return glsl_tokens_Tokenizer.startConditionsMap.get(m)();
-};
-glsl_tokens_Tokenizer.isStart = function(m) {
-	return glsl_tokens_Tokenizer.startLen(m) != null;
-};
-glsl_tokens_Tokenizer.isEnd = function(m) {
-	return glsl_tokens_Tokenizer.endConditionsMap.get(m)();
-};
-glsl_tokens_Tokenizer.tryMode = function(m) {
-	var n = glsl_tokens_Tokenizer.startConditionsMap.get(m)();
-	if(n != null) {
-		glsl_tokens_Tokenizer.mode = m;
-		glsl_tokens_Tokenizer.advance(n);
-		return true;
-	}
-	return false;
-};
-glsl_tokens_Tokenizer.advance = function(n) {
-	if(n == null) n = 1;
-	glsl_tokens_Tokenizer.last_i = glsl_tokens_Tokenizer.i;
-	while(n-- > 0 && glsl_tokens_Tokenizer.i < glsl_tokens_Tokenizer.source.length) {
-		glsl_tokens_Tokenizer.buf += glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i);
-		glsl_tokens_Tokenizer.i++;
-	}
-	var splitByLines = new EReg("\n","gm").split(glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.last_i,glsl_tokens_Tokenizer.i));
-	var nl = splitByLines.length - 1;
-	if(nl > 0) {
-		glsl_tokens_Tokenizer.line += nl;
-		glsl_tokens_Tokenizer.col = splitByLines[nl].length + 1;
-	} else glsl_tokens_Tokenizer.col += glsl_tokens_Tokenizer.i - glsl_tokens_Tokenizer.last_i;
-};
-glsl_tokens_Tokenizer.determineMode = function() {
-	glsl_tokens_Tokenizer.buf = "";
-	glsl_tokens_Tokenizer.lineStart = glsl_tokens_Tokenizer.line;
-	glsl_tokens_Tokenizer.colStart = glsl_tokens_Tokenizer.col;
-	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.BLOCK_COMMENT)) return;
-	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.LINE_COMMENT)) return;
-	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE)) return;
-	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.WHITESPACE)) return;
-	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.LITERAL)) return;
-	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT)) return;
-	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.OPERATOR)) return;
-	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.HEX_CONSTANT)) return;
-	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.OCTAL_CONSTANT)) return;
-	if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.DECIMAL_CONSTANT)) return;
-	glsl_tokens_Tokenizer.warn("unrecognized token " + glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
-	glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
-	glsl_tokens_Tokenizer.advance();
-	return;
-};
-glsl_tokens_Tokenizer.preprocessorMode = function() {
-	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
-		glsl_tokens_Tokenizer.buildToken(glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE);
-		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_tokens_Tokenizer.advance();
-};
-glsl_tokens_Tokenizer.blockCommentMode = function() {
-	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
-		glsl_tokens_Tokenizer.buildToken(glsl_tokens_TokenType.BLOCK_COMMENT);
-		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_tokens_Tokenizer.advance();
-};
-glsl_tokens_Tokenizer.lineCommentMode = function() {
-	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
-		glsl_tokens_Tokenizer.buildToken(glsl_tokens_TokenType.LINE_COMMENT);
-		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_tokens_Tokenizer.advance();
-};
-glsl_tokens_Tokenizer.whitespaceMode = function() {
-	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
-		glsl_tokens_Tokenizer.buildToken(glsl_tokens_TokenType.WHITESPACE);
-		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_tokens_Tokenizer.advance();
-};
-glsl_tokens_Tokenizer.operatorMode = function() {
-	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
-		var tmp;
-		var _this = glsl_tokens_Tokenizer.operatorMap;
-		var key = glsl_tokens_Tokenizer.buf;
-		if(__map_reserved[key] != null) tmp = _this.getReserved(key); else tmp = _this.h[key];
-		glsl_tokens_Tokenizer.buildToken(tmp);
-		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_tokens_Tokenizer.advance();
-};
-glsl_tokens_Tokenizer.literalMode = function() {
-	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
-		var tt = null;
-		var tmp;
-		var _this = glsl_tokens_Tokenizer.keywordMap;
-		var key = glsl_tokens_Tokenizer.buf;
-		if(__map_reserved[key] != null) tmp = _this.getReserved(key); else tmp = _this.h[key];
-		tt = tmp;
-		if(tt == null && glsl_tokens_Tokenizer.previousTokenType() == glsl_tokens_TokenType.DOT) tt = glsl_tokens_TokenType.FIELD_SELECTION;
-		if(tt == null) tt = glsl_tokens_TokenType.IDENTIFIER;
-		glsl_tokens_Tokenizer.buildToken(tt);
-		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_tokens_Tokenizer.advance();
-};
-glsl_tokens_Tokenizer.floatingConstantMode = function() {
-	var _g = glsl_tokens_Tokenizer.floatMode;
-	switch(_g) {
-	case 0:
-		if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT)) {
-			glsl_tokens_Tokenizer.floatMode = 1;
-			return;
-		}
-		var j = glsl_tokens_Tokenizer.i;
-		while(new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i))) glsl_tokens_Tokenizer.advance();
-		if(glsl_tokens_Tokenizer.i > j) {
-			glsl_tokens_Tokenizer.floatMode = 2;
-			return;
-		}
-		glsl_tokens_Tokenizer.error("error parsing float, could not determine floatMode");
-		break;
-	case 1:
-		glsl_tokens_Tokenizer.floatMode = 3;
-		if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART)) return;
-		break;
-	case 2:
-		if(glsl_tokens_Tokenizer.tryMode(glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART)) {
-			glsl_tokens_Tokenizer.floatMode = 3;
-			return;
-		} else glsl_tokens_Tokenizer.error("float in floatMode 2 must have exponent part - none found");
-		break;
-	}
-	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
-		glsl_tokens_Tokenizer.buildToken(glsl_tokens_TokenType.FLOATCONSTANT);
-		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
-		glsl_tokens_Tokenizer.floatMode = 0;
-		return;
-	}
-	glsl_tokens_Tokenizer.error("error parsing float");
-};
-glsl_tokens_Tokenizer.fractionalConstantMode = function() {
-	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
-		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT;
-		return;
-	}
-	glsl_tokens_Tokenizer.advance();
-};
-glsl_tokens_Tokenizer.exponentPartMode = function() {
-	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
-		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT;
-		return;
-	}
-	glsl_tokens_Tokenizer.advance();
-};
-glsl_tokens_Tokenizer.integerConstantMode = function() {
-	if(glsl_tokens_Tokenizer.endConditionsMap.get(glsl_tokens_Tokenizer.mode)()) {
-		glsl_tokens_Tokenizer.buildToken(glsl_tokens_TokenType.INTCONSTANT);
-		glsl_tokens_Tokenizer.mode = glsl_tokens__$Tokenizer_ScanMode.UNDETERMINED;
-		return;
-	}
-	glsl_tokens_Tokenizer.advance();
-};
-glsl_tokens_Tokenizer.buildToken = function(type) {
-	if(type == null) glsl_tokens_Tokenizer.error("cannot have null token type");
-	if(glsl_tokens_Tokenizer.buf == "") glsl_tokens_Tokenizer.error("cannot have empty token data");
-	var token = { type : type, data : glsl_tokens_Tokenizer.buf, line : glsl_tokens_Tokenizer.lineStart, column : glsl_tokens_Tokenizer.colStart, position : glsl_tokens_Tokenizer.i - glsl_tokens_Tokenizer.buf.length};
-	if(glsl_tokens_Tokenizer.verbose) console.log("building token " + Std.string(type) + " (" + glsl_tokens_Tokenizer.buf + ")");
-	glsl_tokens_Tokenizer.tokens.push(token);
-	if(type == glsl_tokens_TokenType.RESERVED_KEYWORD) glsl_tokens_Tokenizer.warn("using reserved keyword " + glsl_tokens_Tokenizer.buf);
-};
-glsl_tokens_Tokenizer.c = function(j) {
-	return glsl_tokens_Tokenizer.source.charAt(j);
-};
-glsl_tokens_Tokenizer.previousToken = function(n,ignoreSkippable) {
-	if(ignoreSkippable == null) ignoreSkippable = false;
-	if(n == null) n = 0;
-	if(!ignoreSkippable) return glsl_tokens_Tokenizer.tokens[-n + glsl_tokens_Tokenizer.tokens.length - 1]; else {
-		var t = null;
-		var i = 0;
-		while(n >= 0 && i < glsl_tokens_Tokenizer.tokens.length) {
-			t = glsl_tokens_Tokenizer.tokens[-i + glsl_tokens_Tokenizer.tokens.length - 1];
-			if(HxOverrides.indexOf(glsl_tokens_Tokenizer.skippableTypes,t.type,0) == -1) n--;
-			i++;
-		}
-		return t;
-	}
-};
-glsl_tokens_Tokenizer.previousTokenType = function(n,ignoreSkippable) {
-	if(n == null) n = 0;
-	var pt = glsl_tokens_Tokenizer.previousToken(n,ignoreSkippable);
-	return pt != null?pt.type:null;
-};
-glsl_tokens_Tokenizer.warn = function(msg) {
-	if(glsl_tokens_Tokenizer.onWarn != null) glsl_tokens_Tokenizer.onWarn(msg); else glsl_tokens_Tokenizer.warnings.push("Tokenizer Warning: " + msg + ", line " + glsl_tokens_Tokenizer.line + ", column " + glsl_tokens_Tokenizer.col);
-};
-glsl_tokens_Tokenizer.error = function(msg) {
-	if(glsl_tokens_Tokenizer.onError != null) glsl_tokens_Tokenizer.onError(msg); else throw new js__$Boot_HaxeError("Tokenizer Error: " + msg + ", line " + glsl_tokens_Tokenizer.line + ", column " + glsl_tokens_Tokenizer.col);
 };
 var haxe_IMap = function() { };
 haxe_IMap.__name__ = true;
@@ -4730,804 +4907,805 @@ if(Array.prototype.map == null) Array.prototype.map = function(f) {
 	return a;
 };
 var __map_reserved = {}
-glsl_parser_ParserTables.ignoredTokens = [glsl_tokens_TokenType.WHITESPACE,glsl_tokens_TokenType.LINE_COMMENT,glsl_tokens_TokenType.BLOCK_COMMENT];
-glsl_parser_ParserTables.errorsSymbol = false;
-glsl_parser_ParserTables.illegalSymbolNumber = 167;
-glsl_parser_ParserTables.nStates = 335;
-glsl_parser_ParserTables.nRules = 213;
-glsl_parser_ParserTables.actionCount = 2550;
-glsl_parser_ParserTables.action = [168,332,331,330,22,45,44,43,42,358,55,54,264,327,152,151,150,149,148,147,146,145,144,143,142,141,140,139,138,137,299,298,297,296,333,328,166,76,167,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,52,51,50,195,70,242,241,240,84,220,219,218,216,248,247,242,241,240,87,1,197,121,28,119,7,111,109,108,14,107,181,168,332,331,330,22,32,225,224,223,323,55,54,264,320,152,151,150,149,148,147,146,145,144,143,142,141,140,139,138,137,299,298,297,296,333,328,104,76,20,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,38,215,37,195,70,69,56,36,84,220,219,218,216,248,247,242,241,240,87,1,175,121,210,119,7,111,109,108,14,107,181,168,332,331,330,22,49,48,47,46,35,55,54,264,34,152,151,150,149,148,147,146,145,144,143,142,141,140,139,138,137,299,298,297,296,333,328,91,76,275,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,359,230,217,195,70,69,56,360,84,220,219,218,216,248,247,242,241,240,87,1,176,121,361,119,7,111,109,108,14,107,181,168,332,331,330,22,41,40,33,21,362,55,54,264,363,152,151,150,149,148,147,146,145,144,143,142,141,140,139,138,137,299,298,297,296,333,328,83,76,364,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,32,128,365,195,70,334,334,25,84,220,219,218,216,248,247,242,241,240,87,1,198,121,2,119,7,111,109,108,14,107,181,168,332,331,330,22,86,234,366,29,367,55,54,264,368,152,151,150,149,148,147,146,145,144,143,142,141,140,139,138,137,299,298,297,296,369,370,333,328,371,76,372,326,325,103,165,23,266,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,373,195,70,374,88,268,84,220,219,218,216,248,247,242,241,240,87,2,267,121,265,119,7,111,109,108,14,107,181,168,332,331,330,22,59,235,217,27,231,55,54,264,26,152,151,150,149,148,147,146,145,144,143,142,141,140,139,138,137,299,298,297,296,229,228,333,328,64,76,77,326,325,103,165,23,266,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,213,195,70,18,9,32,84,220,219,218,216,248,247,242,241,240,87,1,212,121,135,119,7,111,109,108,14,107,181,333,328,90,76,12,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,271,132,207,136,89,65,244,129,63,124,133,123,116,209,62,270,13,211,153,246,274,273,17,246,204,65,244,193,203,202,201,200,199,67,120,194,192,8,329,246,61,233,333,328,90,76,32,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,113,16,207,136,89,65,244,129,63,124,324,123,58,209,62,3,188,211,31,246,72,10,186,32,204,177,206,205,203,202,201,200,199,4,333,328,90,76,6,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,131,185,207,136,89,65,244,129,63,124,237,123,112,209,62,182,15,211,236,246,32,174,32,66,204,177,206,205,203,202,201,200,199,5,333,328,90,76,57,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,550,30,207,136,89,65,244,129,63,124,243,123,184,209,62,550,550,211,550,246,550,550,550,246,204,550,550,193,203,202,201,200,199,550,191,194,550,550,333,328,90,76,550,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,550,550,207,136,89,65,244,129,63,124,550,123,550,209,62,550,550,211,550,246,550,550,550,550,204,189,206,205,203,202,201,200,199,550,333,328,90,76,550,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,550,550,207,136,89,65,244,129,63,124,550,123,550,209,62,550,550,211,550,246,550,550,550,550,204,550,550,193,203,202,201,200,199,550,114,194,550,550,333,328,90,76,550,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,550,550,207,136,89,65,244,129,63,124,550,123,550,209,62,550,550,211,550,246,550,550,550,550,204,187,206,205,203,202,201,200,199,550,333,328,90,76,550,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,550,550,207,136,89,65,244,129,63,124,550,123,550,209,62,550,550,211,550,246,550,550,550,550,204,196,206,205,203,202,201,200,199,333,328,90,76,550,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,550,550,207,136,89,65,244,129,63,124,550,123,550,209,62,550,550,211,550,246,550,65,244,550,178,550,550,550,179,67,168,332,331,330,22,246,60,233,11,550,55,54,264,550,152,151,150,149,148,147,146,145,144,143,142,141,140,139,138,137,299,298,297,296,333,328,82,76,550,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,550,550,550,195,70,550,550,550,84,220,219,218,216,248,247,242,241,240,87,168,332,331,330,22,550,550,550,550,550,55,54,264,550,152,151,150,149,148,147,146,145,144,143,142,141,140,139,138,137,299,298,297,296,168,332,331,330,22,550,550,550,550,550,55,54,322,550,318,317,316,315,314,313,312,311,310,309,308,307,306,305,304,303,299,298,297,296,550,125,220,219,218,216,248,247,242,241,240,87,550,333,328,118,76,550,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,550,550,214,550,24,65,244,550,550,550,550,117,550,209,62,333,328,550,76,246,326,325,103,165,23,550,164,319,292,53,80,102,101,75,94,163,159,180,550,110,106,333,328,550,76,550,326,325,103,165,23,19,164,319,292,53,80,100,333,328,118,76,550,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,550,65,244,550,550,65,244,550,227,85,550,117,226,209,62,246,550,333,328,246,76,550,326,325,103,165,23,550,164,319,292,53,80,102,101,75,93,115,335,287,286,285,284,283,282,281,280,279,278,277,550,264,550,263,262,261,260,259,258,257,256,255,254,253,252,251,250,249,245,550,550,550,550,550,264,550,263,262,261,260,259,258,257,256,255,254,253,252,251,250,249,245,225,224,223,125,220,219,218,216,550,550,550,550,70,550,550,550,84,220,219,218,216,248,247,242,241,240,87,550,550,550,550,550,550,550,550,70,550,550,181,84,220,219,218,216,248,247,242,241,240,87,550,550,550,550,550,435,550,550,550,550,550,181,550,168,332,331,330,22,550,550,550,550,550,55,54,550,550,318,317,316,315,314,313,312,311,310,309,308,307,306,305,304,303,299,298,297,296,550,171,71,89,65,244,129,63,124,550,123,550,209,62,550,550,211,550,246,225,224,223,125,220,219,218,216,550,550,550,183,170,168,332,331,330,22,550,550,550,173,172,55,54,550,550,318,317,316,315,314,313,312,311,310,309,308,307,306,305,304,303,299,298,297,296,333,328,550,76,550,326,325,103,165,23,266,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,102,98,190,550,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,79,333,328,105,76,550,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,333,328,81,76,550,326,325,103,165,23,289,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,333,328,550,76,550,326,325,103,165,23,272,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,78,333,328,550,76,550,326,325,103,165,23,276,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,333,328,550,76,550,326,325,103,165,23,288,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,333,328,550,76,550,326,325,103,165,23,291,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,333,328,550,76,550,326,325,103,165,23,550,164,319,302,53,550,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,102,101,75,94,163,162,160,158,156,92,269,550,134,550,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,102,101,75,94,163,162,160,158,156,92,269,550,130,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,102,101,75,94,163,162,160,158,156,92,269,550,127,550,550,550,550,550,65,244,550,550,333,328,550,76,208,326,325,103,165,23,246,164,319,292,53,80,102,101,75,94,163,162,160,158,156,92,269,550,126,550,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,102,101,75,94,163,162,160,158,156,92,269,550,122,333,328,550,76,550,326,325,103,165,23,321,164,319,68,53,80,102,101,75,94,163,162,160,158,156,92,290,264,550,263,262,261,260,259,258,257,256,255,254,253,252,251,250,249,245,264,550,263,262,261,260,259,258,257,256,255,254,253,252,251,250,249,245,264,550,263,262,261,260,259,258,257,256,255,254,253,252,251,250,249,245,550,550,550,550,550,550,65,244,248,247,242,241,240,87,67,239,550,550,550,550,246,550,238,550,550,550,248,247,242,241,240,87,550,232,550,550,550,550,550,550,550,550,550,550,248,247,242,241,240,87,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,102,101,75,94,163,162,160,158,154,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,102,101,75,94,163,162,160,155,550,264,550,263,262,261,260,259,258,257,256,255,254,253,252,251,250,249,245,550,550,550,550,550,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,102,101,75,94,163,162,157,550,550,550,550,550,550,550,550,550,550,549,39,550,550,550,550,248,247,550,333,328,87,76,550,326,325,103,165,23,550,164,319,292,53,80,102,101,75,94,161,550,171,71,89,65,244,129,63,124,550,123,550,209,62,550,550,211,550,246,550,550,333,328,550,76,550,326,325,103,165,23,170,164,319,292,53,80,102,101,74,169,172,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,102,101,73,550,550,550,550,550,550,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,102,97,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,102,96,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,102,95,333,328,550,76,550,326,325,103,165,23,550,164,319,292,53,80,99,333,328,550,76,550,326,325,103,165,23,550,164,319,301,53,333,328,550,76,550,326,325,103,165,23,550,164,319,300,53,550,333,328,550,76,550,326,325,103,165,23,550,164,319,295,53,550,333,328,550,76,550,326,325,103,165,23,550,164,319,294,53,333,328,550,76,550,326,325,103,165,23,550,164,319,293,53,65,244,550,550,550,550,550,222,85,550,550,221,550,550,246];
-glsl_parser_ParserTables.lookahead = [1,2,3,4,5,40,41,42,43,5,11,12,13,8,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,35,36,37,65,66,77,78,79,70,71,72,73,74,75,76,77,78,79,80,81,82,83,7,85,86,87,88,89,90,91,92,1,2,3,4,5,14,67,68,69,6,11,12,13,5,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,96,97,98,99,54,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,46,133,47,65,66,137,138,48,70,71,72,73,74,75,76,77,78,79,80,81,82,83,1,85,86,87,88,89,90,91,92,1,2,3,4,5,31,32,38,39,49,11,12,13,50,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,96,97,98,99,10,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,5,133,73,65,66,137,138,5,70,71,72,73,74,75,76,77,78,79,80,81,82,83,5,85,86,87,88,89,90,91,92,1,2,3,4,5,44,45,51,52,5,11,12,13,5,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,96,97,98,99,5,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,14,1,5,65,66,65,65,7,70,71,72,73,74,75,76,77,78,79,80,81,82,83,81,85,86,87,88,89,90,91,92,1,2,3,4,5,145,146,5,53,5,11,12,13,5,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,5,5,96,97,5,99,5,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,5,65,66,5,1,8,70,71,72,73,74,75,76,77,78,79,80,81,141,83,65,85,86,87,88,89,90,91,92,1,2,3,4,5,81,8,73,7,6,11,12,13,7,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,8,8,96,97,14,99,1,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,8,65,66,5,84,14,70,71,72,73,74,75,76,77,78,79,80,81,141,83,14,85,86,87,88,89,90,91,92,96,97,98,99,5,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,65,1,125,126,127,128,129,130,131,132,129,134,1,136,137,65,7,140,9,142,11,12,54,142,147,128,129,150,151,152,153,154,155,136,157,158,159,6,6,142,143,144,96,97,98,99,14,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,85,5,125,126,127,128,129,130,131,132,6,134,81,136,137,6,65,140,14,142,14,5,65,14,147,148,149,150,151,152,153,154,155,156,96,97,98,99,6,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,1,65,125,126,127,128,129,130,131,132,65,134,6,136,137,65,65,140,146,142,14,158,14,128,147,148,149,150,151,152,153,154,155,156,96,97,98,99,138,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,123,125,126,127,128,129,130,131,132,129,134,65,136,137,166,166,140,166,142,166,166,166,142,147,166,166,150,151,152,153,154,155,166,157,158,166,166,96,97,98,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,166,125,126,127,128,129,130,131,132,166,134,166,136,137,166,166,140,166,142,166,166,166,166,147,148,149,150,151,152,153,154,155,166,96,97,98,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,166,125,126,127,128,129,130,131,132,166,134,166,136,137,166,166,140,166,142,166,166,166,166,147,166,166,150,151,152,153,154,155,166,157,158,166,166,96,97,98,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,166,125,126,127,128,129,130,131,132,166,134,166,136,137,166,166,140,166,142,166,166,166,166,147,148,149,150,151,152,153,154,155,166,96,97,98,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,166,125,126,127,128,129,130,131,132,166,134,166,136,137,166,166,140,166,142,166,166,166,166,147,148,149,150,151,152,153,154,155,96,97,98,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,166,125,126,127,128,129,130,131,132,166,134,166,136,137,166,166,140,166,142,166,128,129,166,147,166,166,166,151,136,1,2,3,4,5,142,143,144,161,166,11,12,13,166,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,96,97,98,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,166,166,65,66,166,166,166,70,71,72,73,74,75,76,77,78,79,80,1,2,3,4,5,166,166,166,166,166,11,12,13,166,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,1,2,3,4,5,166,166,166,166,166,11,12,13,166,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,166,70,71,72,73,74,75,76,77,78,79,80,166,96,97,98,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,166,5,166,7,128,129,166,166,166,166,134,166,136,137,96,97,166,99,142,101,102,103,104,105,166,107,108,109,110,111,112,113,114,115,116,117,160,166,162,163,96,97,166,99,166,101,102,103,104,105,54,107,108,109,110,111,112,96,97,98,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,128,129,166,166,128,129,166,135,136,166,134,139,136,137,142,166,96,97,142,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,114,115,160,0,54,55,56,57,58,59,60,61,62,63,64,166,13,166,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,166,166,166,166,166,13,166,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,67,68,69,70,71,72,73,74,166,166,166,166,66,166,166,166,70,71,72,73,74,75,76,77,78,79,80,166,166,166,166,166,166,166,166,66,166,166,92,70,71,72,73,74,75,76,77,78,79,80,166,166,166,166,166,6,166,166,166,166,166,92,166,1,2,3,4,5,166,166,166,166,166,11,12,166,166,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,166,125,126,127,128,129,130,131,132,166,134,166,136,137,166,166,140,166,142,67,68,69,70,71,72,73,74,166,166,166,65,155,1,2,3,4,5,166,166,166,164,165,11,12,166,166,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,96,97,166,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,141,166,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,96,97,98,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,96,97,98,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,96,97,166,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,96,97,166,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,96,97,166,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,96,97,166,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,166,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,124,166,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,124,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,124,166,166,166,166,166,128,129,166,166,96,97,166,99,136,101,102,103,104,105,142,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,124,166,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,166,124,96,97,166,99,166,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,13,166,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,13,166,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,13,166,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,166,166,166,166,166,166,128,129,75,76,77,78,79,80,136,82,166,166,166,166,142,166,144,166,166,166,75,76,77,78,79,80,166,82,166,166,166,166,166,166,166,166,166,166,75,76,77,78,79,80,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,114,115,116,117,118,119,120,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,114,115,116,117,118,119,166,13,166,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,166,166,166,166,166,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,114,115,116,117,118,166,166,166,166,166,166,166,166,166,166,94,95,166,166,166,166,75,76,166,96,97,80,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,114,115,116,166,125,126,127,128,129,130,131,132,166,134,166,136,137,166,166,140,166,142,166,166,96,97,166,99,166,101,102,103,104,105,155,107,108,109,110,111,112,113,114,164,165,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,114,166,166,166,166,166,166,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,113,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,111,112,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,166,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,166,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,96,97,166,99,166,101,102,103,104,105,166,107,108,109,110,128,129,166,166,166,166,166,135,136,166,166,139,166,166,142];
-glsl_parser_ParserTables.shiftUseDefault = -36;
-glsl_parser_ParserTables.shiftCount = 168;
-glsl_parser_ParserTables.shiftOffsetMin = -35;
-glsl_parser_ParserTables.shiftOffsetMax = 2221;
-glsl_parser_ParserTables.shiftOffset = [1446,275,183,367,91,-1,459,367,459,367,1111,1191,1191,1605,1539,1605,1605,1605,1605,1605,1605,1605,1605,1225,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,1423,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,1605,2103,2103,2103,2103,2085,2067,2103,1526,1410,2221,2221,708,1370,31,-11,278,708,-35,-35,-35,588,1297,26,26,26,717,715,657,174,337,654,579,76,529,514,323,232,237,237,153,153,153,153,158,158,153,158,652,611,83,660,659,645,605,680,664,599,644,563,610,547,590,83,551,443,521,515,499,484,394,487,486,466,463,458,461,384,386,428,434,277,429,426,403,401,398,397,376,372,370,334,309,284,280,262,247,240,212,147,144,147,112,144,108,112,107,108,107,100,95,83,5,4];
-glsl_parser_ParserTables.reduceUseDefault = -63;
-glsl_parser_ParserTables.reduceCount = 72;
-glsl_parser_ParserTables.reduceMin = -62;
-glsl_parser_ParserTables.reduceMax = 2424;
-glsl_parser_ParserTables.reduceOffset = [2196,586,525,456,899,899,838,773,712,647,959,1177,1262,-62,1634,1607,1050,1544,214,400,308,122,30,1957,1928,1898,1860,1831,1801,1758,1731,1704,1661,2088,2113,2161,1219,2203,1306,1450,2266,2245,2327,2309,2291,1571,2345,1245,1688,1591,2424,2409,2393,2377,2362,1785,2407,1258,975,476,2012,2012,1862,113,21,651,460,228,648,609,604,572,581];
-glsl_parser_ParserTables.defaultAction = [548,548,548,548,548,548,548,548,548,548,548,533,548,548,548,534,548,548,548,548,548,548,548,353,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,548,446,446,548,548,548,383,446,548,548,548,400,399,398,375,457,389,388,387,548,548,548,548,450,548,548,453,548,548,548,413,402,401,397,396,395,394,392,391,393,390,548,548,535,548,548,548,548,548,548,548,548,548,548,548,548,525,548,524,548,548,456,436,548,548,548,440,548,548,500,548,548,548,548,548,489,485,484,483,482,481,480,479,478,477,476,475,474,473,472,471,548,412,410,411,408,409,406,407,404,405,403,548,548,348,548,336,541,545,544,543,542,546,517,516,518,531,530,532,547,540,538,539,537,536,529,528,527,526,523,522,515,514,520,519,513,512,511,510,509,508,507,506,505,504,503,462,461,460,452,459,458,439,438,467,466,465,464,463,445,443,449,448,447,444,442,451,441,437,434,494,495,498,501,499,497,496,493,492,491,490,469,468,489,488,487,486,485,484,483,482,481,480,479,478,477,476,475,474,473,472,471,470,433,502,455,454,430,432,521,429,347,346,345,355,427,426,425,424,423,422,421,420,419,418,417,416,428,415,414,383,386,385,384,382,381,380,379,378,377,376,374,373,372,371,370,369,368,367,366,365,364,363,362,361,360,359,357,356,354,352,351,350,349,344,343,342,341,340,339,338,337,431];
-glsl_parser_ParserTables.ruleInfo = [[94,1],[96,1],[97,1],[97,1],[97,1],[97,1],[97,3],[99,1],[99,4],[99,1],[99,3],[99,2],[99,2],[100,1],[101,1],[102,2],[102,2],[104,2],[104,1],[103,2],[103,3],[105,2],[107,1],[107,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[109,1],[109,2],[109,2],[109,2],[110,1],[110,1],[110,1],[110,1],[111,1],[111,3],[111,3],[111,3],[112,1],[112,3],[112,3],[113,1],[113,3],[113,3],[114,1],[114,3],[114,3],[114,3],[114,3],[115,1],[115,3],[115,3],[116,1],[116,3],[117,1],[117,3],[118,1],[118,3],[119,1],[119,3],[120,1],[120,3],[121,1],[121,3],[122,1],[122,5],[106,1],[106,3],[123,1],[123,1],[123,1],[123,1],[123,1],[123,1],[123,1],[123,1],[123,1],[123,1],[123,1],[98,1],[98,3],[124,1],[125,2],[125,2],[125,4],[126,2],[130,1],[130,1],[132,2],[132,3],[131,3],[135,2],[135,5],[133,3],[133,2],[133,3],[133,2],[138,0],[138,1],[138,1],[138,1],[139,1],[139,4],[127,1],[127,3],[127,6],[127,5],[140,1],[140,2],[140,5],[140,4],[140,2],[134,1],[134,2],[137,1],[137,1],[137,1],[137,2],[137,1],[136,1],[136,2],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[128,1],[128,1],[128,1],[142,5],[142,4],[143,1],[143,2],[144,3],[145,1],[145,3],[146,1],[146,4],[141,1],[147,1],[148,1],[148,1],[150,1],[150,1],[150,1],[150,1],[150,1],[150,1],[149,2],[149,3],[157,1],[157,1],[158,2],[158,3],[156,1],[156,2],[151,1],[151,2],[152,5],[159,3],[159,1],[160,1],[160,4],[153,5],[153,7],[153,6],[161,1],[161,1],[163,1],[163,0],[162,2],[162,3],[154,2],[154,2],[154,2],[154,3],[154,2],[95,1],[95,2],[164,1],[164,1],[164,1],[165,2],[155,1]];
-glsl_parser_ParserTables.tokenIdMap = (function($this) {
+glsl_lex_TokenHelper.identifierTokenTypes = [glsl_lex_TokenType.IDENTIFIER,glsl_lex_TokenType.ATTRIBUTE,glsl_lex_TokenType.UNIFORM,glsl_lex_TokenType.VARYING,glsl_lex_TokenType.CONST,glsl_lex_TokenType.VOID,glsl_lex_TokenType.INT,glsl_lex_TokenType.FLOAT,glsl_lex_TokenType.BOOL,glsl_lex_TokenType.VEC2,glsl_lex_TokenType.VEC3,glsl_lex_TokenType.VEC4,glsl_lex_TokenType.BVEC2,glsl_lex_TokenType.BVEC3,glsl_lex_TokenType.BVEC4,glsl_lex_TokenType.IVEC2,glsl_lex_TokenType.IVEC3,glsl_lex_TokenType.IVEC4,glsl_lex_TokenType.MAT2,glsl_lex_TokenType.MAT3,glsl_lex_TokenType.MAT4,glsl_lex_TokenType.SAMPLER2D,glsl_lex_TokenType.SAMPLERCUBE,glsl_lex_TokenType.BREAK,glsl_lex_TokenType.CONTINUE,glsl_lex_TokenType.WHILE,glsl_lex_TokenType.DO,glsl_lex_TokenType.FOR,glsl_lex_TokenType.IF,glsl_lex_TokenType.ELSE,glsl_lex_TokenType.RETURN,glsl_lex_TokenType.DISCARD,glsl_lex_TokenType.STRUCT,glsl_lex_TokenType.IN,glsl_lex_TokenType.OUT,glsl_lex_TokenType.INOUT,glsl_lex_TokenType.INVARIANT,glsl_lex_TokenType.PRECISION,glsl_lex_TokenType.HIGH_PRECISION,glsl_lex_TokenType.MEDIUM_PRECISION,glsl_lex_TokenType.LOW_PRECISION,glsl_lex_TokenType.BOOLCONSTANT,glsl_lex_TokenType.RESERVED_KEYWORD,glsl_lex_TokenType.TYPE_NAME,glsl_lex_TokenType.FIELD_SELECTION];
+glsl_lex_TokenHelper.typeTokenTypes = [glsl_lex_TokenType.VOID,glsl_lex_TokenType.INT,glsl_lex_TokenType.FLOAT,glsl_lex_TokenType.BOOL,glsl_lex_TokenType.VEC2,glsl_lex_TokenType.VEC3,glsl_lex_TokenType.VEC4,glsl_lex_TokenType.BVEC2,glsl_lex_TokenType.BVEC3,glsl_lex_TokenType.BVEC4,glsl_lex_TokenType.IVEC2,glsl_lex_TokenType.IVEC3,glsl_lex_TokenType.IVEC4,glsl_lex_TokenType.MAT2,glsl_lex_TokenType.MAT3,glsl_lex_TokenType.MAT4,glsl_lex_TokenType.SAMPLER2D,glsl_lex_TokenType.SAMPLERCUBE,glsl_lex_TokenType.TYPE_NAME];
+glsl_lex_Tokenizer.verbose = false;
+glsl_lex_Tokenizer.floatMode = 0;
+glsl_lex_Tokenizer.operatorRegex = new EReg("[&<=>|*?!+%(){}.~:,;/\\-\\^\\[\\]]","");
+glsl_lex_Tokenizer.startConditionsMap = (function($this) {
 	var $r;
 	var _g = new haxe_ds_EnumValueMap();
-	_g.set(glsl_tokens_TokenType.IDENTIFIER,1);
-	_g.set(glsl_tokens_TokenType.INTCONSTANT,2);
-	_g.set(glsl_tokens_TokenType.FLOATCONSTANT,3);
-	_g.set(glsl_tokens_TokenType.BOOLCONSTANT,4);
-	_g.set(glsl_tokens_TokenType.LEFT_PAREN,5);
-	_g.set(glsl_tokens_TokenType.RIGHT_PAREN,6);
-	_g.set(glsl_tokens_TokenType.LEFT_BRACKET,7);
-	_g.set(glsl_tokens_TokenType.RIGHT_BRACKET,8);
-	_g.set(glsl_tokens_TokenType.DOT,9);
-	_g.set(glsl_tokens_TokenType.FIELD_SELECTION,10);
-	_g.set(glsl_tokens_TokenType.INC_OP,11);
-	_g.set(glsl_tokens_TokenType.DEC_OP,12);
-	_g.set(glsl_tokens_TokenType.VOID,13);
-	_g.set(glsl_tokens_TokenType.COMMA,14);
-	_g.set(glsl_tokens_TokenType.FLOAT,15);
-	_g.set(glsl_tokens_TokenType.INT,16);
-	_g.set(glsl_tokens_TokenType.BOOL,17);
-	_g.set(glsl_tokens_TokenType.VEC2,18);
-	_g.set(glsl_tokens_TokenType.VEC3,19);
-	_g.set(glsl_tokens_TokenType.VEC4,20);
-	_g.set(glsl_tokens_TokenType.BVEC2,21);
-	_g.set(glsl_tokens_TokenType.BVEC3,22);
-	_g.set(glsl_tokens_TokenType.BVEC4,23);
-	_g.set(glsl_tokens_TokenType.IVEC2,24);
-	_g.set(glsl_tokens_TokenType.IVEC3,25);
-	_g.set(glsl_tokens_TokenType.IVEC4,26);
-	_g.set(glsl_tokens_TokenType.MAT2,27);
-	_g.set(glsl_tokens_TokenType.MAT3,28);
-	_g.set(glsl_tokens_TokenType.MAT4,29);
-	_g.set(glsl_tokens_TokenType.TYPE_NAME,30);
-	_g.set(glsl_tokens_TokenType.PLUS,31);
-	_g.set(glsl_tokens_TokenType.DASH,32);
-	_g.set(glsl_tokens_TokenType.BANG,33);
-	_g.set(glsl_tokens_TokenType.TILDE,34);
-	_g.set(glsl_tokens_TokenType.STAR,35);
-	_g.set(glsl_tokens_TokenType.SLASH,36);
-	_g.set(glsl_tokens_TokenType.PERCENT,37);
-	_g.set(glsl_tokens_TokenType.LEFT_OP,38);
-	_g.set(glsl_tokens_TokenType.RIGHT_OP,39);
-	_g.set(glsl_tokens_TokenType.LEFT_ANGLE,40);
-	_g.set(glsl_tokens_TokenType.RIGHT_ANGLE,41);
-	_g.set(glsl_tokens_TokenType.LE_OP,42);
-	_g.set(glsl_tokens_TokenType.GE_OP,43);
-	_g.set(glsl_tokens_TokenType.EQ_OP,44);
-	_g.set(glsl_tokens_TokenType.NE_OP,45);
-	_g.set(glsl_tokens_TokenType.AMPERSAND,46);
-	_g.set(glsl_tokens_TokenType.CARET,47);
-	_g.set(glsl_tokens_TokenType.VERTICAL_BAR,48);
-	_g.set(glsl_tokens_TokenType.AND_OP,49);
-	_g.set(glsl_tokens_TokenType.XOR_OP,50);
-	_g.set(glsl_tokens_TokenType.OR_OP,51);
-	_g.set(glsl_tokens_TokenType.QUESTION,52);
-	_g.set(glsl_tokens_TokenType.COLON,53);
-	_g.set(glsl_tokens_TokenType.EQUAL,54);
-	_g.set(glsl_tokens_TokenType.MUL_ASSIGN,55);
-	_g.set(glsl_tokens_TokenType.DIV_ASSIGN,56);
-	_g.set(glsl_tokens_TokenType.MOD_ASSIGN,57);
-	_g.set(glsl_tokens_TokenType.ADD_ASSIGN,58);
-	_g.set(glsl_tokens_TokenType.SUB_ASSIGN,59);
-	_g.set(glsl_tokens_TokenType.LEFT_ASSIGN,60);
-	_g.set(glsl_tokens_TokenType.RIGHT_ASSIGN,61);
-	_g.set(glsl_tokens_TokenType.AND_ASSIGN,62);
-	_g.set(glsl_tokens_TokenType.XOR_ASSIGN,63);
-	_g.set(glsl_tokens_TokenType.OR_ASSIGN,64);
-	_g.set(glsl_tokens_TokenType.SEMICOLON,65);
-	_g.set(glsl_tokens_TokenType.PRECISION,66);
-	_g.set(glsl_tokens_TokenType.IN,67);
-	_g.set(glsl_tokens_TokenType.OUT,68);
-	_g.set(glsl_tokens_TokenType.INOUT,69);
-	_g.set(glsl_tokens_TokenType.INVARIANT,70);
-	_g.set(glsl_tokens_TokenType.CONST,71);
-	_g.set(glsl_tokens_TokenType.ATTRIBUTE,72);
-	_g.set(glsl_tokens_TokenType.VARYING,73);
-	_g.set(glsl_tokens_TokenType.UNIFORM,74);
-	_g.set(glsl_tokens_TokenType.SAMPLER2D,75);
-	_g.set(glsl_tokens_TokenType.SAMPLERCUBE,76);
-	_g.set(glsl_tokens_TokenType.HIGH_PRECISION,77);
-	_g.set(glsl_tokens_TokenType.MEDIUM_PRECISION,78);
-	_g.set(glsl_tokens_TokenType.LOW_PRECISION,79);
-	_g.set(glsl_tokens_TokenType.STRUCT,80);
-	_g.set(glsl_tokens_TokenType.LEFT_BRACE,81);
-	_g.set(glsl_tokens_TokenType.RIGHT_BRACE,82);
-	_g.set(glsl_tokens_TokenType.IF,83);
-	_g.set(glsl_tokens_TokenType.ELSE,84);
-	_g.set(glsl_tokens_TokenType.WHILE,85);
-	_g.set(glsl_tokens_TokenType.DO,86);
-	_g.set(glsl_tokens_TokenType.FOR,87);
-	_g.set(glsl_tokens_TokenType.CONTINUE,88);
-	_g.set(glsl_tokens_TokenType.BREAK,89);
-	_g.set(glsl_tokens_TokenType.RETURN,90);
-	_g.set(glsl_tokens_TokenType.DISCARD,91);
-	_g.set(glsl_tokens_TokenType.PREPROCESSOR_DIRECTIVE,92);
-	$r = _g;
-	return $r;
-}(this));
-glsl_parser_Parser.preprocess = true;
-glsl_parser_Parser.errorsSymbol = false;
-glsl_parser_Parser.illegalSymbolNumber = 167;
-glsl_parser_Parser.nStates = 335;
-glsl_parser_Parser.nRules = 213;
-glsl_parser_Parser.noAction = 550;
-glsl_parser_Parser.acceptAction = 549;
-glsl_parser_Parser.errorAction = 548;
-glsl_parser_Parser.actionCount = 2550;
-glsl_parser_Parser.action = glsl_parser_ParserTables.action;
-glsl_parser_Parser.lookahead = glsl_parser_ParserTables.lookahead;
-glsl_parser_Parser.shiftUseDefault = -36;
-glsl_parser_Parser.shiftCount = 168;
-glsl_parser_Parser.shiftOffsetMin = -35;
-glsl_parser_Parser.shiftOffsetMax = 2221;
-glsl_parser_Parser.shiftOffset = glsl_parser_ParserTables.shiftOffset;
-glsl_parser_Parser.reduceUseDefault = -63;
-glsl_parser_Parser.reduceCount = 72;
-glsl_parser_Parser.reduceMin = -62;
-glsl_parser_Parser.reduceMax = 2424;
-glsl_parser_Parser.reduceOffset = glsl_parser_ParserTables.reduceOffset;
-glsl_parser_Parser.defaultAction = glsl_parser_ParserTables.defaultAction;
-glsl_parser_Parser.ruleInfo = glsl_parser_ParserTables.ruleInfo;
-glsl_parser_Parser.tokenIdMap = glsl_parser_ParserTables.tokenIdMap;
-glsl_parser_Parser.ignoredTokens = glsl_parser_ParserTables.ignoredTokens;
-glsl_preprocess_Preprocessor.directiveTitleReg = new EReg("^#\\s*([^\\s]*)","");
-glsl_preprocess_Preprocessor.macroNameReg = new EReg("^([a-z_]\\w*)([^\\w]|$)","i");
-glsl_tokens_TokenHelper.identifierTokens = [glsl_tokens_TokenType.IDENTIFIER,glsl_tokens_TokenType.ATTRIBUTE,glsl_tokens_TokenType.UNIFORM,glsl_tokens_TokenType.VARYING,glsl_tokens_TokenType.CONST,glsl_tokens_TokenType.VOID,glsl_tokens_TokenType.INT,glsl_tokens_TokenType.FLOAT,glsl_tokens_TokenType.BOOL,glsl_tokens_TokenType.VEC2,glsl_tokens_TokenType.VEC3,glsl_tokens_TokenType.VEC4,glsl_tokens_TokenType.BVEC2,glsl_tokens_TokenType.BVEC3,glsl_tokens_TokenType.BVEC4,glsl_tokens_TokenType.IVEC2,glsl_tokens_TokenType.IVEC3,glsl_tokens_TokenType.IVEC4,glsl_tokens_TokenType.MAT2,glsl_tokens_TokenType.MAT3,glsl_tokens_TokenType.MAT4,glsl_tokens_TokenType.SAMPLER2D,glsl_tokens_TokenType.SAMPLERCUBE,glsl_tokens_TokenType.BREAK,glsl_tokens_TokenType.CONTINUE,glsl_tokens_TokenType.WHILE,glsl_tokens_TokenType.DO,glsl_tokens_TokenType.FOR,glsl_tokens_TokenType.IF,glsl_tokens_TokenType.ELSE,glsl_tokens_TokenType.RETURN,glsl_tokens_TokenType.DISCARD,glsl_tokens_TokenType.STRUCT,glsl_tokens_TokenType.IN,glsl_tokens_TokenType.OUT,glsl_tokens_TokenType.INOUT,glsl_tokens_TokenType.INVARIANT,glsl_tokens_TokenType.PRECISION,glsl_tokens_TokenType.HIGH_PRECISION,glsl_tokens_TokenType.MEDIUM_PRECISION,glsl_tokens_TokenType.LOW_PRECISION,glsl_tokens_TokenType.BOOLCONSTANT,glsl_tokens_TokenType.RESERVED_KEYWORD,glsl_tokens_TokenType.TYPE_NAME,glsl_tokens_TokenType.FIELD_SELECTION];
-glsl_tokens_Tokenizer.verbose = false;
-glsl_tokens_Tokenizer.floatMode = 0;
-glsl_tokens_Tokenizer.operatorRegex = new EReg("[&<=>|*?!+%(){}.~:,;/\\-\\^\\[\\]]","");
-glsl_tokens_Tokenizer.startConditionsMap = (function($this) {
-	var $r;
-	var _g = new haxe_ds_EnumValueMap();
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.BLOCK_COMMENT,function() {
-		return glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i,glsl_tokens_Tokenizer.i + 2) == "/*"?2:null;
+	_g.set(glsl_lex__$Tokenizer_ScanMode.BLOCK_COMMENT,function() {
+		return glsl_lex_Tokenizer.source.substring(glsl_lex_Tokenizer.i,glsl_lex_Tokenizer.i + 2) == "/*"?2:null;
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.LINE_COMMENT,function() {
-		return glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i,glsl_tokens_Tokenizer.i + 2) == "//"?2:null;
+	_g.set(glsl_lex__$Tokenizer_ScanMode.LINE_COMMENT,function() {
+		return glsl_lex_Tokenizer.source.substring(glsl_lex_Tokenizer.i,glsl_lex_Tokenizer.i + 2) == "//"?2:null;
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE,function() {
-		if(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i) == "#") {
-			var j = glsl_tokens_Tokenizer.i - 1;
-			while(glsl_tokens_Tokenizer.source.charAt(j) != "\n" && glsl_tokens_Tokenizer.source.charAt(j) != "") {
-				if(!new EReg("\\s","").match(glsl_tokens_Tokenizer.source.charAt(j))) return null;
+	_g.set(glsl_lex__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE,function() {
+		if(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i) == "#") {
+			var j = glsl_lex_Tokenizer.i - 1;
+			while(glsl_lex_Tokenizer.source.charAt(j) != "\n" && glsl_lex_Tokenizer.source.charAt(j) != "") {
+				if(!new EReg("\\s","").match(glsl_lex_Tokenizer.source.charAt(j))) return null;
 				j--;
 			}
 			return 1;
 		}
 		return null;
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.WHITESPACE,function() {
-		return new EReg("\\s","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i))?1:null;
+	_g.set(glsl_lex__$Tokenizer_ScanMode.WHITESPACE,function() {
+		return new EReg("\\s","").match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i))?1:null;
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.OPERATOR,function() {
-		return glsl_tokens_Tokenizer.operatorRegex.match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i))?1:null;
+	_g.set(glsl_lex__$Tokenizer_ScanMode.OPERATOR,function() {
+		return glsl_lex_Tokenizer.operatorRegex.match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i))?1:null;
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.LITERAL,function() {
-		return new EReg("[a-z_]","i").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i))?1:null;
+	_g.set(glsl_lex__$Tokenizer_ScanMode.LITERAL,function() {
+		return new EReg("[a-z_]","i").match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i))?1:null;
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.HEX_CONSTANT,function() {
-		return new EReg("0x[a-f0-9]","i").match(glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i,glsl_tokens_Tokenizer.i + 3))?3:null;
+	_g.set(glsl_lex__$Tokenizer_ScanMode.HEX_CONSTANT,function() {
+		return new EReg("0x[a-f0-9]","i").match(glsl_lex_Tokenizer.source.substring(glsl_lex_Tokenizer.i,glsl_lex_Tokenizer.i + 3))?3:null;
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.OCTAL_CONSTANT,function() {
-		return new EReg("0[0-7]","").match(glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i,glsl_tokens_Tokenizer.i + 2))?2:null;
+	_g.set(glsl_lex__$Tokenizer_ScanMode.OCTAL_CONSTANT,function() {
+		return new EReg("0[0-7]","").match(glsl_lex_Tokenizer.source.substring(glsl_lex_Tokenizer.i,glsl_lex_Tokenizer.i + 2))?2:null;
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.DECIMAL_CONSTANT,function() {
-		return new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i))?1:null;
+	_g.set(glsl_lex__$Tokenizer_ScanMode.DECIMAL_CONSTANT,function() {
+		return new EReg("[0-9]","").match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i))?1:null;
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT,function() {
-		if(glsl_tokens_Tokenizer.startLen(glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT) != null) return 0;
-		var j1 = glsl_tokens_Tokenizer.i;
-		while(new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(j1))) j1++;
-		var _i = glsl_tokens_Tokenizer.i;
-		glsl_tokens_Tokenizer.i = j1;
-		var exponentFollows = glsl_tokens_Tokenizer.startLen(glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART) != null;
-		glsl_tokens_Tokenizer.i = _i;
-		if(j1 > glsl_tokens_Tokenizer.i && exponentFollows) return 0;
+	_g.set(glsl_lex__$Tokenizer_ScanMode.FLOATING_CONSTANT,function() {
+		if(glsl_lex_Tokenizer.startLen(glsl_lex__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT) != null) return 0;
+		var j1 = glsl_lex_Tokenizer.i;
+		while(new EReg("[0-9]","").match(glsl_lex_Tokenizer.source.charAt(j1))) j1++;
+		var _i = glsl_lex_Tokenizer.i;
+		glsl_lex_Tokenizer.i = j1;
+		var exponentFollows = glsl_lex_Tokenizer.startLen(glsl_lex__$Tokenizer_ScanMode.EXPONENT_PART) != null;
+		glsl_lex_Tokenizer.i = _i;
+		if(j1 > glsl_lex_Tokenizer.i && exponentFollows) return 0;
 		return null;
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT,function() {
-		var j2 = glsl_tokens_Tokenizer.i;
-		while(new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(j2))) j2++;
-		if(j2 > glsl_tokens_Tokenizer.i && glsl_tokens_Tokenizer.source.charAt(j2) == ".") return ++j2 - glsl_tokens_Tokenizer.i;
-		return new EReg("\\.\\d","").match(glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i,glsl_tokens_Tokenizer.i + 2))?2:null;
+	_g.set(glsl_lex__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT,function() {
+		var j2 = glsl_lex_Tokenizer.i;
+		while(new EReg("[0-9]","").match(glsl_lex_Tokenizer.source.charAt(j2))) j2++;
+		if(j2 > glsl_lex_Tokenizer.i && glsl_lex_Tokenizer.source.charAt(j2) == ".") return ++j2 - glsl_lex_Tokenizer.i;
+		return new EReg("\\.\\d","").match(glsl_lex_Tokenizer.source.substring(glsl_lex_Tokenizer.i,glsl_lex_Tokenizer.i + 2))?2:null;
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART,function() {
+	_g.set(glsl_lex__$Tokenizer_ScanMode.EXPONENT_PART,function() {
 		var r = new EReg("^[e][+-]?\\d","i");
-		return r.match(glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i,glsl_tokens_Tokenizer.i + 3))?r.matched(0).length:null;
+		return r.match(glsl_lex_Tokenizer.source.substring(glsl_lex_Tokenizer.i,glsl_lex_Tokenizer.i + 3))?r.matched(0).length:null;
 	});
 	$r = _g;
 	return $r;
 }(this));
-glsl_tokens_Tokenizer.endConditionsMap = (function($this) {
+glsl_lex_Tokenizer.endConditionsMap = (function($this) {
 	var $r;
 	var _g = new haxe_ds_EnumValueMap();
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.BLOCK_COMMENT,function() {
-		return glsl_tokens_Tokenizer.source.substring(glsl_tokens_Tokenizer.i - 2,glsl_tokens_Tokenizer.i) == "*/";
+	_g.set(glsl_lex__$Tokenizer_ScanMode.BLOCK_COMMENT,function() {
+		return glsl_lex_Tokenizer.source.substring(glsl_lex_Tokenizer.i - 2,glsl_lex_Tokenizer.i) == "*/";
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.LINE_COMMENT,function() {
-		return glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i) == "\n" || glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i) == "";
+	_g.set(glsl_lex__$Tokenizer_ScanMode.LINE_COMMENT,function() {
+		return glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i) == "\n" || glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i) == "";
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE,function() {
-		return glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i) == "\n" && glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i - 1) != "\\" || glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i) == "";
+	_g.set(glsl_lex__$Tokenizer_ScanMode.PREPROCESSOR_DIRECTIVE,function() {
+		return glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i) == "\n" && glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i - 1) != "\\" || glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i) == "";
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.WHITESPACE,function() {
-		return !new EReg("\\s","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
+	_g.set(glsl_lex__$Tokenizer_ScanMode.WHITESPACE,function() {
+		return !new EReg("\\s","").match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i));
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.OPERATOR,function() {
+	_g.set(glsl_lex__$Tokenizer_ScanMode.OPERATOR,function() {
 		var tmp;
-		var key = glsl_tokens_Tokenizer.buf + glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i);
-		var _this = glsl_tokens_Tokenizer.operatorMap;
+		var key = glsl_lex_Tokenizer.buf + glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i);
+		var _this = glsl_lex_Tokenizer.operatorMap;
 		if(__map_reserved[key] != null) tmp = _this.existsReserved(key); else tmp = _this.h.hasOwnProperty(key);
-		return !tmp || glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i) == "";
+		return !tmp || glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i) == "";
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.LITERAL,function() {
-		return !new EReg("[a-z0-9_]","i").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
+	_g.set(glsl_lex__$Tokenizer_ScanMode.LITERAL,function() {
+		return !new EReg("[a-z0-9_]","i").match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i));
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.HEX_CONSTANT,function() {
-		return !new EReg("[a-f0-9]","i").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
+	_g.set(glsl_lex__$Tokenizer_ScanMode.HEX_CONSTANT,function() {
+		return !new EReg("[a-f0-9]","i").match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i));
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.OCTAL_CONSTANT,function() {
-		return !new EReg("[0-7]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
+	_g.set(glsl_lex__$Tokenizer_ScanMode.OCTAL_CONSTANT,function() {
+		return !new EReg("[0-7]","").match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i));
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.DECIMAL_CONSTANT,function() {
-		return !new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
+	_g.set(glsl_lex__$Tokenizer_ScanMode.DECIMAL_CONSTANT,function() {
+		return !new EReg("[0-9]","").match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i));
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.FLOATING_CONSTANT,function() {
-		return !new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
+	_g.set(glsl_lex__$Tokenizer_ScanMode.FLOATING_CONSTANT,function() {
+		return !new EReg("[0-9]","").match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i));
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT,function() {
-		return !new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
+	_g.set(glsl_lex__$Tokenizer_ScanMode.FRACTIONAL_CONSTANT,function() {
+		return !new EReg("[0-9]","").match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i));
 	});
-	_g.set(glsl_tokens__$Tokenizer_ScanMode.EXPONENT_PART,function() {
-		return !new EReg("[0-9]","").match(glsl_tokens_Tokenizer.source.charAt(glsl_tokens_Tokenizer.i));
+	_g.set(glsl_lex__$Tokenizer_ScanMode.EXPONENT_PART,function() {
+		return !new EReg("[0-9]","").match(glsl_lex_Tokenizer.source.charAt(glsl_lex_Tokenizer.i));
 	});
 	$r = _g;
 	return $r;
 }(this));
-glsl_tokens_Tokenizer.operatorMap = (function($this) {
+glsl_lex_Tokenizer.operatorMap = (function($this) {
 	var $r;
 	var _g = new haxe_ds_StringMap();
 	{
-		var value = glsl_tokens_TokenType.LEFT_OP;
+		var value = glsl_lex_TokenType.LEFT_OP;
 		if(__map_reserved["<<"] != null) _g.setReserved("<<",value); else _g.h["<<"] = value;
 	}
 	{
-		var value1 = glsl_tokens_TokenType.RIGHT_OP;
+		var value1 = glsl_lex_TokenType.RIGHT_OP;
 		if(__map_reserved[">>"] != null) _g.setReserved(">>",value1); else _g.h[">>"] = value1;
 	}
 	{
-		var value2 = glsl_tokens_TokenType.INC_OP;
+		var value2 = glsl_lex_TokenType.INC_OP;
 		if(__map_reserved["++"] != null) _g.setReserved("++",value2); else _g.h["++"] = value2;
 	}
 	{
-		var value3 = glsl_tokens_TokenType.DEC_OP;
+		var value3 = glsl_lex_TokenType.DEC_OP;
 		if(__map_reserved["--"] != null) _g.setReserved("--",value3); else _g.h["--"] = value3;
 	}
 	{
-		var value4 = glsl_tokens_TokenType.LE_OP;
+		var value4 = glsl_lex_TokenType.LE_OP;
 		if(__map_reserved["<="] != null) _g.setReserved("<=",value4); else _g.h["<="] = value4;
 	}
 	{
-		var value5 = glsl_tokens_TokenType.GE_OP;
+		var value5 = glsl_lex_TokenType.GE_OP;
 		if(__map_reserved[">="] != null) _g.setReserved(">=",value5); else _g.h[">="] = value5;
 	}
 	{
-		var value6 = glsl_tokens_TokenType.EQ_OP;
+		var value6 = glsl_lex_TokenType.EQ_OP;
 		if(__map_reserved["=="] != null) _g.setReserved("==",value6); else _g.h["=="] = value6;
 	}
 	{
-		var value7 = glsl_tokens_TokenType.NE_OP;
+		var value7 = glsl_lex_TokenType.NE_OP;
 		if(__map_reserved["!="] != null) _g.setReserved("!=",value7); else _g.h["!="] = value7;
 	}
 	{
-		var value8 = glsl_tokens_TokenType.AND_OP;
+		var value8 = glsl_lex_TokenType.AND_OP;
 		if(__map_reserved["&&"] != null) _g.setReserved("&&",value8); else _g.h["&&"] = value8;
 	}
 	{
-		var value9 = glsl_tokens_TokenType.OR_OP;
+		var value9 = glsl_lex_TokenType.OR_OP;
 		if(__map_reserved["||"] != null) _g.setReserved("||",value9); else _g.h["||"] = value9;
 	}
 	{
-		var value10 = glsl_tokens_TokenType.XOR_OP;
+		var value10 = glsl_lex_TokenType.XOR_OP;
 		if(__map_reserved["^^"] != null) _g.setReserved("^^",value10); else _g.h["^^"] = value10;
 	}
 	{
-		var value11 = glsl_tokens_TokenType.MUL_ASSIGN;
+		var value11 = glsl_lex_TokenType.MUL_ASSIGN;
 		if(__map_reserved["*="] != null) _g.setReserved("*=",value11); else _g.h["*="] = value11;
 	}
 	{
-		var value12 = glsl_tokens_TokenType.DIV_ASSIGN;
+		var value12 = glsl_lex_TokenType.DIV_ASSIGN;
 		if(__map_reserved["/="] != null) _g.setReserved("/=",value12); else _g.h["/="] = value12;
 	}
 	{
-		var value13 = glsl_tokens_TokenType.ADD_ASSIGN;
+		var value13 = glsl_lex_TokenType.ADD_ASSIGN;
 		if(__map_reserved["+="] != null) _g.setReserved("+=",value13); else _g.h["+="] = value13;
 	}
 	{
-		var value14 = glsl_tokens_TokenType.MOD_ASSIGN;
+		var value14 = glsl_lex_TokenType.MOD_ASSIGN;
 		if(__map_reserved["%="] != null) _g.setReserved("%=",value14); else _g.h["%="] = value14;
 	}
 	{
-		var value15 = glsl_tokens_TokenType.SUB_ASSIGN;
+		var value15 = glsl_lex_TokenType.SUB_ASSIGN;
 		if(__map_reserved["-="] != null) _g.setReserved("-=",value15); else _g.h["-="] = value15;
 	}
 	{
-		var value16 = glsl_tokens_TokenType.LEFT_ASSIGN;
+		var value16 = glsl_lex_TokenType.LEFT_ASSIGN;
 		if(__map_reserved["<<="] != null) _g.setReserved("<<=",value16); else _g.h["<<="] = value16;
 	}
 	{
-		var value17 = glsl_tokens_TokenType.RIGHT_ASSIGN;
+		var value17 = glsl_lex_TokenType.RIGHT_ASSIGN;
 		if(__map_reserved[">>="] != null) _g.setReserved(">>=",value17); else _g.h[">>="] = value17;
 	}
 	{
-		var value18 = glsl_tokens_TokenType.AND_ASSIGN;
+		var value18 = glsl_lex_TokenType.AND_ASSIGN;
 		if(__map_reserved["&="] != null) _g.setReserved("&=",value18); else _g.h["&="] = value18;
 	}
 	{
-		var value19 = glsl_tokens_TokenType.XOR_ASSIGN;
+		var value19 = glsl_lex_TokenType.XOR_ASSIGN;
 		if(__map_reserved["^="] != null) _g.setReserved("^=",value19); else _g.h["^="] = value19;
 	}
 	{
-		var value20 = glsl_tokens_TokenType.OR_ASSIGN;
+		var value20 = glsl_lex_TokenType.OR_ASSIGN;
 		if(__map_reserved["|="] != null) _g.setReserved("|=",value20); else _g.h["|="] = value20;
 	}
 	{
-		var value21 = glsl_tokens_TokenType.LEFT_PAREN;
+		var value21 = glsl_lex_TokenType.LEFT_PAREN;
 		if(__map_reserved["("] != null) _g.setReserved("(",value21); else _g.h["("] = value21;
 	}
 	{
-		var value22 = glsl_tokens_TokenType.RIGHT_PAREN;
+		var value22 = glsl_lex_TokenType.RIGHT_PAREN;
 		if(__map_reserved[")"] != null) _g.setReserved(")",value22); else _g.h[")"] = value22;
 	}
 	{
-		var value23 = glsl_tokens_TokenType.LEFT_BRACKET;
+		var value23 = glsl_lex_TokenType.LEFT_BRACKET;
 		if(__map_reserved["["] != null) _g.setReserved("[",value23); else _g.h["["] = value23;
 	}
 	{
-		var value24 = glsl_tokens_TokenType.RIGHT_BRACKET;
+		var value24 = glsl_lex_TokenType.RIGHT_BRACKET;
 		if(__map_reserved["]"] != null) _g.setReserved("]",value24); else _g.h["]"] = value24;
 	}
 	{
-		var value25 = glsl_tokens_TokenType.LEFT_BRACE;
+		var value25 = glsl_lex_TokenType.LEFT_BRACE;
 		if(__map_reserved["{"] != null) _g.setReserved("{",value25); else _g.h["{"] = value25;
 	}
 	{
-		var value26 = glsl_tokens_TokenType.RIGHT_BRACE;
+		var value26 = glsl_lex_TokenType.RIGHT_BRACE;
 		if(__map_reserved["}"] != null) _g.setReserved("}",value26); else _g.h["}"] = value26;
 	}
 	{
-		var value27 = glsl_tokens_TokenType.DOT;
+		var value27 = glsl_lex_TokenType.DOT;
 		if(__map_reserved["."] != null) _g.setReserved(".",value27); else _g.h["."] = value27;
 	}
 	{
-		var value28 = glsl_tokens_TokenType.COMMA;
+		var value28 = glsl_lex_TokenType.COMMA;
 		if(__map_reserved[","] != null) _g.setReserved(",",value28); else _g.h[","] = value28;
 	}
 	{
-		var value29 = glsl_tokens_TokenType.COLON;
+		var value29 = glsl_lex_TokenType.COLON;
 		if(__map_reserved[":"] != null) _g.setReserved(":",value29); else _g.h[":"] = value29;
 	}
 	{
-		var value30 = glsl_tokens_TokenType.EQUAL;
+		var value30 = glsl_lex_TokenType.EQUAL;
 		if(__map_reserved["="] != null) _g.setReserved("=",value30); else _g.h["="] = value30;
 	}
 	{
-		var value31 = glsl_tokens_TokenType.SEMICOLON;
+		var value31 = glsl_lex_TokenType.SEMICOLON;
 		if(__map_reserved[";"] != null) _g.setReserved(";",value31); else _g.h[";"] = value31;
 	}
 	{
-		var value32 = glsl_tokens_TokenType.BANG;
+		var value32 = glsl_lex_TokenType.BANG;
 		if(__map_reserved["!"] != null) _g.setReserved("!",value32); else _g.h["!"] = value32;
 	}
 	{
-		var value33 = glsl_tokens_TokenType.DASH;
+		var value33 = glsl_lex_TokenType.DASH;
 		if(__map_reserved["-"] != null) _g.setReserved("-",value33); else _g.h["-"] = value33;
 	}
 	{
-		var value34 = glsl_tokens_TokenType.TILDE;
+		var value34 = glsl_lex_TokenType.TILDE;
 		if(__map_reserved["~"] != null) _g.setReserved("~",value34); else _g.h["~"] = value34;
 	}
 	{
-		var value35 = glsl_tokens_TokenType.PLUS;
+		var value35 = glsl_lex_TokenType.PLUS;
 		if(__map_reserved["+"] != null) _g.setReserved("+",value35); else _g.h["+"] = value35;
 	}
 	{
-		var value36 = glsl_tokens_TokenType.STAR;
+		var value36 = glsl_lex_TokenType.STAR;
 		if(__map_reserved["*"] != null) _g.setReserved("*",value36); else _g.h["*"] = value36;
 	}
 	{
-		var value37 = glsl_tokens_TokenType.SLASH;
+		var value37 = glsl_lex_TokenType.SLASH;
 		if(__map_reserved["/"] != null) _g.setReserved("/",value37); else _g.h["/"] = value37;
 	}
 	{
-		var value38 = glsl_tokens_TokenType.PERCENT;
+		var value38 = glsl_lex_TokenType.PERCENT;
 		if(__map_reserved["%"] != null) _g.setReserved("%",value38); else _g.h["%"] = value38;
 	}
 	{
-		var value39 = glsl_tokens_TokenType.LEFT_ANGLE;
+		var value39 = glsl_lex_TokenType.LEFT_ANGLE;
 		if(__map_reserved["<"] != null) _g.setReserved("<",value39); else _g.h["<"] = value39;
 	}
 	{
-		var value40 = glsl_tokens_TokenType.RIGHT_ANGLE;
+		var value40 = glsl_lex_TokenType.RIGHT_ANGLE;
 		if(__map_reserved[">"] != null) _g.setReserved(">",value40); else _g.h[">"] = value40;
 	}
 	{
-		var value41 = glsl_tokens_TokenType.VERTICAL_BAR;
+		var value41 = glsl_lex_TokenType.VERTICAL_BAR;
 		if(__map_reserved["|"] != null) _g.setReserved("|",value41); else _g.h["|"] = value41;
 	}
 	{
-		var value42 = glsl_tokens_TokenType.CARET;
+		var value42 = glsl_lex_TokenType.CARET;
 		if(__map_reserved["^"] != null) _g.setReserved("^",value42); else _g.h["^"] = value42;
 	}
 	{
-		var value43 = glsl_tokens_TokenType.AMPERSAND;
+		var value43 = glsl_lex_TokenType.AMPERSAND;
 		if(__map_reserved["&"] != null) _g.setReserved("&",value43); else _g.h["&"] = value43;
 	}
 	{
-		var value44 = glsl_tokens_TokenType.QUESTION;
+		var value44 = glsl_lex_TokenType.QUESTION;
 		if(__map_reserved["?"] != null) _g.setReserved("?",value44); else _g.h["?"] = value44;
 	}
 	$r = _g;
 	return $r;
 }(this));
-glsl_tokens_Tokenizer.keywordMap = (function($this) {
+glsl_lex_Tokenizer.keywordMap = (function($this) {
 	var $r;
 	var _g = new haxe_ds_StringMap();
 	{
-		var value = glsl_tokens_TokenType.ATTRIBUTE;
+		var value = glsl_lex_TokenType.ATTRIBUTE;
 		if(__map_reserved.attribute != null) _g.setReserved("attribute",value); else _g.h["attribute"] = value;
 	}
 	{
-		var value1 = glsl_tokens_TokenType.UNIFORM;
+		var value1 = glsl_lex_TokenType.UNIFORM;
 		if(__map_reserved.uniform != null) _g.setReserved("uniform",value1); else _g.h["uniform"] = value1;
 	}
 	{
-		var value2 = glsl_tokens_TokenType.VARYING;
+		var value2 = glsl_lex_TokenType.VARYING;
 		if(__map_reserved.varying != null) _g.setReserved("varying",value2); else _g.h["varying"] = value2;
 	}
 	{
-		var value3 = glsl_tokens_TokenType.CONST;
+		var value3 = glsl_lex_TokenType.CONST;
 		if(__map_reserved["const"] != null) _g.setReserved("const",value3); else _g.h["const"] = value3;
 	}
 	{
-		var value4 = glsl_tokens_TokenType.VOID;
+		var value4 = glsl_lex_TokenType.VOID;
 		if(__map_reserved["void"] != null) _g.setReserved("void",value4); else _g.h["void"] = value4;
 	}
 	{
-		var value5 = glsl_tokens_TokenType.INT;
+		var value5 = glsl_lex_TokenType.INT;
 		if(__map_reserved["int"] != null) _g.setReserved("int",value5); else _g.h["int"] = value5;
 	}
 	{
-		var value6 = glsl_tokens_TokenType.FLOAT;
+		var value6 = glsl_lex_TokenType.FLOAT;
 		if(__map_reserved["float"] != null) _g.setReserved("float",value6); else _g.h["float"] = value6;
 	}
 	{
-		var value7 = glsl_tokens_TokenType.BOOL;
+		var value7 = glsl_lex_TokenType.BOOL;
 		if(__map_reserved.bool != null) _g.setReserved("bool",value7); else _g.h["bool"] = value7;
 	}
 	{
-		var value8 = glsl_tokens_TokenType.VEC2;
+		var value8 = glsl_lex_TokenType.VEC2;
 		if(__map_reserved.vec2 != null) _g.setReserved("vec2",value8); else _g.h["vec2"] = value8;
 	}
 	{
-		var value9 = glsl_tokens_TokenType.VEC3;
+		var value9 = glsl_lex_TokenType.VEC3;
 		if(__map_reserved.vec3 != null) _g.setReserved("vec3",value9); else _g.h["vec3"] = value9;
 	}
 	{
-		var value10 = glsl_tokens_TokenType.VEC4;
+		var value10 = glsl_lex_TokenType.VEC4;
 		if(__map_reserved.vec4 != null) _g.setReserved("vec4",value10); else _g.h["vec4"] = value10;
 	}
 	{
-		var value11 = glsl_tokens_TokenType.BVEC2;
+		var value11 = glsl_lex_TokenType.BVEC2;
 		if(__map_reserved.bvec2 != null) _g.setReserved("bvec2",value11); else _g.h["bvec2"] = value11;
 	}
 	{
-		var value12 = glsl_tokens_TokenType.BVEC3;
+		var value12 = glsl_lex_TokenType.BVEC3;
 		if(__map_reserved.bvec3 != null) _g.setReserved("bvec3",value12); else _g.h["bvec3"] = value12;
 	}
 	{
-		var value13 = glsl_tokens_TokenType.BVEC4;
+		var value13 = glsl_lex_TokenType.BVEC4;
 		if(__map_reserved.bvec4 != null) _g.setReserved("bvec4",value13); else _g.h["bvec4"] = value13;
 	}
 	{
-		var value14 = glsl_tokens_TokenType.IVEC2;
+		var value14 = glsl_lex_TokenType.IVEC2;
 		if(__map_reserved.ivec2 != null) _g.setReserved("ivec2",value14); else _g.h["ivec2"] = value14;
 	}
 	{
-		var value15 = glsl_tokens_TokenType.IVEC3;
+		var value15 = glsl_lex_TokenType.IVEC3;
 		if(__map_reserved.ivec3 != null) _g.setReserved("ivec3",value15); else _g.h["ivec3"] = value15;
 	}
 	{
-		var value16 = glsl_tokens_TokenType.IVEC4;
+		var value16 = glsl_lex_TokenType.IVEC4;
 		if(__map_reserved.ivec4 != null) _g.setReserved("ivec4",value16); else _g.h["ivec4"] = value16;
 	}
 	{
-		var value17 = glsl_tokens_TokenType.MAT2;
+		var value17 = glsl_lex_TokenType.MAT2;
 		if(__map_reserved.mat2 != null) _g.setReserved("mat2",value17); else _g.h["mat2"] = value17;
 	}
 	{
-		var value18 = glsl_tokens_TokenType.MAT3;
+		var value18 = glsl_lex_TokenType.MAT3;
 		if(__map_reserved.mat3 != null) _g.setReserved("mat3",value18); else _g.h["mat3"] = value18;
 	}
 	{
-		var value19 = glsl_tokens_TokenType.MAT4;
+		var value19 = glsl_lex_TokenType.MAT4;
 		if(__map_reserved.mat4 != null) _g.setReserved("mat4",value19); else _g.h["mat4"] = value19;
 	}
 	{
-		var value20 = glsl_tokens_TokenType.SAMPLER2D;
+		var value20 = glsl_lex_TokenType.SAMPLER2D;
 		if(__map_reserved.sampler2D != null) _g.setReserved("sampler2D",value20); else _g.h["sampler2D"] = value20;
 	}
 	{
-		var value21 = glsl_tokens_TokenType.SAMPLERCUBE;
+		var value21 = glsl_lex_TokenType.SAMPLERCUBE;
 		if(__map_reserved.samplerCube != null) _g.setReserved("samplerCube",value21); else _g.h["samplerCube"] = value21;
 	}
 	{
-		var value22 = glsl_tokens_TokenType.BREAK;
+		var value22 = glsl_lex_TokenType.BREAK;
 		if(__map_reserved["break"] != null) _g.setReserved("break",value22); else _g.h["break"] = value22;
 	}
 	{
-		var value23 = glsl_tokens_TokenType.CONTINUE;
+		var value23 = glsl_lex_TokenType.CONTINUE;
 		if(__map_reserved["continue"] != null) _g.setReserved("continue",value23); else _g.h["continue"] = value23;
 	}
 	{
-		var value24 = glsl_tokens_TokenType.WHILE;
+		var value24 = glsl_lex_TokenType.WHILE;
 		if(__map_reserved["while"] != null) _g.setReserved("while",value24); else _g.h["while"] = value24;
 	}
 	{
-		var value25 = glsl_tokens_TokenType.DO;
+		var value25 = glsl_lex_TokenType.DO;
 		if(__map_reserved["do"] != null) _g.setReserved("do",value25); else _g.h["do"] = value25;
 	}
 	{
-		var value26 = glsl_tokens_TokenType.FOR;
+		var value26 = glsl_lex_TokenType.FOR;
 		if(__map_reserved["for"] != null) _g.setReserved("for",value26); else _g.h["for"] = value26;
 	}
 	{
-		var value27 = glsl_tokens_TokenType.IF;
+		var value27 = glsl_lex_TokenType.IF;
 		if(__map_reserved["if"] != null) _g.setReserved("if",value27); else _g.h["if"] = value27;
 	}
 	{
-		var value28 = glsl_tokens_TokenType.ELSE;
+		var value28 = glsl_lex_TokenType.ELSE;
 		if(__map_reserved["else"] != null) _g.setReserved("else",value28); else _g.h["else"] = value28;
 	}
 	{
-		var value29 = glsl_tokens_TokenType.RETURN;
+		var value29 = glsl_lex_TokenType.RETURN;
 		if(__map_reserved["return"] != null) _g.setReserved("return",value29); else _g.h["return"] = value29;
 	}
 	{
-		var value30 = glsl_tokens_TokenType.DISCARD;
+		var value30 = glsl_lex_TokenType.DISCARD;
 		if(__map_reserved.discard != null) _g.setReserved("discard",value30); else _g.h["discard"] = value30;
 	}
 	{
-		var value31 = glsl_tokens_TokenType.STRUCT;
+		var value31 = glsl_lex_TokenType.STRUCT;
 		if(__map_reserved.struct != null) _g.setReserved("struct",value31); else _g.h["struct"] = value31;
 	}
 	{
-		var value32 = glsl_tokens_TokenType.IN;
+		var value32 = glsl_lex_TokenType.IN;
 		if(__map_reserved["in"] != null) _g.setReserved("in",value32); else _g.h["in"] = value32;
 	}
 	{
-		var value33 = glsl_tokens_TokenType.OUT;
+		var value33 = glsl_lex_TokenType.OUT;
 		if(__map_reserved.out != null) _g.setReserved("out",value33); else _g.h["out"] = value33;
 	}
 	{
-		var value34 = glsl_tokens_TokenType.INOUT;
+		var value34 = glsl_lex_TokenType.INOUT;
 		if(__map_reserved.inout != null) _g.setReserved("inout",value34); else _g.h["inout"] = value34;
 	}
 	{
-		var value35 = glsl_tokens_TokenType.INVARIANT;
+		var value35 = glsl_lex_TokenType.INVARIANT;
 		if(__map_reserved.invariant != null) _g.setReserved("invariant",value35); else _g.h["invariant"] = value35;
 	}
 	{
-		var value36 = glsl_tokens_TokenType.PRECISION;
+		var value36 = glsl_lex_TokenType.PRECISION;
 		if(__map_reserved.precision != null) _g.setReserved("precision",value36); else _g.h["precision"] = value36;
 	}
 	{
-		var value37 = glsl_tokens_TokenType.HIGH_PRECISION;
+		var value37 = glsl_lex_TokenType.HIGH_PRECISION;
 		if(__map_reserved.highp != null) _g.setReserved("highp",value37); else _g.h["highp"] = value37;
 	}
 	{
-		var value38 = glsl_tokens_TokenType.MEDIUM_PRECISION;
+		var value38 = glsl_lex_TokenType.MEDIUM_PRECISION;
 		if(__map_reserved.mediump != null) _g.setReserved("mediump",value38); else _g.h["mediump"] = value38;
 	}
 	{
-		var value39 = glsl_tokens_TokenType.LOW_PRECISION;
+		var value39 = glsl_lex_TokenType.LOW_PRECISION;
 		if(__map_reserved.lowp != null) _g.setReserved("lowp",value39); else _g.h["lowp"] = value39;
 	}
 	{
-		var value40 = glsl_tokens_TokenType.BOOLCONSTANT;
+		var value40 = glsl_lex_TokenType.BOOLCONSTANT;
 		if(__map_reserved["true"] != null) _g.setReserved("true",value40); else _g.h["true"] = value40;
 	}
 	{
-		var value41 = glsl_tokens_TokenType.BOOLCONSTANT;
+		var value41 = glsl_lex_TokenType.BOOLCONSTANT;
 		if(__map_reserved["false"] != null) _g.setReserved("false",value41); else _g.h["false"] = value41;
 	}
 	{
-		var value42 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value42 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.asm != null) _g.setReserved("asm",value42); else _g.h["asm"] = value42;
 	}
 	{
-		var value43 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value43 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["class"] != null) _g.setReserved("class",value43); else _g.h["class"] = value43;
 	}
 	{
-		var value44 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value44 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.union != null) _g.setReserved("union",value44); else _g.h["union"] = value44;
 	}
 	{
-		var value45 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value45 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["enum"] != null) _g.setReserved("enum",value45); else _g.h["enum"] = value45;
 	}
 	{
-		var value46 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value46 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.typedef != null) _g.setReserved("typedef",value46); else _g.h["typedef"] = value46;
 	}
 	{
-		var value47 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value47 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.template != null) _g.setReserved("template",value47); else _g.h["template"] = value47;
 	}
 	{
-		var value48 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value48 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["this"] != null) _g.setReserved("this",value48); else _g.h["this"] = value48;
 	}
 	{
-		var value49 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value49 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.packed != null) _g.setReserved("packed",value49); else _g.h["packed"] = value49;
 	}
 	{
-		var value50 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value50 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["goto"] != null) _g.setReserved("goto",value50); else _g.h["goto"] = value50;
 	}
 	{
-		var value51 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value51 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["switch"] != null) _g.setReserved("switch",value51); else _g.h["switch"] = value51;
 	}
 	{
-		var value52 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value52 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["default"] != null) _g.setReserved("default",value52); else _g.h["default"] = value52;
 	}
 	{
-		var value53 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value53 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.inline != null) _g.setReserved("inline",value53); else _g.h["inline"] = value53;
 	}
 	{
-		var value54 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value54 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.noinline != null) _g.setReserved("noinline",value54); else _g.h["noinline"] = value54;
 	}
 	{
-		var value55 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value55 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["volatile"] != null) _g.setReserved("volatile",value55); else _g.h["volatile"] = value55;
 	}
 	{
-		var value56 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value56 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["public"] != null) _g.setReserved("public",value56); else _g.h["public"] = value56;
 	}
 	{
-		var value57 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value57 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["static"] != null) _g.setReserved("static",value57); else _g.h["static"] = value57;
 	}
 	{
-		var value58 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value58 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.extern != null) _g.setReserved("extern",value58); else _g.h["extern"] = value58;
 	}
 	{
-		var value59 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value59 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.external != null) _g.setReserved("external",value59); else _g.h["external"] = value59;
 	}
 	{
-		var value60 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value60 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["interface"] != null) _g.setReserved("interface",value60); else _g.h["interface"] = value60;
 	}
 	{
-		var value61 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value61 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["long"] != null) _g.setReserved("long",value61); else _g.h["long"] = value61;
 	}
 	{
-		var value62 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value62 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["short"] != null) _g.setReserved("short",value62); else _g.h["short"] = value62;
 	}
 	{
-		var value63 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value63 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["double"] != null) _g.setReserved("double",value63); else _g.h["double"] = value63;
 	}
 	{
-		var value64 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value64 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.half != null) _g.setReserved("half",value64); else _g.h["half"] = value64;
 	}
 	{
-		var value65 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value65 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.fixed != null) _g.setReserved("fixed",value65); else _g.h["fixed"] = value65;
 	}
 	{
-		var value66 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value66 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.unsigned != null) _g.setReserved("unsigned",value66); else _g.h["unsigned"] = value66;
 	}
 	{
-		var value67 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value67 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.input != null) _g.setReserved("input",value67); else _g.h["input"] = value67;
 	}
 	{
-		var value68 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value68 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.output != null) _g.setReserved("output",value68); else _g.h["output"] = value68;
 	}
 	{
-		var value69 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value69 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.hvec2 != null) _g.setReserved("hvec2",value69); else _g.h["hvec2"] = value69;
 	}
 	{
-		var value70 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value70 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.hvec3 != null) _g.setReserved("hvec3",value70); else _g.h["hvec3"] = value70;
 	}
 	{
-		var value71 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value71 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.hvec4 != null) _g.setReserved("hvec4",value71); else _g.h["hvec4"] = value71;
 	}
 	{
-		var value72 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value72 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.dvec2 != null) _g.setReserved("dvec2",value72); else _g.h["dvec2"] = value72;
 	}
 	{
-		var value73 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value73 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.dvec3 != null) _g.setReserved("dvec3",value73); else _g.h["dvec3"] = value73;
 	}
 	{
-		var value74 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value74 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.dvec4 != null) _g.setReserved("dvec4",value74); else _g.h["dvec4"] = value74;
 	}
 	{
-		var value75 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value75 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.fvec2 != null) _g.setReserved("fvec2",value75); else _g.h["fvec2"] = value75;
 	}
 	{
-		var value76 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value76 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.fvec3 != null) _g.setReserved("fvec3",value76); else _g.h["fvec3"] = value76;
 	}
 	{
-		var value77 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value77 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.fvec4 != null) _g.setReserved("fvec4",value77); else _g.h["fvec4"] = value77;
 	}
 	{
-		var value78 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value78 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.sampler1DShadow != null) _g.setReserved("sampler1DShadow",value78); else _g.h["sampler1DShadow"] = value78;
 	}
 	{
-		var value79 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value79 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.sampler2DShadow != null) _g.setReserved("sampler2DShadow",value79); else _g.h["sampler2DShadow"] = value79;
 	}
 	{
-		var value80 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value80 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.sampler2DRect != null) _g.setReserved("sampler2DRect",value80); else _g.h["sampler2DRect"] = value80;
 	}
 	{
-		var value81 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value81 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.sampler3DRect != null) _g.setReserved("sampler3DRect",value81); else _g.h["sampler3DRect"] = value81;
 	}
 	{
-		var value82 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value82 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.sampler2DRectShadow != null) _g.setReserved("sampler2DRectShadow",value82); else _g.h["sampler2DRectShadow"] = value82;
 	}
 	{
-		var value83 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value83 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.sizeof != null) _g.setReserved("sizeof",value83); else _g.h["sizeof"] = value83;
 	}
 	{
-		var value84 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value84 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.cast != null) _g.setReserved("cast",value84); else _g.h["cast"] = value84;
 	}
 	{
-		var value85 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value85 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved["namespace"] != null) _g.setReserved("namespace",value85); else _g.h["namespace"] = value85;
 	}
 	{
-		var value86 = glsl_tokens_TokenType.RESERVED_KEYWORD;
+		var value86 = glsl_lex_TokenType.RESERVED_KEYWORD;
 		if(__map_reserved.using != null) _g.setReserved("using",value86); else _g.h["using"] = value86;
 	}
 	$r = _g;
 	return $r;
 }(this));
-glsl_tokens_Tokenizer.skippableTypes = [glsl_tokens_TokenType.WHITESPACE,glsl_tokens_TokenType.BLOCK_COMMENT,glsl_tokens_TokenType.LINE_COMMENT];
+glsl_lex_Tokenizer.skippableTypes = [glsl_lex_TokenType.WHITESPACE,glsl_lex_TokenType.BLOCK_COMMENT,glsl_lex_TokenType.LINE_COMMENT];
+glsl_parse_Tables.ignoredTokens = [glsl_lex_TokenType.WHITESPACE,glsl_lex_TokenType.LINE_COMMENT,glsl_lex_TokenType.BLOCK_COMMENT];
+glsl_parse_Tables.errorRecovery = false;
+glsl_parse_Tables.illegalSymbolNumber = 174;
+glsl_parse_Tables.nStates = 353;
+glsl_parse_Tables.nRules = 222;
+glsl_parse_Tables.actionCount = 2555;
+glsl_parse_Tables.action = [180,349,348,347,22,45,44,43,42,352,55,54,283,112,150,149,148,147,146,145,144,143,142,141,140,139,138,137,136,135,316,315,314,313,350,345,178,86,179,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,52,51,50,207,74,259,258,257,95,239,238,237,235,267,266,259,258,257,97,2,209,131,32,130,64,124,122,121,14,120,192,180,349,348,347,22,376,244,243,242,344,55,54,283,340,150,149,148,147,146,145,144,143,142,141,140,139,138,137,136,135,316,315,314,313,350,345,111,86,20,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,117,206,9,207,74,71,252,59,95,239,238,237,235,267,266,259,258,257,97,2,210,131,337,130,64,124,122,121,14,120,192,180,349,348,347,22,69,252,59,49,48,55,54,283,39,150,149,148,147,146,145,144,143,142,141,140,139,138,137,136,135,316,315,314,313,350,345,98,86,31,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,185,206,9,207,74,47,46,37,95,239,238,237,235,267,266,259,258,257,97,1,233,131,24,130,64,124,122,121,14,120,192,180,349,348,347,22,41,40,33,21,35,55,54,283,36,150,149,148,147,146,145,144,143,142,141,140,139,138,137,136,135,316,315,314,313,157,34,350,345,19,86,25,343,342,110,177,23,285,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,234,207,74,31,73,56,95,239,238,237,235,267,266,259,258,257,97,2,286,131,292,130,64,124,122,121,14,120,192,180,349,348,347,22,262,59,284,66,287,55,54,283,28,150,149,148,147,146,145,144,143,142,141,140,139,138,137,136,135,316,315,314,313,256,350,345,78,86,253,343,342,110,177,23,285,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,249,162,207,74,73,56,181,95,239,238,237,235,267,266,259,258,257,97,231,27,131,31,130,64,124,122,121,14,120,192,350,345,94,86,254,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,351,250,221,134,113,67,261,158,61,153,163,152,26,228,58,222,13,230,165,265,291,290,229,265,65,346,218,236,87,62,219,133,248,31,188,220,217,216,215,214,213,5,350,345,94,86,31,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,247,232,221,134,113,67,261,158,61,153,341,152,60,228,58,67,261,230,30,265,31,377,378,70,115,236,218,379,195,265,219,132,31,380,208,220,217,216,215,214,213,350,345,94,86,381,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,382,383,221,134,113,67,261,158,61,153,384,152,260,228,58,385,386,230,387,265,388,389,390,391,392,265,218,212,18,211,219,114,206,9,188,220,217,216,215,214,213,3,350,345,94,86,186,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,81,127,221,134,113,67,261,158,61,153,17,152,8,228,58,67,261,230,79,265,199,7,197,227,196,193,218,16,116,265,219,125,15,187,208,220,217,216,215,214,213,350,345,94,86,63,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,205,12,221,134,113,67,261,158,61,153,202,152,10,228,58,77,161,230,160,265,255,184,1,4,200,68,218,29,57,75,219,263,251,577,188,220,217,216,215,214,213,6,350,345,94,86,577,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,577,577,221,134,113,67,261,158,61,153,577,152,577,228,58,577,577,230,577,265,577,577,577,577,577,577,218,577,577,577,80,577,201,203,577,577,217,216,215,214,213,350,345,94,86,577,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,577,577,221,134,113,67,261,158,61,153,577,152,577,228,58,577,577,230,577,265,577,577,577,577,577,577,218,577,577,577,80,577,198,203,577,577,217,216,215,214,213,577,350,345,94,86,577,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,577,577,221,134,113,67,261,158,61,153,577,152,577,228,58,577,577,230,577,265,577,577,577,577,577,577,218,577,577,577,219,577,577,577,208,220,217,216,215,214,213,350,345,94,86,577,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,577,577,221,134,113,67,261,158,61,153,577,152,577,228,58,577,577,230,577,265,577,577,577,577,577,577,218,577,577,577,82,577,577,577,577,577,217,216,215,214,213,577,350,345,94,86,577,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,577,577,221,134,113,67,261,158,61,153,577,152,577,228,58,577,577,230,577,265,577,577,577,577,577,577,189,577,577,577,577,577,577,577,577,577,190,577,180,349,348,347,22,577,11,577,577,577,55,54,283,577,150,149,148,147,146,145,144,143,142,141,140,139,138,137,136,135,316,315,314,313,350,345,93,86,577,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,577,577,577,207,74,577,577,577,95,239,238,237,235,267,266,259,258,257,97,180,349,348,347,22,577,577,577,577,577,55,54,283,577,150,149,148,147,146,145,144,143,142,141,140,139,138,137,136,135,316,315,314,313,180,349,348,347,22,577,577,577,577,577,55,54,339,577,335,334,333,332,331,330,329,328,327,326,325,324,323,322,321,320,316,315,314,313,577,154,239,238,237,235,267,266,259,258,257,97,577,350,345,129,86,577,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,577,577,577,577,577,67,261,577,577,577,577,128,577,228,58,350,345,129,86,265,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,577,191,577,123,119,67,261,353,577,577,577,128,577,228,58,577,577,577,577,265,283,577,282,281,280,279,278,277,276,275,274,273,272,271,270,269,268,264,577,577,577,577,577,126,283,577,282,281,280,279,278,277,276,275,274,273,272,271,270,269,268,264,304,303,302,301,300,299,298,297,296,295,294,74,577,577,577,95,239,238,237,235,267,266,259,258,257,97,244,243,242,154,239,238,237,235,577,74,577,192,577,95,239,238,237,235,267,266,259,258,257,97,577,577,577,577,577,577,577,577,577,577,577,192,577,180,349,348,347,22,577,577,577,577,577,55,54,577,577,335,334,333,332,331,330,329,328,327,326,325,324,323,322,321,320,316,315,314,313,577,577,577,577,577,577,577,577,577,577,577,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,84,194,577,180,349,348,347,22,577,577,577,577,577,55,54,577,577,335,334,333,332,331,330,329,328,327,326,325,324,323,322,321,320,316,315,314,313,350,345,577,86,577,343,342,110,177,23,285,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,89,350,345,204,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,83,577,350,345,118,86,577,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,350,345,91,86,577,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,350,345,92,86,577,343,342,110,177,23,306,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,577,350,345,577,86,577,343,342,110,177,23,577,176,336,319,53,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,85,101,175,174,172,170,168,99,288,453,164,350,345,577,86,577,343,342,110,177,23,289,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,350,345,577,86,577,343,342,110,177,23,293,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,577,577,577,577,577,244,243,242,154,239,238,237,235,577,350,345,577,86,577,343,342,110,177,23,305,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,577,350,345,577,86,577,343,342,110,177,23,308,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,85,101,175,174,172,170,168,99,288,577,159,577,67,261,577,577,577,577,577,246,96,577,577,245,350,345,265,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,85,101,175,174,172,170,168,99,288,577,156,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,85,101,175,174,172,170,168,99,288,577,155,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,85,101,175,174,172,170,168,99,288,577,151,577,577,577,577,577,577,577,577,577,577,350,345,577,86,577,343,342,110,177,23,338,176,336,72,53,90,109,108,85,101,175,174,172,170,168,99,307,283,577,282,281,280,279,278,277,276,275,274,273,272,271,270,269,268,264,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,85,101,175,174,172,170,166,283,577,282,281,280,279,278,277,276,275,274,273,272,271,270,269,268,264,577,267,266,259,258,257,97,577,577,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,85,101,175,174,172,167,577,577,577,577,577,577,577,577,577,577,577,267,266,577,350,345,97,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,85,101,175,174,169,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,85,101,175,171,576,38,577,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,85,101,173,577,577,577,577,577,577,577,224,182,113,67,261,158,61,153,577,152,577,228,58,577,577,230,577,265,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,108,85,100,223,577,577,577,577,577,577,183,225,76,224,182,113,67,261,158,61,153,577,152,577,228,58,350,345,230,86,265,343,342,110,177,23,577,176,336,309,53,90,109,105,577,577,577,577,577,577,577,223,577,577,577,577,577,577,226,225,76,577,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,104,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,103,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,109,102,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,107,577,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,90,106,577,577,577,577,350,345,577,86,577,343,342,110,177,23,577,176,336,309,53,88,350,345,577,86,577,343,342,110,177,23,577,176,336,318,53,350,345,577,86,577,343,342,110,177,23,577,176,336,317,53,350,345,577,86,577,343,342,110,177,23,577,176,336,312,53,350,345,577,86,577,343,342,110,177,23,577,176,336,311,53,350,345,577,86,577,343,342,110,177,23,577,176,336,310,53,67,261,577,577,577,577,577,241,96,577,577,240,577,577,265];
+glsl_parse_Tables.lookahead = [1,2,3,4,5,40,41,42,43,65,11,12,13,1,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,35,36,37,65,66,77,78,79,70,71,72,73,74,75,76,77,78,79,80,81,82,83,7,85,86,87,88,89,90,91,92,1,2,3,4,5,5,67,68,69,8,11,12,13,6,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,96,97,98,99,54,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,150,151,152,65,66,143,144,145,70,71,72,73,74,75,76,77,78,79,80,81,82,83,5,85,86,87,88,89,90,91,92,1,2,3,4,5,143,144,145,31,32,11,12,13,46,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,96,97,98,99,14,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,150,151,152,65,66,38,39,47,70,71,72,73,74,75,76,77,78,79,80,81,5,83,7,85,86,87,88,89,90,91,92,1,2,3,4,5,44,45,51,52,49,11,12,13,48,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,1,50,96,97,54,99,7,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,133,65,66,14,137,138,70,71,72,73,74,75,76,77,78,79,80,81,141,83,10,85,86,87,88,89,90,91,92,1,2,3,4,5,144,145,65,81,8,11,12,13,53,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,65,96,97,146,99,148,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,133,1,65,66,137,138,14,70,71,72,73,74,75,76,77,78,79,80,141,7,83,14,85,86,87,88,89,90,91,92,96,97,98,99,8,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,65,6,125,126,127,128,129,130,131,132,129,134,7,136,137,65,7,140,9,142,11,12,1,142,81,6,149,73,1,14,153,154,8,14,157,158,159,160,161,162,163,164,96,97,98,99,14,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,8,8,125,126,127,128,129,130,131,132,6,134,6,136,137,128,129,140,14,142,14,5,5,136,6,73,149,5,65,142,153,154,14,5,157,158,159,160,161,162,163,96,97,98,99,5,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,5,5,125,126,127,128,129,130,131,132,5,134,129,136,137,5,5,140,5,142,5,5,5,5,5,142,149,82,5,82,153,150,151,152,157,158,159,160,161,162,163,164,96,97,98,99,165,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,5,1,125,126,127,128,129,130,131,132,54,134,6,136,137,128,129,140,5,142,82,6,65,136,65,65,149,65,85,142,153,154,5,65,157,158,159,160,161,162,163,96,97,98,99,84,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,154,152,125,126,127,128,129,130,131,132,154,134,152,136,137,14,147,140,1,142,148,156,81,152,82,128,149,123,138,81,153,82,82,173,157,158,159,160,161,162,163,164,96,97,98,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,173,125,126,127,128,129,130,131,132,173,134,173,136,137,173,173,140,173,142,173,173,173,173,173,173,149,173,173,173,153,173,155,156,173,173,159,160,161,162,163,96,97,98,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,173,125,126,127,128,129,130,131,132,173,134,173,136,137,173,173,140,173,142,173,173,173,173,173,173,149,173,173,173,153,173,155,156,173,173,159,160,161,162,163,173,96,97,98,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,173,125,126,127,128,129,130,131,132,173,134,173,136,137,173,173,140,173,142,173,173,173,173,173,173,149,173,173,173,153,173,173,173,157,158,159,160,161,162,163,96,97,98,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,173,125,126,127,128,129,130,131,132,173,134,173,136,137,173,173,140,173,142,173,173,173,173,173,173,149,173,173,173,153,173,173,173,173,173,159,160,161,162,163,173,96,97,98,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,173,125,126,127,128,129,130,131,132,173,134,173,136,137,173,173,140,173,142,173,173,173,173,173,173,149,173,173,173,173,173,173,173,173,173,159,173,1,2,3,4,5,173,167,173,173,173,11,12,13,173,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,96,97,98,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,173,173,65,66,173,173,173,70,71,72,73,74,75,76,77,78,79,80,1,2,3,4,5,173,173,173,173,173,11,12,13,173,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,1,2,3,4,5,173,173,173,173,173,11,12,13,173,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,173,70,71,72,73,74,75,76,77,78,79,80,173,96,97,98,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,173,173,173,173,128,129,173,173,173,173,134,173,136,137,96,97,98,99,142,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,166,173,168,169,128,129,0,173,173,173,134,173,136,137,173,173,173,173,142,13,173,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,173,173,173,173,173,166,13,173,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,54,55,56,57,58,59,60,61,62,63,64,66,173,173,173,70,71,72,73,74,75,76,77,78,79,80,67,68,69,70,71,72,73,74,173,66,173,92,173,70,71,72,73,74,75,76,77,78,79,80,173,173,173,173,173,173,173,173,173,173,173,92,173,1,2,3,4,5,173,173,173,173,173,11,12,173,173,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,173,173,173,173,173,173,173,173,173,173,173,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,65,173,1,2,3,4,5,173,173,173,173,173,11,12,173,173,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,96,97,173,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,96,97,141,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,173,96,97,98,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,96,97,98,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,96,97,98,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,6,124,96,97,173,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,96,97,173,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,173,173,173,173,67,68,69,70,71,72,73,74,173,96,97,173,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,96,97,173,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,124,173,128,129,173,173,173,173,173,135,136,173,173,139,96,97,142,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,124,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,124,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,173,124,173,173,173,173,173,173,173,173,173,173,96,97,173,99,173,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,13,173,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,115,116,117,118,119,120,13,173,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,173,75,76,77,78,79,80,173,173,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,115,116,117,118,119,173,173,173,173,173,173,173,173,173,173,173,75,76,173,96,97,80,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,115,116,117,118,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,115,116,117,94,95,173,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,115,116,173,173,173,173,173,173,173,125,126,127,128,129,130,131,132,173,134,173,136,137,173,173,140,173,142,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,114,115,163,173,173,173,173,173,173,170,171,172,125,126,127,128,129,130,131,132,173,134,173,136,137,96,97,140,99,142,101,102,103,104,105,173,107,108,109,110,111,112,113,173,173,173,173,173,173,173,163,173,173,173,173,173,173,170,171,172,173,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,113,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,173,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,112,173,173,173,173,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,111,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,96,97,173,99,173,101,102,103,104,105,173,107,108,109,110,128,129,173,173,173,173,173,135,136,173,173,139,173,173,142];
+glsl_parse_Tables.shiftUseDefault = -57;
+glsl_parse_Tables.shiftCount = 182;
+glsl_parse_Tables.shiftOffsetMin = -56;
+glsl_parse_Tables.shiftOffsetMax = 2105;
+glsl_parse_Tables.shiftOffset = [1403,275,91,275,275,275,-1,183,183,367,1141,1221,1221,1562,1496,1562,1562,1562,1562,1562,1562,1562,1562,1255,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,1379,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,1562,2062,2062,2062,2062,709,1778,1393,709,709,-57,-57,2105,2105,711,778,710,1380,31,-11,703,702,778,762,-57,-57,-57,-57,-35,-35,-35,496,260,26,26,26,574,519,562,437,508,309,430,328,232,237,237,212,212,212,212,161,161,212,161,560,506,76,422,654,661,720,636,208,655,653,652,650,708,706,631,699,649,693,208,688,647,571,569,-56,643,642,641,640,639,637,635,634,629,620,619,596,584,578,573,572,549,514,502,441,548,511,492,482,456,442,337,295,310,369,349,261,236,261,241,236,205,241,151,205,151,170,99,208,93,92,12,-56];
+glsl_parse_Tables.reduceUseDefault = -63;
+glsl_parse_Tables.reduceCount = 82;
+glsl_parse_Tables.reduceMin = -62;
+glsl_parse_Tables.reduceMax = 2429;
+glsl_parse_Tables.reduceOffset = [2134,364,638,570,501,433,844,775,707,912,981,1207,1249,-62,1618,1591,1564,1501,1080,307,216,122,30,1952,1913,1884,1855,1813,1786,1758,1717,1690,1661,1997,2049,2087,2110,2135,2182,2181,1544,1446,2296,2278,2260,2224,2332,2314,2353,1528,2429,2414,2399,2384,2369,1646,2412,1811,580,443,505,297,206,95,3,46,15,507,368,229,259,229,665,651,658,632,626,633,630,621,617,610,607];
+glsl_parse_Tables.defaultAction = [575,572,575,572,575,572,575,575,575,575,575,555,575,575,575,575,556,575,575,575,575,575,575,371,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,575,571,464,464,571,571,573,573,575,575,573,575,573,401,464,575,571,575,575,574,571,572,571,572,418,417,416,393,475,407,406,405,575,575,575,575,575,468,575,575,431,420,419,415,414,413,412,410,409,411,408,575,575,471,575,546,575,575,575,557,575,575,575,575,575,575,575,575,575,575,547,575,575,575,575,575,507,503,502,501,500,499,498,497,496,495,494,493,492,491,490,489,575,474,454,575,575,575,458,575,575,518,575,575,575,575,575,430,428,429,426,427,424,425,422,423,421,575,575,366,575,354,575,568,563,569,545,544,550,540,553,552,554,570,562,560,561,559,558,551,535,534,549,525,524,548,523,522,542,541,539,538,537,536,533,532,531,530,529,528,527,526,521,543,567,566,565,564,480,479,478,470,477,476,457,456,485,484,483,482,481,463,461,467,466,465,462,460,469,459,455,452,512,513,516,519,517,515,510,509,508,487,486,514,511,507,506,505,504,503,502,501,500,499,498,497,496,495,494,493,492,491,490,489,488,451,520,473,472,448,447,365,364,363,373,445,444,443,442,441,440,439,438,437,436,435,434,446,433,432,401,404,403,402,400,399,398,397,396,395,394,392,391,390,389,388,387,386,385,384,383,382,381,380,379,378,377,375,374,372,370,369,368,367,362,361,360,359,358,357,356,355,450,449];
+glsl_parse_Tables.ruleInfo = [[94,1],[96,1],[97,1],[97,1],[97,1],[97,1],[97,3],[99,1],[99,4],[99,1],[99,3],[99,2],[99,2],[100,1],[101,1],[102,2],[102,2],[104,2],[104,1],[103,2],[103,3],[105,2],[107,1],[107,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[108,1],[109,1],[109,2],[109,2],[109,2],[110,1],[110,1],[110,1],[110,1],[111,1],[111,3],[111,3],[111,3],[112,1],[112,3],[112,3],[113,1],[113,3],[113,3],[114,1],[114,3],[114,3],[114,3],[114,3],[115,1],[115,3],[115,3],[116,1],[116,3],[117,1],[117,3],[118,1],[118,3],[119,1],[119,3],[120,1],[120,3],[121,1],[121,3],[122,1],[122,5],[106,1],[106,3],[123,1],[123,1],[123,1],[123,1],[123,1],[123,1],[123,1],[123,1],[123,1],[123,1],[123,1],[98,1],[98,3],[124,1],[125,2],[125,2],[125,4],[126,2],[130,1],[130,1],[132,2],[132,3],[131,3],[135,2],[135,5],[133,3],[133,2],[133,3],[133,2],[138,0],[138,1],[138,1],[138,1],[139,1],[139,4],[127,1],[127,3],[127,6],[127,5],[140,1],[140,2],[140,5],[140,4],[140,2],[134,1],[134,2],[137,1],[137,1],[137,1],[137,2],[137,1],[136,1],[136,2],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[129,1],[128,1],[128,1],[128,1],[142,5],[142,4],[143,1],[143,2],[144,5],[146,1],[146,3],[148,1],[148,4],[141,1],[149,1],[150,1],[150,3],[155,1],[155,2],[157,1],[157,1],[153,1],[153,1],[153,1],[153,1],[153,1],[153,1],[151,2],[151,5],[156,3],[156,4],[158,2],[158,3],[164,1],[164,2],[159,1],[159,2],[160,5],[165,3],[165,1],[166,1],[166,4],[161,6],[161,7],[161,7],[167,1],[167,1],[169,1],[169,0],[168,2],[168,3],[162,2],[162,2],[162,2],[162,3],[162,2],[95,1],[95,2],[170,1],[170,1],[170,1],[172,1],[171,2],[163,1],[152,0],[154,0],[145,0],[147,0]];
+glsl_parse_Tables.tokenIdMap = (function($this) {
+	var $r;
+	var _g = new haxe_ds_EnumValueMap();
+	_g.set(glsl_lex_TokenType.IDENTIFIER,1);
+	_g.set(glsl_lex_TokenType.IVEC2,24);
+	_g.set(glsl_lex_TokenType.IVEC3,25);
+	_g.set(glsl_lex_TokenType.IVEC4,26);
+	_g.set(glsl_lex_TokenType.STRUCT,80);
+	_g.set(glsl_lex_TokenType.INC_OP,11);
+	_g.set(glsl_lex_TokenType.AMPERSAND,46);
+	_g.set(glsl_lex_TokenType.WHILE,85);
+	_g.set(glsl_lex_TokenType.COLON,53);
+	_g.set(glsl_lex_TokenType.COMMA,14);
+	_g.set(glsl_lex_TokenType.CONST,71);
+	_g.set(glsl_lex_TokenType.MUL_ASSIGN,55);
+	_g.set(glsl_lex_TokenType.SEMICOLON,65);
+	_g.set(glsl_lex_TokenType.VERTICAL_BAR,48);
+	_g.set(glsl_lex_TokenType.LEFT_ANGLE,40);
+	_g.set(glsl_lex_TokenType.OR_ASSIGN,64);
+	_g.set(glsl_lex_TokenType.SAMPLER2D,75);
+	_g.set(glsl_lex_TokenType.DIV_ASSIGN,56);
+	_g.set(glsl_lex_TokenType.LEFT_BRACKET,7);
+	_g.set(glsl_lex_TokenType.XOR_OP,50);
+	_g.set(glsl_lex_TokenType.FLOATCONSTANT,3);
+	_g.set(glsl_lex_TokenType.VARYING,73);
+	_g.set(glsl_lex_TokenType.LEFT_BRACE,81);
+	_g.set(glsl_lex_TokenType.LE_OP,42);
+	_g.set(glsl_lex_TokenType.EQUAL,54);
+	_g.set(glsl_lex_TokenType.EQ_OP,44);
+	_g.set(glsl_lex_TokenType.INVARIANT,70);
+	_g.set(glsl_lex_TokenType.LEFT_PAREN,5);
+	_g.set(glsl_lex_TokenType.XOR_ASSIGN,63);
+	_g.set(glsl_lex_TokenType.LEFT_OP,38);
+	_g.set(glsl_lex_TokenType.RIGHT_ANGLE,41);
+	_g.set(glsl_lex_TokenType.LEFT_ASSIGN,60);
+	_g.set(glsl_lex_TokenType.RIGHT_BRACKET,8);
+	_g.set(glsl_lex_TokenType.ATTRIBUTE,72);
+	_g.set(glsl_lex_TokenType.HIGH_PRECISION,77);
+	_g.set(glsl_lex_TokenType.PERCENT,37);
+	_g.set(glsl_lex_TokenType.ADD_ASSIGN,58);
+	_g.set(glsl_lex_TokenType.PRECISION,66);
+	_g.set(glsl_lex_TokenType.SLASH,36);
+	_g.set(glsl_lex_TokenType.DO,86);
+	_g.set(glsl_lex_TokenType.IF,83);
+	_g.set(glsl_lex_TokenType.IN,67);
+	_g.set(glsl_lex_TokenType.DOT,9);
+	_g.set(glsl_lex_TokenType.FOR,87);
+	_g.set(glsl_lex_TokenType.QUESTION,52);
+	_g.set(glsl_lex_TokenType.INT,16);
+	_g.set(glsl_lex_TokenType.OUT,68);
+	_g.set(glsl_lex_TokenType.FLOAT,15);
+	_g.set(glsl_lex_TokenType.CONTINUE,88);
+	_g.set(glsl_lex_TokenType.RIGHT_BRACE,82);
+	_g.set(glsl_lex_TokenType.INTCONSTANT,2);
+	_g.set(glsl_lex_TokenType.MOD_ASSIGN,57);
+	_g.set(glsl_lex_TokenType.TILDE,34);
+	_g.set(glsl_lex_TokenType.SUB_ASSIGN,59);
+	_g.set(glsl_lex_TokenType.GE_OP,43);
+	_g.set(glsl_lex_TokenType.RIGHT_PAREN,6);
+	_g.set(glsl_lex_TokenType.AND_OP,49);
+	_g.set(glsl_lex_TokenType.TYPE_NAME,30);
+	_g.set(glsl_lex_TokenType.NE_OP,45);
+	_g.set(glsl_lex_TokenType.DEC_OP,12);
+	_g.set(glsl_lex_TokenType.MEDIUM_PRECISION,78);
+	_g.set(glsl_lex_TokenType.LOW_PRECISION,79);
+	_g.set(glsl_lex_TokenType.RIGHT_ASSIGN,61);
+	_g.set(glsl_lex_TokenType.BANG,33);
+	_g.set(glsl_lex_TokenType.BOOL,17);
+	_g.set(glsl_lex_TokenType.DASH,32);
+	_g.set(glsl_lex_TokenType.BOOLCONSTANT,4);
+	_g.set(glsl_lex_TokenType.ELSE,84);
+	_g.set(glsl_lex_TokenType.FIELD_SELECTION,10);
+	_g.set(glsl_lex_TokenType.DISCARD,91);
+	_g.set(glsl_lex_TokenType.MAT2,27);
+	_g.set(glsl_lex_TokenType.MAT3,28);
+	_g.set(glsl_lex_TokenType.MAT4,29);
+	_g.set(glsl_lex_TokenType.OR_OP,51);
+	_g.set(glsl_lex_TokenType.PLUS,31);
+	_g.set(glsl_lex_TokenType.UNIFORM,74);
+	_g.set(glsl_lex_TokenType.BREAK,89);
+	_g.set(glsl_lex_TokenType.AND_ASSIGN,62);
+	_g.set(glsl_lex_TokenType.STAR,35);
+	_g.set(glsl_lex_TokenType.VEC2,18);
+	_g.set(glsl_lex_TokenType.VEC3,19);
+	_g.set(glsl_lex_TokenType.VEC4,20);
+	_g.set(glsl_lex_TokenType.VOID,13);
+	_g.set(glsl_lex_TokenType.PREPROCESSOR_DIRECTIVE,92);
+	_g.set(glsl_lex_TokenType.BVEC2,21);
+	_g.set(glsl_lex_TokenType.BVEC3,22);
+	_g.set(glsl_lex_TokenType.BVEC4,23);
+	_g.set(glsl_lex_TokenType.RETURN,90);
+	_g.set(glsl_lex_TokenType.INOUT,69);
+	_g.set(glsl_lex_TokenType.RIGHT_OP,39);
+	_g.set(glsl_lex_TokenType.CARET,47);
+	_g.set(glsl_lex_TokenType.SAMPLERCUBE,76);
+	$r = _g;
+	return $r;
+}(this));
+glsl_parse_Parser.preprocess = true;
+glsl_parse_Parser.errorRecovery = false;
+glsl_parse_Parser.illegalSymbolNumber = 174;
+glsl_parse_Parser.nStates = 353;
+glsl_parse_Parser.nRules = 222;
+glsl_parse_Parser.noAction = 577;
+glsl_parse_Parser.acceptAction = 576;
+glsl_parse_Parser.errorAction = 575;
+glsl_parse_Parser.actionCount = 2555;
+glsl_parse_Parser.action = glsl_parse_Tables.action;
+glsl_parse_Parser.lookahead = glsl_parse_Tables.lookahead;
+glsl_parse_Parser.shiftUseDefault = -57;
+glsl_parse_Parser.shiftCount = 182;
+glsl_parse_Parser.shiftOffsetMin = -56;
+glsl_parse_Parser.shiftOffsetMax = 2105;
+glsl_parse_Parser.shiftOffset = glsl_parse_Tables.shiftOffset;
+glsl_parse_Parser.reduceUseDefault = -63;
+glsl_parse_Parser.reduceCount = 82;
+glsl_parse_Parser.reduceMin = -62;
+glsl_parse_Parser.reduceMax = 2429;
+glsl_parse_Parser.reduceOffset = glsl_parse_Tables.reduceOffset;
+glsl_parse_Parser.defaultAction = glsl_parse_Tables.defaultAction;
+glsl_parse_Parser.ruleInfo = glsl_parse_Tables.ruleInfo;
+glsl_parse_Parser.tokenIdMap = glsl_parse_Tables.tokenIdMap;
+glsl_parse_Parser.ignoredTokens = glsl_parse_Tables.ignoredTokens;
+glsl_preprocess_Preprocessor.directiveTitleReg = new EReg("^#\\s*([^\\s]*)","");
+glsl_preprocess_Preprocessor.macroNameReg = new EReg("^([a-z_]\\w*)([^\\w]|$)","i");
 js_Boot.__toStr = {}.toString;
 Main.main();
 })(typeof console != "undefined" ? console : {log:function(){}});
