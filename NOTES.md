@@ -5,7 +5,6 @@
 - Streaming parser and validator (parser triggers fetch of next token)
 - Validator
 	- should be designed to validate nodes as a stream, so validation can be done during the parse
-- Add toEnum() with macro rather than helper
 - Warn on redefinitions in parseContext?
 - Support for complex types in Eval + Improved operator selection in Eval
 - Preprocessor expression parser and eval
