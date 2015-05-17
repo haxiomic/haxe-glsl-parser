@@ -16,7 +16,7 @@ class Extract{
 		Eval.reset();
 
 		function iterate(node:Node){
-			switch node.getNodeType() {
+			switch node.safeNodeType() {
 				case RootNode(n):
 					for(d in n.declarations) iterate(d);
 

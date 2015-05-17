@@ -77,7 +77,7 @@ $$printActionCases(rule_actions,rules,3)
 
 	static function handleVariableDeclaration(declarator:Declarator, ts:TypeSpecifier){
 		//declare type user type
-		switch ts.getNodeType(){
+		switch ts.safeNodeType(){
 			case StructSpecifierNode(n):
 				parseContext.declareType(n);
 			case null, _:

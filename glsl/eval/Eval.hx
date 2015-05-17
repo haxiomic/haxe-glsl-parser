@@ -74,7 +74,7 @@ class Eval{
 
 	static public function evaluateExpr(expr:Expression, constant:Bool = false):GLSLInstance{
 		
-		switch expr.getNodeType() {
+		switch expr.safeNodeType() {
 			case PrimitiveNode(n): 
 				return PrimitiveInstance(n.value, n.dataType);
 
@@ -188,7 +188,7 @@ class Eval{
 			for(j in 0...d.declarators.length){
 
 				//create field def and push
-				switch d.declarators[j].getNodeType() {
+				switch d.declarators[j].safeNodeType() {
 					case StructDeclaratorNode(n):
 						var field:VariableDefinition = {
 							name: n.name,
@@ -227,7 +227,7 @@ class Eval{
 
 		//if TypeSpecifier is StructDefinition, evaluate it
 		if(declaration.typeSpecifier != null){
-			switch declaration.typeSpecifier.getNodeType() {
+			switch declaration.typeSpecifier.safeNodeType() {
 				case StructSpecifierNode(n): evalulateStructSpecifier(n);
 				case null, _:
 			}
@@ -312,7 +312,7 @@ class Eval{
 	static function resolveVariable(expr:Expression, constant:Bool):Variable{
 		var variable:Variable = null;
 
-		switch expr.getNodeType(){
+		switch expr.safeNodeType(){
 			case IdentifierNode(n): 
 				variable = getVariable(n.name);
 

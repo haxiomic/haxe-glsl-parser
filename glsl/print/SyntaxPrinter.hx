@@ -24,7 +24,7 @@ class NodePrinter{
 	//Node cannot be printed, determine sub type and print
 	static public function print(n:Node, indentWith:String, indentLevel:Int = 0){
 		var pretty = (indentWith != null);
-		return switch n.getNodeType(){
+		return switch n.safeNodeType(){
 			case RootNode(n):                            n.print(indentWith, indentLevel);
 			case TypeSpecifierNode(n):                   n.print(indentWith, indentLevel);
 			case StructSpecifierNode(n):                 n.print(indentWith, indentLevel);
@@ -74,8 +74,8 @@ class RootPrinter{
 			var d = n.declarations[i];
 			var unit:String = d.print(indentWith, 0);
 			//node-specific rules
-			var currentNodeEnum = d.getNodeType();
-			var nextNodeEnum = n.declarations[i+1].getNodeType();
+			var currentNodeEnum = d.safeNodeType();
+			var nextNodeEnum = n.declarations[i+1].safeNodeType();
 			if(pretty){
 				//group similar nodes, (excluding FunctionDefinitions)
 				if(nextNodeEnum != null){
@@ -100,7 +100,7 @@ class RootPrinter{
 class TypeSpecifierPrinter{
 	static public function print(n:TypeSpecifier, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		switch n.getNodeType(){
+		switch n.safeNodeType(){
 			case StructSpecifierNode(n): return n.print(indentWith, indentLevel);
 			default:
 		}
@@ -158,7 +158,7 @@ class StructDeclaratorPrinter{
 }
 class ExpressionPrinter{
 	static public function print(n:Expression, indentWith:String, indentLevel:Int = 0):String{
-		return switch n.getNodeType(){
+		return switch n.safeNodeType(){
 			case IdentifierNode(n):                      n.print(indentWith, indentLevel);
 			case PrimitiveNode(n):                       n.print(indentWith, indentLevel);
 			case BinaryExpressionNode(n):                n.print(indentWith, indentLevel);
@@ -263,7 +263,7 @@ class ArrayElementSelectionExpressionPrinter{
 }
 class FunctionCallPrinter{
 	static public function print(n:FunctionCall, indentWith:String, indentLevel:Int = 0):String{
-		switch n.getNodeType(){
+		switch n.safeNodeType(){
 			case ConstructorNode(n): return n.print(indentWith, indentLevel);
 			default:
 		}
@@ -291,7 +291,7 @@ class ConstructorPrinter{
 }
 class DeclarationPrinter{
 	static public function print(n:Declaration, indentWith:String, indentLevel:Int = 0):String{
-		return switch n.getNodeType(){
+		return switch n.safeNodeType(){
 			case PrecisionDeclarationNode(n):  n.print(indentWith, indentLevel);
 			case VariableDeclarationNode(n):   n.print(indentWith, indentLevel);
 			case FunctionPrototypeNode(n):     n.print(indentWith, indentLevel);
@@ -371,7 +371,7 @@ class FunctionHeaderPrinter{
 }
 class StatementPrinter{
 	static public function print(n:Statement, indentWith:String, indentLevel:Int = 0):String{
-		return switch n.getNodeType(){
+		return switch n.safeNodeType(){
 			case CompoundStatementNode(n):     n.print(indentWith, indentLevel);
 			case DeclarationStatementNode(n):  n.print(indentWith, indentLevel);
 			case ExpressionStatementNode(n):   n.print(indentWith, indentLevel);
@@ -398,8 +398,8 @@ class CompoundStatementPrinter{
 			var smt = n.statementList[i];
 			var smtStr = smt.print(indentWith, 1);
 			//node-specific rules
-			var currentNodeEnum = smt.getNodeType();
-			var nextNodeEnum = n.statementList[i+1].getNodeType();
+			var currentNodeEnum = smt.safeNodeType();
+			var nextNodeEnum = n.statementList[i+1].safeNodeType();
 			if(pretty){
 				//group similar statements:
 				//if current and next are different node types, add newline
@@ -413,7 +413,7 @@ class CompoundStatementPrinter{
 				}
 			}else{
 				//preprocessor tokens need to have their own line
-				var previousNodeEnum = n.statementList[i-1].getNodeType();
+				var previousNodeEnum = n.statementList[i-1].safeNodeType();
 				if(currentNodeEnum.match(PreprocessorDirectiveNode(_))){
 					smtStr = smtStr + '\n';
 					if(previousNodeEnum == null) smtStr = '\n' + smtStr;
@@ -444,13 +444,13 @@ class ExpressionStatementPrinter{
 class IfStatementPrinter{
 	static public function print(n:IfStatement, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		var compoundConsequent = n.consequent.getNodeType().match(CompoundStatementNode(_));
+		var compoundConsequent = n.consequent.safeNodeType().match(CompoundStatementNode(_));
 		var str = 'if(' + n.test.print(indentWith) + ')';
 		str += (pretty && !compoundConsequent ? ' ' : ''); //trailing space
 		str += n.consequent.print(indentWith);
 		if(n.alternate != null){
 			str += (pretty && !compoundConsequent ? '\n' : '');
-			var compoundAlternate = n.alternate.getNodeType().match(CompoundStatementNode(_));
+			var compoundAlternate = n.alternate.safeNodeType().match(CompoundStatementNode(_));
 			str += 'else';
 			str += (!compoundAlternate ? ' ' : ''); //trailing space
 			str += n.alternate.print(indentWith);
@@ -460,7 +460,7 @@ class IfStatementPrinter{
 }
 class JumpStatementPrinter{
 	static public function print(n:JumpStatement, indentWith:String, indentLevel:Int = 0):String{
-		switch n.getNodeType(){
+		switch n.safeNodeType(){
 			case ReturnStatementNode(n): n.print(indentWith, indentLevel);
 			default:
 		}
@@ -481,7 +481,7 @@ class ReturnStatementPrinter{
 }
 class IterationStatementPrinter{
 	static public function print(n:IterationStatement, indentWith:String, indentLevel:Int = 0):String{
-		return switch n.getNodeType(){
+		return switch n.safeNodeType(){
 			case WhileStatementNode(n):   n.print(indentWith, indentLevel);
 			case DoWhileStatementNode(n): n.print(indentWith, indentLevel);
 			case ForStatementNode(n):     n.print(indentWith, indentLevel);
@@ -501,7 +501,7 @@ class WhileStatementPrinter{
 class DoWhileStatementPrinter{
 	static public function print(n:DoWhileStatement, indentWith:String, indentLevel:Int = 0):String{
 		var pretty = (indentWith != null);
-		var compoundBody = n.body.getNodeType().match(CompoundStatementNode(_));
+		var compoundBody = n.body.safeNodeType().match(CompoundStatementNode(_));
 		var str = 'do';
 		str += (!compoundBody ? ' ' : ''); //trailing space
 		str += n.body.print(indentWith);

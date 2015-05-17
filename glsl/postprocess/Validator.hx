@@ -40,7 +40,7 @@ class Validator{
 	//@! once complete, break away into iterator helper
 	//each node needs a state control object?
 	static function nextNode():Node{
-		switch currentNode.getNodeType(){
+		switch currentNode.safeNodeType(){
 			case RootNode(n):
 			case TypeSpecifierNode(n):
 			case StructSpecifierNode(n):

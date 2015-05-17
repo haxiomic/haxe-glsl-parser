@@ -617,7 +617,7 @@ enum NodeType{
 
 class NodeTypeHelper{
 	//returns nodeType with null safety
-	static public function getNodeType(n:Node):NodeType{
+	static public function safeNodeType(n:Node):NodeType{
 		return n != null ? n.nodeType : null;
 	}
 }
