@@ -17,6 +17,10 @@
 
 #Notes
 
+Machine readable glsl spec
+https://github.com/cbaggers/gl-to-sexp
+
+
 ##TYPE_NAME scope test
 ```
 struct A{

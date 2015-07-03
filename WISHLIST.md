@@ -26,5 +26,6 @@
     - struct without trailing ;
 
     -> names: 
-        - civilizedSL
+        - CivilizedSL
+        - SuperSL
 - Complete Eval (currently just constant expressions)
