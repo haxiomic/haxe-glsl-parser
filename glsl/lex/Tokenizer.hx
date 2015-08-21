@@ -280,8 +280,9 @@ class Tokenizer{
 				if(tryMode(EXPONENT_PART)){
 					floatMode = 3;
 					return;
+				}else{
+					error('float in floatMode 2 must have exponent part - none found');
 				}
-				else error('float in floatMode 2 must have exponent part - none found');
 		}
 
 		if(isEnd(mode)){

@@ -13,14 +13,35 @@ class Validator{
 	//- need to account for version from the start
 	//- consider stream validation so nodes are passed in as they are created
 
+	/* Errors */
 	//only allowed type_qualifier is CONST, and only then if INOUT or OUT are not used
 	//qualifiers are not allowed on function returns
 	//check for reserved keywords (instead of tokenizer)
-	//allowed iteration statements (while is forbidden)
-	//prototypes must be global
+	//prototypes must be global (as well as function definitions)
 	//disallow recursive functions
-	//certain loop types are forbidden
+
+	/* Warnings */
+	//allowed iteration statements (while is forbidden in webgl)
+	//for-loop restrictions
+	//	There is one loop index.
+	//	The loop index has type int or float.
+	//	The for statement has the form: for ( init-declaration ; condition ; expression ) statement
+	//	init-declaration has the form: type-specifier identifier = constant-expression
+	//		(Consequently the loop variable cannot be a global variable.)
+	//  condition has the form: loop_index relational_operator constant_expression
+	//		where relational_operator is one of: > >= < <= == or !=
+	//	for_header has one of the following forms:
+	//		loop_index++
+	//		loop_index--
+	//		loop_index += constant_expression
+	//		loop_index -= constant_expression
+	//	Within the body of the loop, the loop index is not statically assigned to nor is it used as the argument to a function out or inout parameter.
+	//non-constant expressions in global variables
+	//	In webgl, global variables can be non constant and involve uniforms, math functions, however this is a bug!
+	//	GLSL ES spec requires global variables have constant definitions, so it's bad practice to use in webgl
+
 	//...
+	// For more, see appendix A in spec
 	//(search through reference validator for full set)
 
 	//state machine
