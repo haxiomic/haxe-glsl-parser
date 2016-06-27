@@ -90,6 +90,7 @@ class Tokenizer{
 		//init
 		tokens = [];
 		i = 0;
+		last_i = 0;
 		line = 1;
 		col = 1;
 		userDefinedTypes = [];

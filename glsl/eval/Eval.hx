@@ -128,7 +128,7 @@ class Eval{
 				if(result != null) return result;
 
 			case SequenceExpressionNode(n):
-				var currentExpression;
+				var currentExpression = null;
 				for(e in n.expressions){
 					currentExpression = evaluateExpr(e);
 				}

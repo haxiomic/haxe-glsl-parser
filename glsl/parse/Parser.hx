@@ -26,8 +26,6 @@ class Parser{
 
 	static var currentMinor:MinorType;
 
-	static var preprocess = true;
-
 	static function init(){
 		//init state machine
 		i = 0;

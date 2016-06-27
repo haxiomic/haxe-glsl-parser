@@ -62,7 +62,7 @@ class Actions{
 	static public function reduce(ruleno:Int):MinorType{
 		Actions.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
 
-		var __ret:MinorType;
+		var __ret:MinorType = null;
 		
 		switch ruleno{
 			case 0: 
@@ -460,12 +460,14 @@ class Actions{
 			case 127: 
 				/* fully_specified_type ::= type_qualifier type_specifier */
 				var ts = cast(n(2), TypeSpecifier);
-				if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
-				    ts.storage = StorageQualifier.VARYING;
-				    ts.invariant = true;
-				}else{
-				    ts.storage = untyped ev(1);
-				}
+				try{
+					if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
+					    ts.storage = StorageQualifier.VARYING;
+					    ts.invariant = true;
+					}else{
+					    ts.storage = untyped ev(1);
+					}
+				}catch(e:Dynamic){}
 				__ret = s(2);
 			case 128: 
 				/* type_qualifier ::= CONST */

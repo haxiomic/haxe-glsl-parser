@@ -77,12 +77,25 @@ class RootPrinter{
 			var currentNodeEnum = d.safeNodeType();
 			var nextNodeEnum = n.declarations[i+1].safeNodeType();
 			if(pretty){
-				//group similar nodes, (excluding FunctionDefinitions)
+				//group similar nodes, (excluding FunctionDefinitions and dissimilar storage qualifiers)
 				if(nextNodeEnum != null){
 					unit = unit + '\n';
+					
 					if( currentNodeEnum.getIndex() != nextNodeEnum.getIndex() ||
-						currentNodeEnum.match(FunctionDefinitionNode(_)) )
+						currentNodeEnum.match(FunctionDefinitionNode(_))
+					){
 						unit = unit + '\n';
+					}
+
+					switch [currentNodeEnum, nextNodeEnum]{
+						case [VariableDeclarationNode(c), VariableDeclarationNode(n)]:
+							var cStorage = c.typeSpecifier != null ? c.typeSpecifier.storage : null;
+							var nStorage = n.typeSpecifier != null ? n.typeSpecifier.storage : null;
+							if(!cStorage.equals(nStorage)){
+								unit = unit + '\n';
+							}
+						default:
+					}
 				}
 			}else{
 				//preprocessor tokens need to have their own line
