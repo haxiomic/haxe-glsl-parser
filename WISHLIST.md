@@ -8,11 +8,10 @@
 	https://www.opengl.org/wiki/GLSL_Optimizations
 	http://stackoverflow.com/questions/10880742/glsl-compiler-optimization-of-redundant-assignments-across-functions
 	https://github.com/aras-p/glsl-optimizer/tree/master/src/glsl
-- LazyGLSL:
-    - Patreon supported project?
-        - chip in for features?
-	- typing prepass (automatically resolve type mismatches where possible (ie 1.0*3))
-	- auto add missing function prototypes
+- Super-set features:
+ 
+    - typing prepass (automatically resolve type mismatches where possible (ie 1.0*3))
+    - auto add missing function prototypes
     - default function arguments
     - type inference for function returns and function parameters?
     - functions within functions
@@ -25,7 +24,5 @@
     - var p = <x,y> compiles to vec2 p = vec2(x, y);
     - struct without trailing ;
 
-    -> names: 
-        - CivilizedSL
-        - SuperSL
+   
 - Complete Eval (currently just constant expressions)
