@@ -62,7 +62,7 @@ class Actions{
 	static public function reduce(ruleno:Int):MinorType{
 		Actions.ruleno = ruleno; //set class ruleno so it can be accessed by other functions
 
-		var __ret:MinorType;
+		var __ret:MinorType = null;
 		
 		switch ruleno{
 $$printActionCases(rule_actions,rules,3)

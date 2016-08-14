@@ -460,14 +460,12 @@ class Actions{
 			case 127: 
 				/* fully_specified_type ::= type_qualifier type_specifier */
 				var ts = cast(n(2), TypeSpecifier);
-				try{
-					if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
-					    ts.storage = StorageQualifier.VARYING;
-					    ts.invariant = true;
-					}else{
-					    ts.storage = untyped ev(1);
-					}
-				}catch(e:Dynamic){}
+				if(ev(1).equals(Instructions.SET_INVARIANT_VARYING)){
+				    ts.storage = StorageQualifier.VARYING;
+				    ts.invariant = true;
+				}else{
+				    ts.storage = untyped ev(1);
+				}
 				__ret = s(2);
 			case 128: 
 				/* type_qualifier ::= CONST */
