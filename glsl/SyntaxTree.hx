@@ -15,18 +15,16 @@ import haxe.macro.Expr;
 import haxe.macro.Type.ClassType;
 import Type.ValueType.TClass;
 
-#if !macro @:autoBuild(glsl.SyntaxTree.NodeBuildMacro.build()) #end
 interface Node{
-	var nodeName:String;
 	var nodeType:NodeType;
 }
 
 @:publicFields
 class Root implements Node{
 	var declarations:TranslationUnit;
-	var nodeName:String;
 	var nodeType:NodeType;
 	public function new(declarations:TranslationUnit){
+		this.nodeType = RootNode(this);
 		this.declarations = declarations;
 	}
 }
@@ -37,9 +35,9 @@ class TypeSpecifier implements Node{
 	var storage:StorageQualifier;
 	var precision:PrecisionQualifier;
 	var invariant:Bool;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(dataType:DataType, ?storage:StorageQualifier, ?precision:PrecisionQualifier, invariant:Bool = false){
+		this.nodeType = TypeSpecifierNode(this);
 		this.dataType = dataType;
 		this.storage = storage;
 		this.precision = precision;
@@ -52,6 +50,7 @@ class StructSpecifier extends TypeSpecifier{
 	var fieldDeclarations:StructFieldDeclarationList;
 	var name:String;
 	function new(name:String, fieldDeclarations:StructFieldDeclarationList){
+		this.nodeType = StructSpecifierNode(this);
 		this.name = name;
 		this.fieldDeclarations = fieldDeclarations;
 		super(USER_TYPE(name));
@@ -64,9 +63,9 @@ typedef StructFieldDeclarationList = Array<StructFieldDeclaration>;
 class StructFieldDeclaration implements Node{
 	var typeSpecifier:TypeSpecifier;
 	var declarators:StructDeclaratorList;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(typeSpecifier:TypeSpecifier, declarators:StructDeclaratorList){
+		this.nodeType = StructFieldDeclarationNode(this);
 		this.typeSpecifier = typeSpecifier;
 		this.declarators = declarators;
 	}
@@ -78,9 +77,9 @@ typedef StructDeclaratorList = Array<StructDeclarator>;
 class StructDeclarator implements Node{
 	var name:String;
 	var arraySizeExpression:Expression;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(name:String, ?arraySizeExpression:Expression){
+		this.nodeType = StructDeclaratorNode(this);
 		this.name = name;
 		this.arraySizeExpression = arraySizeExpression;
 	}
@@ -99,9 +98,9 @@ interface TypedExpression{
 class Identifier implements Expression{
 	var name:String;
 	var enclosed:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(name:String) {
+		this.nodeType = IdentifierNode(this);
 		this.name = name;
 	}
 }
@@ -112,9 +111,9 @@ class Primitive<T> implements Expression implements TypedExpression{
 	var raw:String;
 	var dataType:DataType;
 	var enclosed:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(value:T, dataType:DataType){
+		this.nodeType = PrimitiveNode(this);
 		this.dataType = dataType;
 		this.value = value;
 	}
@@ -137,9 +136,9 @@ class BinaryExpression implements Expression{
 	var left:Expression;
 	var right:Expression;
 	var enclosed:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(op:BinaryOperator, left:Expression, right:Expression){
+		this.nodeType = BinaryExpressionNode(this);
 		this.op = op;
 		this.left = left;
 		this.right = right;
@@ -152,9 +151,9 @@ class UnaryExpression implements Expression{
 	var arg:Expression;
 	var isPrefix:Bool;
 	var enclosed:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(op:UnaryOperator, arg:Expression, isPrefix:Bool){
+		this.nodeType = UnaryExpressionNode(this);
 		this.op = op;
 		this.arg = arg;
 		this.isPrefix = isPrefix;
@@ -165,9 +164,9 @@ class UnaryExpression implements Expression{
 class SequenceExpression implements Expression{
 	var expressions:Array<Expression>;
 	var enclosed:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(expressions:Array<Expression>){
+		this.nodeType = SequenceExpressionNode(this);
 		this.expressions = expressions;
 	}
 }
@@ -178,9 +177,9 @@ class ConditionalExpression implements Expression{
 	var consequent:Expression;
 	var alternate:Expression;
 	var enclosed:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(test:Expression, consequent:Expression, alternate:Expression){
+		this.nodeType = ConditionalExpressionNode(this);
 		this.test = test;
 		this.consequent = consequent;
 		this.alternate = alternate;
@@ -193,9 +192,9 @@ class AssignmentExpression implements Expression{
 	var left:Expression;
 	var right:Expression;
 	var enclosed:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(op:AssignmentOperator, left:Expression, right:Expression){
+		this.nodeType = AssignmentExpressionNode(this);
 		this.op = op;
 		this.left = left;
 		this.right = right;
@@ -207,9 +206,9 @@ class FieldSelectionExpression implements Expression{
 	var left:Expression;
 	var field:Identifier;
 	var enclosed:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(left:Expression, field:Identifier){
+		this.nodeType = FieldSelectionExpressionNode(this);
 		this.left = left;
 		this.field = field;
 	}
@@ -220,9 +219,9 @@ class ArrayElementSelectionExpression implements Expression{
 	var left:Expression;
 	var arrayIndexExpression:Expression;
 	var enclosed:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(left:Expression, arrayIndexExpression:Expression){
+		this.nodeType = ArrayElementSelectionExpressionNode(this);
 		this.left = left;
 		this.arrayIndexExpression = arrayIndexExpression;
 	}
@@ -237,9 +236,9 @@ class FunctionCall implements Expression implements ExpressionParameters{
 	var name:String;
 	var parameters:Array<Expression>;
 	var enclosed:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(name:String, ?parameters:Array<Expression>){
+		this.nodeType = FunctionCallNode(this);
 		this.name = name;
 		this.parameters = parameters != null ? parameters : [];
 	}
@@ -251,9 +250,9 @@ class Constructor implements Expression implements ExpressionParameters implemen
 	var dataType:DataType;
 	var parameters:Array<Expression>;
 	var enclosed:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(dataType:DataType, ?parameters:Array<Expression>){
+		this.nodeType = ConstructorNode(this);
 		this.dataType = dataType;
 		this.parameters = parameters != null ? parameters : [];
 	}
@@ -270,9 +269,9 @@ class PrecisionDeclaration implements Declaration{
 	var precision:PrecisionQualifier;
 	var dataType:DataType;
 	var external:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(precision:PrecisionQualifier, dataType:DataType){
+		this.nodeType = PrecisionDeclarationNode(this);
 		this.precision = precision;
 		this.dataType = dataType;
 	}
@@ -282,9 +281,9 @@ class PrecisionDeclaration implements Declaration{
 class FunctionPrototype implements Declaration{
 	var header:FunctionHeader;
 	var external:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(header:FunctionHeader){
+		this.nodeType = FunctionPrototypeNode(this);
 		this.header = header;
 	}
 }
@@ -294,9 +293,9 @@ class VariableDeclaration implements Declaration{
 	var typeSpecifier:TypeSpecifier;
 	var declarators:Array<Declarator>;
 	var external:Bool = false;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(typeSpecifier:TypeSpecifier, declarators:Array<Declarator>){
+		this.nodeType = VariableDeclarationNode(this);
 		this.typeSpecifier = typeSpecifier;
 		this.declarators = declarators;
 	}
@@ -307,9 +306,9 @@ class Declarator implements Node{
 	var name:String;
 	var initializer:Expression;
 	var arraySizeExpression:Expression;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(name:String, ?initializer:Expression, ?arraySizeExpression:Expression){
+		this.nodeType = DeclaratorNode(this);
 		this.name = name;
 		this.initializer = initializer;
 		this.arraySizeExpression = arraySizeExpression;
@@ -321,6 +320,7 @@ class ParameterDeclaration extends Declarator{
 	var parameterQualifier:ParameterQualifier;
 	var typeSpecifier:TypeSpecifier;
 	function new(name:String, typeSpecifier:TypeSpecifier, ?parameterQualifier:ParameterQualifier, ?arraySizeExpression:Expression){
+		this.nodeType = ParameterDeclarationNode(this);
 		super(name, null, arraySizeExpression);
 		this.typeSpecifier = typeSpecifier;
 		this.parameterQualifier = parameterQualifier;
@@ -334,9 +334,9 @@ class FunctionDefinition implements Declaration{
 	var header:FunctionHeader;
 	var body:CompoundStatement;
 	var external:Bool = true;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(header:FunctionHeader, body:CompoundStatement){
+		this.nodeType = FunctionDefinitionNode(this);
 		this.header = header;
 		this.body = body;
 	}
@@ -347,9 +347,9 @@ class FunctionHeader implements Node{
 	var name:String;
 	var returnType:TypeSpecifier;
 	var parameters:Array<ParameterDeclaration>;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(name:String, returnType:TypeSpecifier, ?parameters:Array<ParameterDeclaration>){
+		this.nodeType = FunctionHeaderNode(this);
 		this.name = name;
 		this.returnType = returnType;
 		this.parameters = parameters != null ? parameters : [];
@@ -363,9 +363,9 @@ typedef StatementList = Array<Statement>;
 @:publicFields
 class CompoundStatement implements Statement{
 	var statementList:StatementList;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(statementList:StatementList){
+		this.nodeType = CompoundStatementNode(this);
 		this.statementList = statementList;
 	}
 }
@@ -373,9 +373,9 @@ class CompoundStatement implements Statement{
 @:publicFields
 class DeclarationStatement implements Statement{
 	var declaration:Declaration;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(declaration:Declaration){
+		this.nodeType = DeclarationStatementNode(this);
 		this.declaration = declaration;
 	}
 }
@@ -383,9 +383,9 @@ class DeclarationStatement implements Statement{
 @:publicFields
 class ExpressionStatement implements Statement{
 	var expression:Expression;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(expression:Expression){
+		this.nodeType = ExpressionStatementNode(this);
 		this.expression = expression;
 	}
 }
@@ -395,9 +395,9 @@ class IfStatement implements Statement{
 	var test:Expression;
 	var consequent:Statement;
 	var alternate:Statement;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(test:Expression, consequent:Statement, alternate:Statement){
+		this.nodeType = IfStatementNode(this);
 		this.test = test;
 		this.consequent = consequent;
 		this.alternate = alternate;
@@ -407,9 +407,9 @@ class IfStatement implements Statement{
 @:publicFields
 class JumpStatement implements Statement{
 	var mode:JumpMode;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(mode:JumpMode){
+		this.nodeType = JumpStatementNode(this);
 		this.mode = mode;
 	}
 }
@@ -418,6 +418,7 @@ class JumpStatement implements Statement{
 class ReturnStatement extends JumpStatement{
 	var returnExpression:Expression;
 	function new(returnExpression:Expression){
+		this.nodeType = ReturnStatementNode(this);
 		this.returnExpression = returnExpression;
 		super(RETURN);
 	}
@@ -431,9 +432,9 @@ interface IterationStatement extends Statement{
 class WhileStatement implements IterationStatement{
 	var test:Expression;
 	var body:Statement;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(test:Expression, body:Statement){
+		this.nodeType = WhileStatementNode(this);
 		this.test = test;
 		this.body = body;
 	}
@@ -443,9 +444,9 @@ class WhileStatement implements IterationStatement{
 class DoWhileStatement implements IterationStatement{
 	var test:Expression;
 	var body:Statement;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(test:Expression, body:Statement){
+		this.nodeType = DoWhileStatementNode(this);
 		this.test = test;
 		this.body = body;
 	}
@@ -457,9 +458,9 @@ class ForStatement implements IterationStatement{
 	var test:Expression;
 	var update:Expression;
 	var body:Statement;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(init:Statement, test:Expression, update:Expression, body:Statement){
+		this.nodeType = ForStatementNode(this);
 		this.init = init;
 		this.test = test;
 		this.update = update;
@@ -472,9 +473,9 @@ class ForStatement implements IterationStatement{
 class PreprocessorDirective implements Declaration implements Statement{
 	var content:String;
 	var external:Bool = true;
-	var nodeName:String;
 	var nodeType:NodeType;
 	function new(content:String){
+		this.nodeType = PreprocessorDirectiveNode(this);
 		this.content = content;
 	}
 }
@@ -651,10 +652,8 @@ class NodeBuildMacro{
 		// };
 		// fields.push(nodeTypeField);
 
-		//set nodeName and nodeType by appending expression to new()
 		for(f in fields) switch f{
 			case {name: 'new', kind: FFun({expr: { expr: EBlock(exprArray) }})}:
-				exprArray.push(macro nodeName = $v{className});
 				exprArray.push(macro nodeType = $i{className + 'Node'}(this));
 			default:
 		}
