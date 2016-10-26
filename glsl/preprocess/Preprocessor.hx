@@ -122,7 +122,7 @@ class Preprocessor{
 				throw Error('${directive.content}', t);
 
 			case 'pragma':
-				if(~/^\s*STDGL(\s+|$)/.match(directive.content))
+				if(~/^[\t \n\r]*STDGL([\t \n\r]+|$)/.match(directive.content))
 					throw 'pragmas beginning with STDGL are reserved';
 
 				_pragmas.push(directive.content); 
@@ -507,7 +507,7 @@ class Preprocessor{
 				case '(': //function-like
 					//match and extract parameters
 					var parametersReg = ~/([^\)]*)\)/; //string between parentheses
-					var parameterReg = ~/^\s*(([a-z_]\w*)?)\s*(,|$)/i; //individual parameters
+					var parameterReg = ~/^[\t \n\r]*(([a-z_][A-Za-z0-9_]*)?)[\t \n\r]*(,|$)/i; //individual parameters
 					//(parameter name can be blank)
 					var matchedRightParen = parametersReg.match(macroNameReg.matchedRight());
 					if(matchedRightParen){
@@ -813,8 +813,8 @@ class Preprocessor{
 	}
 
 	//Preprocessor Data
-	static var directiveTitleReg = ~/^#\s*([^\s]*)/;
-	static var macroNameReg = ~/^([a-z_]\w*)([^\w]|$)/i;
+	static var directiveTitleReg = ~/^#[\t \n\r]*([^\t \n\r]*)/;
+	static var macroNameReg = ~/^([a-z_][A-Za-z0-9_]*)([^A-Za-z0-9_]|$)/i;
 }
 
 typedef DirectiveData = {

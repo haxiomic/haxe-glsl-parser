@@ -400,7 +400,10 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
     EXPONENT_PART;       [eE][+-]?\d        ^\d
 */
 	//single character patterns
-	static var operatorRegex = ~/[&<=>|*?!+%(){}.~:,;\/\-\^\[\]]/;
+	static var operatorCharacters = "&<=>|*?!+%(){}.~:,;/-^[]";
+	static var whitespaceCharacters = "\t \n\r" + String.fromCharCode(11) + String.fromCharCode(12);
+
+	static inline function isClass(c:String, hay:String) { return c.length == 1 && hay.indexOf(c) != -1; }
 
 	//mode conditions
 	//returns either the length of the matched start string (starting from i) or null for invalid starting point
@@ -413,7 +416,7 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
 			if(c(i) == '#'){
 				var j = i - 1;
 				while(c(j) != '\n' && c(j) != ''){
-					if(!~/\s/.match(c(j))) return null;//non-whitespace character found between # and line start
+					if(!isClass(c(j), whitespaceCharacters)) return null;//non-whitespace character found between # and line start
 					j--;
 				}
 				return 1;
@@ -421,8 +424,8 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
 			
 			return null;
 		},
-		WHITESPACE             => function() return ~/\s/.match(c(i))                              ? 1 : null,
-		OPERATOR               => function() return operatorRegex.match(c(i))                      ? 1 : null,
+		WHITESPACE             => function() return isClass(c(i), whitespaceCharacters)            ? 1 : null,
+		OPERATOR               => function() return isClass(c(i), operatorCharacters)              ? 1 : null,
 		LITERAL                => function() return ~/[a-z_]/i.match(c(i))                         ? 1 : null,
 
 		HEX_CONSTANT           => function() return ~/0x[a-f0-9]/i.match(source.substring(i, i+3)) ? 3 : null,
@@ -456,7 +459,7 @@ FLOATING_CONSTANT: FRACTIONAL_CONSTANT EXPONENT_PART? | \d+ EXPONENT_PART
 		BLOCK_COMMENT          => function() return source.substring(i-2,i) == '*/',
 		LINE_COMMENT           => function() return c(i) == '\n' || c(i) == '',
 		PREPROCESSOR_DIRECTIVE => function() return (c(i) == '\n' && c(i-1) != '\\') || c(i) == '',
-		WHITESPACE             => function() return !~/\s/.match(c(i)),
+		WHITESPACE             => function() return !isClass(c(i), whitespaceCharacters),
 		OPERATOR               => function() return !operatorMap.exists(buf+c(i)) || c(i) == '',
 		LITERAL                => function() return !~/[a-z0-9_]/i.match(c(i)),
 
