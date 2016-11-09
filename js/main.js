@@ -3395,7 +3395,9 @@ glsl_preprocess_Preprocessor.prototype = {
 						break;
 					case 66:
 						--level;
-						argBuffer.push(t);
+						if(level > 0) {
+							argBuffer.push(t);
+						}
 						break;
 					case 72:
 						if(level == 1) {
