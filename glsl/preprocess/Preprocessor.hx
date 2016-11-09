@@ -724,7 +724,7 @@ class Preprocessor{
 				if(Tokenizer.skippableTypes.indexOf(t.type) != -1) continue; //ignore skippable tokens
 				switch t.type{
 					case TokenType.LEFT_PAREN: level++; argBuffer.push(t);
-					case TokenType.RIGHT_PAREN: level--; argBuffer.push(t);
+					case TokenType.RIGHT_PAREN: level--; if(level > 0) argBuffer.push(t);
 					case TokenType.COMMA: if(level == 1) pushArg(); else argBuffer.push(t);
 					case null: throw '$t has no token type';
 					case _: argBuffer.push(t);
