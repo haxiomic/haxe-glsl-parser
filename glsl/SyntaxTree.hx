@@ -24,8 +24,8 @@ class Root implements Node{
 	var declarations:TranslationUnit;
 	var nodeType:NodeType;
 	public function new(declarations:TranslationUnit){
-		this.nodeType = RootNode(this);
 		this.declarations = declarations;
+		this.nodeType = RootNode(this);
 	}
 }
 
@@ -37,11 +37,11 @@ class TypeSpecifier implements Node{
 	var invariant:Bool;
 	var nodeType:NodeType;
 	function new(dataType:DataType, ?storage:StorageQualifier, ?precision:PrecisionQualifier, invariant:Bool = false){
-		this.nodeType = TypeSpecifierNode(this);
 		this.dataType = dataType;
 		this.storage = storage;
 		this.precision = precision;
 		this.invariant = invariant;
+		this.nodeType = TypeSpecifierNode(this);
 	}
 }
 
@@ -50,10 +50,10 @@ class StructSpecifier extends TypeSpecifier{
 	var fieldDeclarations:StructFieldDeclarationList;
 	var name:String;
 	function new(name:String, fieldDeclarations:StructFieldDeclarationList){
-		this.nodeType = StructSpecifierNode(this);
 		this.name = name;
 		this.fieldDeclarations = fieldDeclarations;
 		super(USER_TYPE(name));
+		this.nodeType = StructSpecifierNode(this);
 	}
 }
 
@@ -65,9 +65,9 @@ class StructFieldDeclaration implements Node{
 	var declarators:StructDeclaratorList;
 	var nodeType:NodeType;
 	function new(typeSpecifier:TypeSpecifier, declarators:StructDeclaratorList){
-		this.nodeType = StructFieldDeclarationNode(this);
 		this.typeSpecifier = typeSpecifier;
 		this.declarators = declarators;
+		this.nodeType = StructFieldDeclarationNode(this);
 	}
 }
 
@@ -79,9 +79,9 @@ class StructDeclarator implements Node{
 	var arraySizeExpression:Expression;
 	var nodeType:NodeType;
 	function new(name:String, ?arraySizeExpression:Expression){
-		this.nodeType = StructDeclaratorNode(this);
 		this.name = name;
 		this.arraySizeExpression = arraySizeExpression;
+		this.nodeType = StructDeclaratorNode(this);
 	}
 }
 
@@ -100,8 +100,8 @@ class Identifier implements Expression{
 	var enclosed:Bool = false;
 	var nodeType:NodeType;
 	function new(name:String) {
-		this.nodeType = IdentifierNode(this);
 		this.name = name;
+		this.nodeType = IdentifierNode(this);
 	}
 }
 
@@ -113,9 +113,9 @@ class Primitive<T> implements Expression implements TypedExpression{
 	var enclosed:Bool = false;
 	var nodeType:NodeType;
 	function new(value:T, dataType:DataType){
-		this.nodeType = PrimitiveNode(this);
 		this.dataType = dataType;
 		this.value = value;
+		this.nodeType = PrimitiveNode(this);
 	}
 
 	private function set_value(v:T):T{
@@ -138,10 +138,10 @@ class BinaryExpression implements Expression{
 	var enclosed:Bool = false;
 	var nodeType:NodeType;
 	function new(op:BinaryOperator, left:Expression, right:Expression){
-		this.nodeType = BinaryExpressionNode(this);
 		this.op = op;
 		this.left = left;
 		this.right = right;
+		this.nodeType = BinaryExpressionNode(this);
 	}
 }
 
@@ -153,10 +153,10 @@ class UnaryExpression implements Expression{
 	var enclosed:Bool = false;
 	var nodeType:NodeType;
 	function new(op:UnaryOperator, arg:Expression, isPrefix:Bool){
-		this.nodeType = UnaryExpressionNode(this);
 		this.op = op;
 		this.arg = arg;
 		this.isPrefix = isPrefix;
+		this.nodeType = UnaryExpressionNode(this);
 	}
 }
 
@@ -166,8 +166,8 @@ class SequenceExpression implements Expression{
 	var enclosed:Bool = false;
 	var nodeType:NodeType;
 	function new(expressions:Array<Expression>){
-		this.nodeType = SequenceExpressionNode(this);
 		this.expressions = expressions;
+		this.nodeType = SequenceExpressionNode(this);
 	}
 }
 
@@ -179,10 +179,10 @@ class ConditionalExpression implements Expression{
 	var enclosed:Bool = false;
 	var nodeType:NodeType;
 	function new(test:Expression, consequent:Expression, alternate:Expression){
-		this.nodeType = ConditionalExpressionNode(this);
 		this.test = test;
 		this.consequent = consequent;
 		this.alternate = alternate;
+		this.nodeType = ConditionalExpressionNode(this);
 	}
 }
 
@@ -194,10 +194,10 @@ class AssignmentExpression implements Expression{
 	var enclosed:Bool = false;
 	var nodeType:NodeType;
 	function new(op:AssignmentOperator, left:Expression, right:Expression){
-		this.nodeType = AssignmentExpressionNode(this);
 		this.op = op;
 		this.left = left;
 		this.right = right;
+		this.nodeType = AssignmentExpressionNode(this);
 	}
 }
 
@@ -208,9 +208,9 @@ class FieldSelectionExpression implements Expression{
 	var enclosed:Bool = false;
 	var nodeType:NodeType;
 	function new(left:Expression, field:Identifier){
-		this.nodeType = FieldSelectionExpressionNode(this);
 		this.left = left;
 		this.field = field;
+		this.nodeType = FieldSelectionExpressionNode(this);
 	}
 }
 
@@ -221,9 +221,9 @@ class ArrayElementSelectionExpression implements Expression{
 	var enclosed:Bool = false;
 	var nodeType:NodeType;
 	function new(left:Expression, arrayIndexExpression:Expression){
-		this.nodeType = ArrayElementSelectionExpressionNode(this);
 		this.left = left;
 		this.arrayIndexExpression = arrayIndexExpression;
+		this.nodeType = ArrayElementSelectionExpressionNode(this);
 	}
 }
 
@@ -238,9 +238,9 @@ class FunctionCall implements Expression implements ExpressionParameters{
 	var enclosed:Bool = false;
 	var nodeType:NodeType;
 	function new(name:String, ?parameters:Array<Expression>){
-		this.nodeType = FunctionCallNode(this);
 		this.name = name;
 		this.parameters = parameters != null ? parameters : [];
+		this.nodeType = FunctionCallNode(this);
 	}
 }
 
@@ -252,9 +252,9 @@ class Constructor implements Expression implements ExpressionParameters implemen
 	var enclosed:Bool = false;
 	var nodeType:NodeType;
 	function new(dataType:DataType, ?parameters:Array<Expression>){
-		this.nodeType = ConstructorNode(this);
 		this.dataType = dataType;
 		this.parameters = parameters != null ? parameters : [];
+		this.nodeType = ConstructorNode(this);
 	}
 }
 
@@ -271,9 +271,9 @@ class PrecisionDeclaration implements Declaration{
 	var external:Bool = false;
 	var nodeType:NodeType;
 	function new(precision:PrecisionQualifier, dataType:DataType){
-		this.nodeType = PrecisionDeclarationNode(this);
 		this.precision = precision;
 		this.dataType = dataType;
+		this.nodeType = PrecisionDeclarationNode(this);
 	}
 }
 
@@ -283,8 +283,8 @@ class FunctionPrototype implements Declaration{
 	var external:Bool = false;
 	var nodeType:NodeType;
 	function new(header:FunctionHeader){
-		this.nodeType = FunctionPrototypeNode(this);
 		this.header = header;
+		this.nodeType = FunctionPrototypeNode(this);
 	}
 }
 
@@ -295,9 +295,9 @@ class VariableDeclaration implements Declaration{
 	var external:Bool = false;
 	var nodeType:NodeType;
 	function new(typeSpecifier:TypeSpecifier, declarators:Array<Declarator>){
-		this.nodeType = VariableDeclarationNode(this);
 		this.typeSpecifier = typeSpecifier;
 		this.declarators = declarators;
+		this.nodeType = VariableDeclarationNode(this);
 	}
 }
 
@@ -308,10 +308,10 @@ class Declarator implements Node{
 	var arraySizeExpression:Expression;
 	var nodeType:NodeType;
 	function new(name:String, ?initializer:Expression, ?arraySizeExpression:Expression){
-		this.nodeType = DeclaratorNode(this);
 		this.name = name;
 		this.initializer = initializer;
 		this.arraySizeExpression = arraySizeExpression;
+		this.nodeType = DeclaratorNode(this);
 	}
 }
 
@@ -320,10 +320,10 @@ class ParameterDeclaration extends Declarator{
 	var parameterQualifier:ParameterQualifier;
 	var typeSpecifier:TypeSpecifier;
 	function new(name:String, typeSpecifier:TypeSpecifier, ?parameterQualifier:ParameterQualifier, ?arraySizeExpression:Expression){
-		this.nodeType = ParameterDeclarationNode(this);
 		super(name, null, arraySizeExpression);
 		this.typeSpecifier = typeSpecifier;
 		this.parameterQualifier = parameterQualifier;
+		this.nodeType = ParameterDeclarationNode(this);
 	}
 }
 
@@ -336,9 +336,9 @@ class FunctionDefinition implements Declaration{
 	var external:Bool = true;
 	var nodeType:NodeType;
 	function new(header:FunctionHeader, body:CompoundStatement){
-		this.nodeType = FunctionDefinitionNode(this);
 		this.header = header;
 		this.body = body;
+		this.nodeType = FunctionDefinitionNode(this);
 	}
 }
 
@@ -349,10 +349,10 @@ class FunctionHeader implements Node{
 	var parameters:Array<ParameterDeclaration>;
 	var nodeType:NodeType;
 	function new(name:String, returnType:TypeSpecifier, ?parameters:Array<ParameterDeclaration>){
-		this.nodeType = FunctionHeaderNode(this);
 		this.name = name;
 		this.returnType = returnType;
 		this.parameters = parameters != null ? parameters : [];
+		this.nodeType = FunctionHeaderNode(this);
 	}
 }
 
@@ -365,8 +365,8 @@ class CompoundStatement implements Statement{
 	var statementList:StatementList;
 	var nodeType:NodeType;
 	function new(statementList:StatementList){
-		this.nodeType = CompoundStatementNode(this);
 		this.statementList = statementList;
+		this.nodeType = CompoundStatementNode(this);
 	}
 }
 
@@ -375,8 +375,8 @@ class DeclarationStatement implements Statement{
 	var declaration:Declaration;
 	var nodeType:NodeType;
 	function new(declaration:Declaration){
-		this.nodeType = DeclarationStatementNode(this);
 		this.declaration = declaration;
+		this.nodeType = DeclarationStatementNode(this);
 	}
 }
 
@@ -385,8 +385,8 @@ class ExpressionStatement implements Statement{
 	var expression:Expression;
 	var nodeType:NodeType;
 	function new(expression:Expression){
-		this.nodeType = ExpressionStatementNode(this);
 		this.expression = expression;
+		this.nodeType = ExpressionStatementNode(this);
 	}
 }
 
@@ -397,10 +397,10 @@ class IfStatement implements Statement{
 	var alternate:Statement;
 	var nodeType:NodeType;
 	function new(test:Expression, consequent:Statement, alternate:Statement){
-		this.nodeType = IfStatementNode(this);
 		this.test = test;
 		this.consequent = consequent;
 		this.alternate = alternate;
+		this.nodeType = IfStatementNode(this);
 	}
 }
 
@@ -409,8 +409,8 @@ class JumpStatement implements Statement{
 	var mode:JumpMode;
 	var nodeType:NodeType;
 	function new(mode:JumpMode){
-		this.nodeType = JumpStatementNode(this);
 		this.mode = mode;
+		this.nodeType = JumpStatementNode(this);
 	}
 }
 
@@ -418,9 +418,9 @@ class JumpStatement implements Statement{
 class ReturnStatement extends JumpStatement{
 	var returnExpression:Expression;
 	function new(returnExpression:Expression){
-		this.nodeType = ReturnStatementNode(this);
 		this.returnExpression = returnExpression;
 		super(RETURN);
+		this.nodeType = ReturnStatementNode(this);
 	}
 }
 
@@ -434,9 +434,9 @@ class WhileStatement implements IterationStatement{
 	var body:Statement;
 	var nodeType:NodeType;
 	function new(test:Expression, body:Statement){
-		this.nodeType = WhileStatementNode(this);
 		this.test = test;
 		this.body = body;
+		this.nodeType = WhileStatementNode(this);
 	}
 }
 
@@ -446,9 +446,9 @@ class DoWhileStatement implements IterationStatement{
 	var body:Statement;
 	var nodeType:NodeType;
 	function new(test:Expression, body:Statement){
-		this.nodeType = DoWhileStatementNode(this);
 		this.test = test;
 		this.body = body;
+		this.nodeType = DoWhileStatementNode(this);
 	}
 }
 
@@ -460,11 +460,11 @@ class ForStatement implements IterationStatement{
 	var body:Statement;
 	var nodeType:NodeType;
 	function new(init:Statement, test:Expression, update:Expression, body:Statement){
-		this.nodeType = ForStatementNode(this);
 		this.init = init;
 		this.test = test;
 		this.update = update;
 		this.body = body;
+		this.nodeType = ForStatementNode(this);
 	}
 }
 
@@ -475,8 +475,8 @@ class PreprocessorDirective implements Declaration implements Statement{
 	var external:Bool = true;
 	var nodeType:NodeType;
 	function new(content:String){
-		this.nodeType = PreprocessorDirectiveNode(this);
 		this.content = content;
+		this.nodeType = PreprocessorDirectiveNode(this);
 	}
 }
 
