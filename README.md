@@ -7,15 +7,15 @@ Parser based on LALR parser from [The Lemon Parser Generator](http://www.hwaci.c
 
 Supports all platforms available to the [haxe](haxe.org) compiler (notably JavaScript, Java, C++ and Python)
 
-###[Demo](http://haxiomic.github.io/haxe-glsl-parser/)
+### [Demo](http://haxiomic.github.io/haxe-glsl-parser/)
 
-##Project Status
-###Complete
+## Project Status
+### Complete
 - Parser
 - Printer: pretty and compact
 - Preprocessor
 
-###In progress
+### In progress
 - Evaluator
 - Validator
 - Optimizer
@@ -25,5 +25,5 @@ Feel free to contact me at haxiomic@gmail.com if you have any questions
 
 
 ------
-####Rebuilding the parser after grammar changes
+#### Rebuilding the parser after grammar changes
 A fork of [lemon](http://www.hwaci.com/sw/lemon/) is used to generate the haxe parser. The parser generator automatically copies the output into the core code - all you need to do is navigate to **tools/parser-generator/** and execute run.sh
